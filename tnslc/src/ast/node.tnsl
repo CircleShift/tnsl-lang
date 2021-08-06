@@ -1,0 +1,88 @@
+/##
+	Copyright 2020-2021 Kyle Gunger
+
+	Licensed under the COMMON DEVELOPMENT AND DISTRIBUTION LICENSE
+	(CDDL) Version 1.0 (the "License"). You may not use this file
+	except in compliance with the License. You may obtain a copy of
+	the License at
+
+		https://opensource.org/licenses/CDDL-1.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+	implied.
+
+	See the License for the specific language governing permissions
+	and limitations under the License.
+#/
+
+# AST node (non-block)
+;struct Node {
+	tnslc.parse.Token
+		# associated token to the node
+		data,
+
+	~{}Node
+		# sub-nodes
+		sub
+}
+
+# AST node (block)
+;struct BlockNode extends Node {
+	super,
+
+	~{}Node
+		# block inputs and outputs
+		blockIn,
+		blockOut,
+	
+	~{}tnslc.parse.Token
+		# block qualifiers
+		blockQs
+}
+
+# Node methods
+/; method Node
+
+	/; operator delete
+		;delete this.data, this.sub
+	;/
+
+	/; push_sub (Node node) [uint]
+		;uint len = this.sub.length
+		;alloc this.sub, len + 1
+		;this.sub{len} = node
+		;return len + 1
+	;/
+;/
+
+# Extended block node methods
+/; method BlockNode
+
+	/; operator delete
+		;super()
+		;delete this.blockQs, this.blockIn, this.blockOut
+	;/
+
+	/; push_blockQ (tnslc.parse.Token token) [uint]
+		;uint len = this.blockQs.length
+		;alloc this.blockQs, len + 1
+		;this.blockQs{len} = token
+		;return len + 1
+	;/
+
+	/; push_blockIn (Node node) [uint]
+		;uint len = this.blockIn.length
+		;alloc this.blockIn, len + 1
+		;this.blockIn{len} = node
+		;return len + 1
+	;/
+
+	/; push_blockOut (Node node) [uint]
+		;uint len = this.blockOut.length
+		;alloc this.blockOut, len + 1
+		;this.blockOut{len} = node
+		;return len + 1
+	;/
+;/

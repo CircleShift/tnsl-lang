@@ -1,0 +1,33 @@
+/##
+   Copyright 2020 Kyle Gunger
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+#/
+
+/#
+    This file provides a nonstandard entry point for a bootstrap implementation of TNSL.
+    
+    The reference implementation of the TNSL compiler (written in GOLANG for now), does
+    not contain feature complete functionality in the form of pre-compiler directives, which the
+    full libts uses for compilation on different operating systems.  This version is provided
+    so that the reference compiler can produce a functional enough libts to compile the
+    full tnslc compiler (written in TNSL).
+
+    As such, this entry point must be modified manually to use windows, mac, or linux
+    code files, and then will provide a barebones file, stream, and error handeling library
+    with nothing else to act as a bootstrap for the compiler.  The bootstrap compiler should
+    be able to compile the full libts and, in turn, the full compiler.
+#/
+
+/;export module ts
+;/
