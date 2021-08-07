@@ -1,4 +1,4 @@
-# libts
+# libtnsl
 
 The official implimentation of the TNSL Standard Library
 
@@ -15,7 +15,7 @@ More information on these features can be found in the specification under libts
 ---
 ## Provided Sub-modules
 
-libts provides the tnsl base module and the following sub-modules to address each feature:
+libtnsl provides the tnsl base module and the following sub-modules to address each feature:
 * algorithm
   * Algorithms.  Also contains the math sub-module for basic math operations.
 * box
