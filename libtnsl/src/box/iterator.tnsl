@@ -19,15 +19,22 @@
     EXPRESS OR IMPLIED
 #/
 
-/##
-	module tnsl.io
-	Data management for input and output via blocks and streams, memory tools such as alloc and delete
+# Interface for moving through a list
+/; interface ForwardsIterator (type T)
 
-#; export module io
-	/: import
-		"block.tnsl"
-		"stream.tnsl"
-		"file.tnsl"
-		"std.tnsl"
-	:/
+	# Advance to the next element in the list
+	/; next [bool]
+	;/
+
+	# Get the current element in the list
+	/; current [T]
+	;/
+;/
+
+# Interface for moving through a list forwards or backwards
+/; interface TwoWayIterator (type T) extends ForwardsIterator(T)
+
+	# Move to the previous element in the list
+	/; prev [bool]
+	;/
 ;/

@@ -26,11 +26,11 @@ The standard TNSL compiler suite.  Contains a universal front end for producing 
 	- arm64
 	- risc-v
 
-### Build status
+### Status
 
-	Specification:    fail
-	libtnsl:          fail
-	tnslc:            fail
+	Specification:    incomplete
+	libtnsl:          incomplete
+	tnslc:            incomplete
 
 ### Credits
 

@@ -1,1 +1,0 @@
-# tnsl-lang specification
