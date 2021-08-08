@@ -2,7 +2,7 @@
 
 The official implimentation of the TNSL Standard Library
 
-libts provides the following language features:
+libtnsl provides the following language features:
 * Type and method resolution
 * Basic input and output
 * Standard algorithms
