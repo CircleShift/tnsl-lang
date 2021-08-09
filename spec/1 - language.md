@@ -316,11 +316,91 @@ Examples:
 
 ### Defining Types
 
+In TNSL, types may be defined by using the `struct` keyword.  Struct must be used in conjunction with a user defined name and a set of members enclosed in `{}`.  Instances of struct types may be larger than their members if not declared `raw` due to type information and extension.  Certain restrictions must be applied to `raw` types.  These restrictions may be found in Appendix C.
 
+Types may extend other types and interfaces with some caveats.  Raw structs may not extend other structs, but may extend interfaces.  Non-raw structs may not extend raw structs.  If extending two or more structs, they may not have any conflicting member names.
+
+Methods may be added to a struct with the `method` block.  Immediately following `method` must be the user defined name of the struct.
+
+Methods may use the `override` or `operator` keywords in function definition.  `override` must be used for functions which are named and typed equivalently to extended classes' methods.  `operator` allows types to use operators as methods, the keyword must immediately be followed by the operator to overload, and must only have up to one input depending on weather the operator is binary or not.
+
+Methods may access the special keywords `self` and `super`.  `self` is a reference to the instance of the struct that the function was called on.  `super` is a reference to any structs or interfaces extended by the struct.  If there is only one extended type, it references the methods of that type.  Otherwise, it is an array of such objects.  It may be called to call the equivalent method on the extended type.  `super` may also be used in the member set to position the extended types' members in relation to the new struct's members.
+
+Examples:
+
+	# normal struct
+	; struct box {
+		float
+			x,
+			y,
+			z
+	}
+
+	# method block
+	/; method box
+
+		/; area [float]
+			return self.x * self.y * self.z
+		;/
+	;/
 
 ### Interfaces
 
-### Type Levels
+Interfaces are defined using the `interface` keyword.  Interfaces have methods but no struct or members to accompany them.  Instances of interfaces may not be created.  Methods defined by interfaces must be overridden unless marked in the interface.  Such marked methods may call on other methods, but may not use any members as interfaces have none.
+
+Example:
+
+	/; interface shape
+
+		/; area [float] ;/
+
+		# this method does not need to be overridden
+		/; override area_sq [float]
+			;float a = self.area()
+			;return a*a
+		;/
+	;/
+
+	;struct box extends shape {
+		float
+			x,
+			y,
+			z
+	}
+
+	/; method box
+
+		/; override area [float]
+			;return x*y*z
+		;/
+	;/
+
+### Enums
+
+Enums are defined using the `enum` keyword.  An enum represents a set of possible states, and requires a single output type which can be compared.
+
+Enums may be defined in conjunction with the `raw` keyword.  When defined in this way, each state is mutually exclusive and must be represented by a single bit of a uint type.  Raw enums may be thought of more akin to bit-masks.
+
+Examples:
+
+	# non-raw enums must define each value
+	; enum color [int] {
+		# In standard styling, these use UPPER_SNAKE_CASE
+		RED = 1,
+		BLUE = 2,
+		...
+		YELLOW = 12
+	}
+
+	# raw enums may not define any value
+	; raw enum object_material {
+		WOOD,
+		METAL,
+		GLASS,
+		PLASTIC,
+		...
+		ROCK
+	}
 
 ## Section 5 - Operators
 
@@ -419,7 +499,7 @@ Operator precedence is as follows (from greatest to least):
 
 ### The `raw` Keyword
 
-The `raw` keyword can be used in three different scenarios, and each has a different meaning.
+The `raw` keyword can be used in four different scenarios, and each has a different meaning.
 
 1. The `raw` keyword can be used in function definitions.  These effects were discussed in section 2.2.
 
@@ -428,6 +508,8 @@ The `raw` keyword can be used in three different scenarios, and each has a diffe
 3. The `raw` keyword may be used with the `struct` keyword to create a raw struct.  Raw structs can not contain user defined types or generics.  Raw types encode no type information and may not be extended.  Raw structs, unlike static or dynamic structs, are only as wide their members.
 	- Static and dynamic structs contain a small amount of information pertaining to their actual type and generics so may be larger than only their members.
 		- In addition, since static and dynamic structs may be extended, they may not be the initially defined type and may be larger, further complicating matters.
+
+4. The `raw` keyword may be used with the `enum` keyword to create a raw enum.  Raw enums only have at most one state per bit and may bitwise or and bitwise and to generate a full state.  Raw enums are much akin to bit-masks.
 
 ### The `asm` Keyword
 
