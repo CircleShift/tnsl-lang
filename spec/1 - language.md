@@ -18,7 +18,7 @@ TNSL files contain the .tnsl extension and contain one or more of the following:
 - Method and interface blocks
 - Constant, variable, and type definitions
 
-TNSL files may only contain the following enclosed in function blocks:
+TNSL files may only contain the following enclosed in function or method blocks:
 - Re-assignment of variables
 - Control flow blocks
 - Use of variables in definition of variables
@@ -112,6 +112,8 @@ TNSL functions may have inputs (enclosed with `()`) and/or outputs (enclosed wit
 TNSL functions may have their call stack modified by the `raw` and/or `inline` keywords.  If the `inline` keyword is placed around the function declaration, the function will still be exported (if it is being exported), but any time it is used in the project's code, it will be optimized as if in-line.
 
 The use of the `raw` keyword has several effects:  the function will have no generated assembly preamble, the function will allow `raw return` statements, the function will not be optimized, and the function will allow `asm` statements.  Any function may be labeled `raw`, even `main` and anonymous functions.
+
+Functions *may* be overloaded (that is, two functions may share names but have differing input type lists).  Overloaded functions *may not* share the same inputs and differing outputs, but *may* have both differing inputs and differing outputs.
 
 Examples:
 

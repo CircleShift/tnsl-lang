@@ -186,7 +186,7 @@
 
 	void - void type
 
-	type - meta type
+	type - meta type (tnsl.reflect.type)
 
 	vect* - libtnsl tnsl.vector.vector type
 

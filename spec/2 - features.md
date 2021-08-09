@@ -1,5 +1,95 @@
 # Related Features
 
+## Section 1 - Style Guide
+
+This style guide is primarially for anyone working on tnsl-lang and to a baseline good practice.  However, obviously different programmers and groups will feel differently, the real recommendation is to keep your project consistant.  Pick and choose what you need such that it fits your needs and everyone is on board, just keep it consistant.
+
+This section will probably feel less formal than the others simply due to how objective things are.
+
+### Tabs or Spaces
+
+You will for the most part see tabs being used over spaces in tnsl-lang.  This is not to keep file sizes down, but instead so that anyone can tweak how the files look to fit their asthetic best without affecting anyone else.  Adjust tab sizing on your machine and it won't change it on mine.
+
+### Naming Convention
+
+NOTE: Remember that naming convention is no substitute for readability.  If your names don't make sense, neither does your code.  x, y, and z may be fine, but that doesn't help anyone else figure out what you're using them for.  If a particular implementation *does* use variables that are hard to name, feel free to use letter identifiers, but add some short comments to explain what you're doing and how (see comments for more info).
+
+- UPPER_SNAKE_CASE for constants and enums
+
+- lower_snake_case for functions, and methods
+
+- UpperCamelCase or flatcase for modules, types, and interfaces
+	- it is recommended that interfaces start with the letter i
+
+- lowerCamelCase (hungarian notation acceptable) for type/struct members
+
+## Comments
+
+Comments should strive to tell programmers what a function does or what a struct's member is for rather than how it goes about doing/generating said thing.  Particularly obtuse implimentations are free to use comments to explain their code.
+
+Comment blocks starting with an extra number sign `/##` are documentation comments.  If they are at the top of the file, they provide either info about the file or license information.  If they appear directly before (or joined to using `#;`) a function or method they explain what the function or method does.
+
+## Directory Structure
+
+`src` will be the name of the root source files/folders, `build` will be the name of the outputed files/folders.
+
+The name of the *main* root file (there may be multiple root files) will be the project folder name followed by .tnsl (example: project tnslc's root file is `src/tnslc.tnsl`).
+
+Sub-modules shall be contained in their own folder, and the main entry point to the module will be named the same as that folder followed by .tnsl (example: module `tnsl.alg` in libtnsl has the main entry point for the module `/src/alg/alg.tnsl`).
+
+## Section 2 - Compiler Options
+
+An exhaustive list of all compiler options can be found in the spec for tnslc, but these are a general sub-set for working on lower-level projects and language bootstrapping.
+
+### ISA Options
+
+The tnslc compiler can output for a variety of backends.  These can be set with the `--arch <desired isa>` option.
+
+### Pre-processor
+
+tnslc can preemptively set pre-processor variables using the `--V "VARIABLE=value, VARIABLE2=value2, ..."` option.
+
+### Standard Library
+
+Access to the standard library can be disabled (bare metal mode) by using the `--no-libtnsl` flag.  Also use this to build the standard library as it will attempt to link improperly otherwise.
+
+### T-LETs
+
+What T-LETs exactly are is discussed later.  You can have tnslc produce them by passing the `--output tlet` flag.
+
+## Section 3 - The Pre-Processor
+
+An exhaustive account of the full pre-processor can be found in the tnslc specification.
+
+### Including Other Files
+
+Use the `include` directive to include other code.  This can be a library using single quotation marks (example: `:include 'tnslc'`), another file using a path with double quotes (example: `:include "c.tnsl"` reads as `:include "./c.tnsl"`), or a module in a subfolder using expanded syntax (`:include "some_module"` reads as `:include "./some_module/some_module.tnsl"`).
+
+No header guard is needed, tnslc can pick up on if a file has already been included in the project.
+
+## Section 4 - libtnsl
+
+An exhaustive list of all features included in the standard libtnsl is provided in the libtnsl spec.  This is a short list of minimum functions a libtnsl must provide to make full use of the tnsl programming language.
+
+### Method and type resolution for non-raw types
+
+**TBD - this sub-section is under construction**
+
+The type `tnsl.reflect.type` must exist and must be a raw struct.  This is for storing type information.
+
+The module `tnsl.reflect` must provide the following functions/methods:
+
+- `type._get_member_ [tnsl.reflect.library]`
+- `tnsl.reflect._is (type check, base) [bool]`
+
+### Vector types
+
+The type `tnsl.vector.vector` must exist.  This is the generic simd/vector type and is referenced by `vect`.
+
+## Section 5 - TNSL-Lang Export Trees (T-LETs)
+
+TNSL doesn't use header files, and downloading full source code for every library being referenced would be a pain.  This is where T-LETs come in.  T-LETs contain a tree of all exported modules, functions, types, methods, and doc comments from a project.  They are more compact and are simply named `<project name>.tlet`.
+
 ## Credits
 
 	Copyright 2021 Kyle Gunger
