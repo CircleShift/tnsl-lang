@@ -89,6 +89,13 @@ Modules are to TNSL what namespaces are to c++, a way to contain a group of rela
 	;/
 	# Can access all from my_module, and my_hidden_module
 
+*File aa.tnsl (project a)*
+
+	/; my_function_a
+		# Can access all from my_module, and my_hidden_module
+	;/
+	# Can access all from my_module, and my_hidden_module
+
 *File b.tnsl (project b)*
 
 	/; my_function
@@ -98,21 +105,104 @@ Modules are to TNSL what namespaces are to c++, a way to contain a group of rela
 
 ### Functions
 
-TNSL functions are 
+TNSL functions are code blocks whose definition contains none of the following: control flow keywords, the module keyword, the method keyword.  TNSL functions are called methods if they are contained within a method block.  TNSL methods may only be called with relation to the user defined type they are linked to.  If a TNSL function has no user defined name, it is anonymous.  Anonymous funtions can be stored as void type variables or called immediately.  If an anonymous function is not stored, it is interperated as inline and called immediately (this is known as a scope block).
+
+TNSL functions may have inputs (enclosed with `()`) and/or outputs (enclosed with `[]`).  Inputs must be named; naming outputs is optional.
+
+TNSL functions may have their call stack modified by the `raw` and/or `inline` keywords.  If the `inline` keyword is placed around the function declaration, the function will still be exported (if it is being exported), but any time it is used in the project's code, it will be optimized as if in-line.
+
+The use of the `raw` keyword has several effects:  the function will have no generated assembly preamble, the function will not be optimized, and the function will allow `asm` statements.  Any function may be labeled `raw`, even `main` and anonymous functions.
+
+Examples:
+
+	# simple function with no inputs or outputs named "my_function"
+	/; my_function
+		<statements>
+	;/
+
+	# function with inputs and outputs
+	/; my_second_function ( <type> input1, <type (optional)> input2 ) [ <type 1>, <type 2>, ... , <type n> ]
+		<statements>
+	;/
+
+	# funtion calling an anonymous function
+	/; my_third_function
+		# an anonymous function (scope block)
+		/;
+			<statements>
+		;/
+	;/
 
 ### Control Flow Blocks
 
-### Anonymous Blocks
+Control flow blocks are code blocks whose definitions contain the keywords if, else, loop, match, case, or default.
+
+For if, else, loop, and match any inputs and/or outputs are a semicolon seperated list of statements.  For case or default, only inputs are accepted in the form of a single value.  Any variables defined in these inputs or outputs are scoped to the block only.  Control flow blocks may not actually output any values; instead, any statements in the output are evaluated when the block ends, weather it loops or not.
+
+Examples:
+
+	# simple if block
+	/; if ( <statement resolving in boolean value> )
+		<statements>
+	;/
+
+	# if block with else and else if
+	/; if ( <statement (optional)> ; <statement (optional)> ; ... ; <statement resolving in boolean value> )
+		<statements>
+	;; else if ( <statement resolving in boolean value> )
+		<statements>
+	;; else
+		<statements>
+	;/
+
+	# loop block
+	/; loop ( <statement (optional)> ; ... ; <statement resolving in boolean value (optional)> )
+		[ <statements to be evaluated on loop (optional)> ]
+
+		<statements>
+	;/
+
+	# match block
+	/; match ( <statement (optional)> ; ... ; <input value> )
+
+		/; case <match value>
+			<statements>
+		;; case <match value>
+			<statements>
+			# Continue here would fall through to default
+		;; default
+			<statements>
+		;/
+	;/
 
 ## Section 3 - Statements
 
 ### TNSL Statement Notation
 
+There are three types of tnsl statements: code, pre-processor, and comment.  Code statements begin with `;` and end at the next statement.  Pre-processor statements begin with `:` and end at the next statement.  Comment statements (line comments) begin with `#` and end at the next new line.  After a line comment ends, the previous statement resumes.
+
 ### Variable Declaration
 
-### Assignment
+Decalring a variable is done by referencing a type and then giving a list of names for the new variables.  Optionally, a list of values may be given to initialize the new variables.
 
-### Special Statements
+Variables may be augmented by the following keywords: `const`, `volatile`, and/or `static`.
+
+Declaring a variable as `const` means that it is a constant and must be imediately initialized.  A constand may not be re-assigned a value.
+
+Declaring a variable as `volatile` means that the compiler will not attempt to optimize operations performed on it.
+
+Declaring a variable `static` means that the value will be kept between function calls.  Static variables may create race conditions when paired with threads.
+
+Examples:
+
+	# list with initialization
+	;int a, b = 0, 1
+	
+	# single without initialization
+	;int c
+	
+	# list with partial initialization
+	;int d, e = 0 # d is defined, but e is not
 
 ## Section 4 - Types
 
@@ -140,7 +230,7 @@ TNSL functions are
 
 ### The `asm` Keyword
 
-### Credits
+## Credits
 
 	Copyright 2021 Kyle Gunger
 

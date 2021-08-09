@@ -1,4 +1,10 @@
-# Features in Place
+# Features in Position
+
+## Section 1 - Bare Metal
+
+## Section 2 - libtnsl and Types
+
+## Section 3 - Cross calling C
 
 ### Credits
 

@@ -160,21 +160,29 @@
 
 	int64 - 64-bit integer
 
-	uint8 - 8-bit integer
+	int - the default-width integer
 
-	uint16 - 16-bit integer
+	uint8 - 8-bit unsigned integer
 
-	uint32 - 32-bit integer
+	uint16 - 16-bit unsigned integer
 
-	uint64 - 64-bit integer
+	uint32 - 32-bit unsigned integer
+
+	uint64 - 64-bit unsigned integer
+
+	uint - the default-width unsigned integer
 
 	float32 - floating point number (32-bit)
 
 	float64 - floating point number (64-bit)
 
+	float - the default-width floating point number
+
 	void - void type
 
 	type - meta type
+
+	vect* - libtnsl tnsl.vector.vector type
 
 	
 	Values:
@@ -194,7 +202,7 @@
 
 	extends* - extends a struct or interface
 
-	is* - checks if the variable's type is or extends another type
+	is* - checks if the variable's type is or extends another type (tnsl.reflect._is)
 
 	method - creates a block of type-associated functions
 
@@ -255,9 +263,9 @@
 
 	Memory control:
 
-	alloc* (and related) - allocate (or reallocate) memory from somewhere
+	alloc* (and related) - allocate (or reallocate) memory from somewhere (tnsl.alg._alloc)
 
-	delete* - free allocated memory
+	delete* - free allocated memory (tnsl.alg._delete)
 
 \* keyword requires a libtnsl implimentation
 
