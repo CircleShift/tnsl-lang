@@ -41,7 +41,7 @@ Blocks in tnsl consist of a slash and a character denoting the type of block as 
 	/; - open code
 	;/ - close code
 
-In addition to the standard opening and closing characters, there exist "swivle" character sets to quickly close and re-open a block type
+In addition to the standard opening and closing characters, there exist "swivel" character sets to quickly close and re-open a block type
 
 	;; - close code, then open code
 	#; - close comment, open code
@@ -75,7 +75,7 @@ Usage examples:
 
 ### Modules
 
-Modules are to TNSL what namespaces are to c++, a way to contain a group of related functions, types, methods, and other namespaces such that they won't interfere with outside code.  Modules may only be accessed (by other programs) if they are exported using the `export` keyword when defining the module.  Modules contained within the module (Sub-modules) are not automatically exported, and must also use the keyword if they wish to be accessable by other programs.  Unexported modules may still be used within the project from which they originate.
+Modules are to TNSL what namespaces are to c++, a way to contain a group of related functions, types, methods, and other namespaces such that they won't interfere with outside code.  Modules may only be accessed (by other programs) if they are exported using the `export` keyword when defining the module.  Modules contained within the module (Sub-modules) are not automatically exported, and must also use the keyword if they wish to be accessible by other programs.  Unexported modules may still be used within the project from which they originate.
 
 ### Module definition example:
 
@@ -105,7 +105,7 @@ Modules are to TNSL what namespaces are to c++, a way to contain a group of rela
 
 ### Functions
 
-TNSL functions are code blocks whose definition contains none of the following: control flow keywords, the module keyword, the method keyword.  TNSL functions are called methods if they are contained within a method block.  TNSL methods may only be called with relation to the user defined type they are linked to.  If a TNSL function has no user defined name, it is anonymous.  Anonymous funtions can be stored as void type variables or called immediately.  If an anonymous function is not stored, it is interperated as inline and called immediately (this is known as a scope block).
+TNSL functions are code blocks whose definition contains none of the following: control flow keywords, the module keyword, the method keyword.  TNSL functions are called methods if they are contained within a method block.  TNSL methods may only be called with relation to the user defined type they are linked to.  If a TNSL function has no user defined name, it is anonymous.  Anonymous functions can be stored as void type variables or called immediately.  If an anonymous function is not stored, it is interpreted as inline and called immediately (this is known as a scope block).
 
 TNSL functions may have inputs (enclosed with `()`) and/or outputs (enclosed with `[]`).  Inputs must be named; naming outputs is optional.
 
@@ -137,7 +137,7 @@ Examples:
 
 Control flow blocks are code blocks whose definitions contain the keywords if, else, loop, match, case, or default.
 
-For if, else, loop, and match any inputs and/or outputs are a semicolon seperated list of statements.  For case or default, only inputs are accepted in the form of a single value.  Any variables defined in these inputs or outputs are scoped to the block only.  Control flow blocks may not actually output any values; instead, any statements in the output are evaluated when the block ends, weather it loops or not.
+For if, else, loop, and match any inputs and/or outputs are a semicolon-separated list of statements.  For case or default, only inputs are accepted in the form of a single value.  Any variables defined in these inputs or outputs are scoped to the block only.  Control flow blocks may not actually output any values; instead, any statements in the output are evaluated when the block ends, weather it loops or not.
 
 Examples:
 
@@ -183,11 +183,11 @@ There are three types of tnsl statements: code, pre-processor, and comment.  Cod
 
 ### Variable Declaration
 
-Decalring a variable is done by referencing a type and then giving a list of names for the new variables.  Optionally, a list of values may be given to initialize the new variables.
+Declaring a variable is done by referencing a type and then giving a list of names for the new variables.  Optionally, a list of values may be given to initialize the new variables.
 
 Variables may be augmented by the following keywords: `const`, `volatile`, and/or `static`.
 
-Declaring a variable as `const` means that it is a constant and must be imediately initialized.  A constand may not be re-assigned a value.
+Declaring a variable as `const` means that it is a constant and must be immediately initialized.  A constant may not be re-assigned a value.
 
 Declaring a variable as `volatile` means that the compiler will not attempt to optimize operations performed on it.
 
@@ -208,7 +208,7 @@ Examples:
 
 ### Built-in Types
 
-### The Void Type
+### The `void` Type
 
 ### Arrays
 
@@ -222,7 +222,7 @@ Examples:
 
 ## Section 5 - Operators
 
-### Operator Presedence
+### Operator Precedence
 
 ## Section 6 - `raw` and `asm`
 
@@ -234,14 +234,14 @@ Examples:
 
 	Copyright 2021 Kyle Gunger
 
-	This file is licenced under the CDDL 1.0 (the Licence)
-	and may only be used in accordance with the Licence.
-	You should have recieved a copy of the Licence with this
+	This file is licensed under the CDDL 1.0 (the License)
+	and may only be used in accordance with the License.
+	You should have recieved a copy of the License with this
 	software/source code. If you did not, a copy can be found
 	at the following URL:
 
 	https://opensource.org/licenses/CDDL-1.0
 
 	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
-	WARRENTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
+	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
