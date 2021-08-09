@@ -43,7 +43,7 @@
 
 	| - bitwise or
 
-	^ - bitwise not
+	^ - bitwise xor
 
 	> - greater than
 
@@ -144,13 +144,19 @@
 
 	<== - less than or equal to
 
+	++ - increment
+
+	-- - de-increment
+
 ## Appendix B - Reserved words and their uses
 
 	Built-in Types:
 
 	bool - boolean
 
-	char - ascii
+	char - ascii/extended ascii 8-bit value
+
+	charp - unicode 8-bit character part (using either UTF-8 or UN7+1)
 
 	int8 - 8-bit integer
 
@@ -190,6 +196,10 @@
 	true - boolean true value
 
 	false - boolean false value
+
+	size - size (in bytes) of a variable or type
+
+	len - size (in elements) of an array
 
 
 	User defined types:
@@ -277,21 +287,41 @@ In TNSL there exist three different levels of complexity structs can take on.  I
 
 Raw structs are the simplist structs with the fastest lookup times.  Raw structs can not be extended, though they may themselves extend interfaces (but not other structs).  All members of raw structs must be built-in types, other raw structs, or pointers.  Raw structs are always fixed-width and all methods are linked directly, thus there is no lookup time for calling one (they are essentially as fast as calling a regular function as long as you are referencing the struct directly and not by one of it's extended interfaces).
 
+NOTE: Raw structs do not allow generics
+
 ### Static structs
 
 Static structs are similar to raw structs except they may be extended.  This creates a small delay for calling functions on static structs as there is a lookup time to find the method the call is actually referencing (as it may be calling the function on an extension of the type).  All members of static structs must be built-in types, other raw structs, or pointers.  Static structs can only extend static structs.
+
+NOTE:  Static structs *can* allow generics so long as they do not store said generics and only store pointers to them.
 
 ### Dynamic structs
 
 Variable width structs (dynamic structs) can accomodate generics and variable width members.  Dynamic structs may extend static structs or other dynamic structs.  By extending a dynamic struct, even if one makes no use of the dynamic members, their struct is automatically a dynamic struct.  These structs offer the least control over memory, and slightly slower call times, but offer the most flexability to the programmer.
 
+
+## Appendix D - UN7+1
+
+Unicode Non-standard 7+1 bit (UN7+1) encoding is a non-standard way to represent any unicode character using a series of 8-bit values.  The first bit in the 8-bit sequence represents if the next 8-bit sequence is included in the character code, the other seven bits are part of the character code.
+
+Examples:
+
+	ASCII characters:
+	0xxxxxxx (U+00 - U+7F)
+
+	Unicode characters:
+	1xxxxxxx 0xxxxxxx                   (U+0080 - U+3FFF)
+	1xxxxxxx 1xxxxxxx 0xxxxxxx          (U+004000 - U+1FFFFF)
+	1xxxxxxx 1xxxxxxx 1xxxxxxx 0xxxxxxx (U+0200000 - U+FFFFFFF)
+	etc.
+	
 ## Credits
 
 	Copyright 2021 Kyle Gunger
 
 	This file is licensed under the CDDL 1.0 (the License)
 	and may only be used in accordance with the License.
-	You should have recieved a copy of the License with this
+	You should have received a copy of the License with this
 	software/source code. If you did not, a copy can be found
 	at the following URL:
 

@@ -111,7 +111,7 @@ TNSL functions may have inputs (enclosed with `()`) and/or outputs (enclosed wit
 
 TNSL functions may have their call stack modified by the `raw` and/or `inline` keywords.  If the `inline` keyword is placed around the function declaration, the function will still be exported (if it is being exported), but any time it is used in the project's code, it will be optimized as if in-line.
 
-The use of the `raw` keyword has several effects:  the function will have no generated assembly preamble, the function will not be optimized, and the function will allow `asm` statements.  Any function may be labeled `raw`, even `main` and anonymous functions.
+The use of the `raw` keyword has several effects:  the function will have no generated assembly preamble, the function will allow `raw return` statements, the function will not be optimized, and the function will allow `asm` statements.  Any function may be labeled `raw`, even `main` and anonymous functions.
 
 Examples:
 
@@ -206,15 +206,117 @@ Examples:
 
 ## Section 4 - Types
 
-### Built-in Types
+An exhaustive list of built-in types can be found in Appendix B.
 
 ### The `void` Type
 
+The `void` type represents one of two things: an unknown data type, or a function.  When the void type is paired with input and output parameters `void( <types> )[ <types> ]` it represents a function.  When it is not paired with these things it represents an unknown data type.
+
+Pure `void` types can not be created.  Function types are *always* references to the function, more like pointers than data holders.  Otherwise, void types must be created as pure pointers.  In this case, they are in a sense "un-typed" pointers which do not know the length of the object they are pointing at, only the address.
+
+Examples:
+
+	# simple function
+	/; func_1
+	;/
+
+	# void example func
+	/; func_2
+
+		# create a void type and assign it func_1's value
+		;void()[] func_ref = func_1
+		
+		# call func_1 using func_ref
+		;func_ref()
+	;/
+
+More examples of pointer voids are available in the pointers section of this document.
+
 ### Arrays
+
+In memory, arrays store their length as a uint, then immediately follow with the contents of the array.  This way, all arrays can be checked for length with the `len` operator.
+
+Arrays are created by prefixing a type with `{ <# of elements> }` or simply `{}` so long as the array is immediately initialized.  One can similarly access an element of an array by suffixing the variable name with `{ <value of element to return> }`.
+
+When initializing or assigning a new value to an entire array, use `{}` to encase a list of values.
+
+The length of the array can be gotten by `len <variable name>`
+
+Examples:
+
+	# create an array of five integers
+	;{5}int i
+
+	# assign values to the array
+	;i{0} = 0
+	;i{1} = 2
+	;i{2} = 0
+	;i{3} = 2
+	;i{4} = 1
+
+	# store the length of the array
+	;uint array_length = len i
+
+	# create an initialized array with length five
+	;{}int j = {1, 2, 3, 4, 5}
+
+	# loop through the array and add them.
+	/; loop (int k = 0; k < array_length) [k++]
+
+		;i{k} += j{k}
+	;/
+
 
 ### Pointers
 
+Pointer types are created using the `~` (pointer to) operator.  This operator serves as both part of the type, and as a way to get a pointer from a type.  To de-reference a pointer into it's base type, use the `` ` `` (de-reference) operator.
+
+Passing by reference can be done by prefixing the type with the de-reference operator.  This type is only available in function parameter declaration.  To call a function with this type, a pointer to the desired variable must be given.
+
+Examples:
+
+	# define int
+	;int i
+
+	# pointer to i
+	;~int p = ~i
+
+	# set i using p
+	;`p = 1
+
+	# a function taking a pass by reference
+	/; add_two (`int i)
+		i += 2
+	;/
+
+	# calling add_two in two different ways
+	;add_two(p)
+	;add_two(~i)
+
+	# i is now 5
+
+### Casting Types
+
+Casting between types uses the standard input and output enclosing `()` and `[]` in conjunction.  Place a value in the input enclosing characters and a type to output in the output enclosing characters to cast one type to another (`( <value> )[ <type> ]`).
+
+Examples:
+
+	# define an int and a float
+	;int i = 10
+	;float f = 11.5
+
+	# define a void pointer and set it to reference i
+	;~void v = ~i
+	
+	# define an int pointer and cast the void pointer to initialize it
+	;~int p = (v)[~int]
+
+	# cast the float to an int and set the value of i
+	;`p = (f)[int]
+
 ### Defining Types
+
+
 
 ### Interfaces
 
@@ -222,13 +324,118 @@ Examples:
 
 ## Section 5 - Operators
 
+An exhaustive list of operators can be found in Appendix A
+
 ### Operator Precedence
+
+Operator precedence is as follows (from greatest to least):
+
+	Pointer operators (p0):
+	
+	~ - address of
+	
+	` - de-reference
+
+
+	Access operator (p1):
+
+	. - get/access
+
+
+	Increment/de-increment (p2):
+
+	++ - increment
+
+	-- - de-increment
+
+
+	Multiplication/division (p3):
+
+	* - multiply
+
+	/ - divide
+
+
+	Addition and subtraction (p4):
+
+	+ - addition
+
+	- - subtraction
+
+
+	Modulus (p5):
+
+	% - modulus
+
+
+	Bitwise operators (p6):
+
+	& - and
+
+	| - nor
+
+	^ - xor
+
+	<< - shift left
+	
+	>> - shift right
+
+	!& - nand
+
+	!| - nor
+
+	!^ - xand
+
+	! - not (bitwise or boolean)
+
+
+	Boolean operators (p7):
+
+	&& - boolean and
+
+	|| - boolean or
+
+	== - boolean eq
+
+	> - greater than
+
+	< - less than
+	
+	!&& - boolean nand
+
+	!|| - boolean nor
+
+	!== - boolean neq
+
+	!> - boolean not greater than
+
+	!< - boolean not less than
+
+	>== - boolean greater than or equal to
+
+	<== - boolean less than or equal to
 
 ## Section 6 - `raw` and `asm`
 
 ### The `raw` Keyword
 
+The `raw` keyword can be used in three different scenarios, and each has a different meaning.
+
+1. The `raw` keyword can be used in function definitions.  These effects were discussed in section 2.2.
+
+2. The `raw` keyword may be used in conjunction with the `return` keyword, but only inside of raw functions.  This causes an instant return regardless of stack or register state.  It is recommended to clean up function and provide return types before using this.
+
+3. The `raw` keyword may be used with the `struct` keyword to create a raw struct.  Raw structs can not contain user defined types or generics.  Raw types encode no type information and may not be extended.  Raw structs, unlike static or dynamic structs, are only as wide their members.
+	- Static and dynamic structs contain a small amount of information pertaining to their actual type and generics so may be larger than only their members.
+		- In addition, since static and dynamic structs may be extended, they may not be the initially defined type and may be larger, further complicating matters.
+
 ### The `asm` Keyword
+
+The `asm` keyword may be used in `raw` functions or blocks to produce raw asm code for the assembler.  Any valid assembly code may be used, and certain extensions are available such as variable pointer references.
+
+Syntax:
+
+	;asm "<valid line of assembly code>"
 
 ## Credits
 
@@ -236,7 +443,7 @@ Examples:
 
 	This file is licensed under the CDDL 1.0 (the License)
 	and may only be used in accordance with the License.
-	You should have recieved a copy of the License with this
+	You should have received a copy of the License with this
 	software/source code. If you did not, a copy can be found
 	at the following URL:
 

@@ -38,7 +38,7 @@ The standard TNSL compiler suite.  Contains a universal front end for producing 
 
 	This file is licensed under the CDDL 1.0 (the License)
 	and may only be used in accordance with the License.
-	You should have recieved a copy of the License with this
+	You should have received a copy of the License with this
 	software/source code. If you did not, a copy can be found
 	at the following URL:
 
