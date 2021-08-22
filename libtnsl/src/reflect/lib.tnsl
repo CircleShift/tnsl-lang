@@ -19,39 +19,8 @@
 	EXPRESS OR IMPLIED
 #/
 
-; raw struct _type_header {
-	uint
-		_lib_index,
-		_type_index,
+: extern const {}_library _LIB_TABLE
+
+; raw struct _library {
 	
-	~{}_type_header
-		_generic_list
 }
-
-; raw struct _method {
-	~void
-		address
-}
-
-; raw struct _type {
-	~{}int
-		_offsets,
-
-	~{}uint
-		_super_offsets,
-	
-	~{}_type
-		_supers,
-	
-	~{}_method
-		_methods
-}
-
-/; method _type_header
-
-	/; _is (_type_header base)
-	;/
-
-	/; _get_method ()
-	;/
-;/

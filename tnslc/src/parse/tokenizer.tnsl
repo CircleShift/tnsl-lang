@@ -1,4 +1,4 @@
-/##
+/#
 	Copyright 2021 Kyle Gunger
 
 	This file is licensed under the CDDL 1.0 (the License)
@@ -14,9 +14,12 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; export module compile
-	/: include
-		"arch"
-		"format"
-	:/
+
+/## 
+	parse.numeric_literal tokenizes the next numeric literal value in a file.
+	Returns a token with the proper data as well as the number of characters read
+
+#; numeric_literal () [Token, uint]
+
+	
 ;/

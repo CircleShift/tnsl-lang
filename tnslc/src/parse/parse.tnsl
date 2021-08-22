@@ -15,5 +15,8 @@
 #/
 
 /; export module parse
-	:import 'token.tnsl'
+	/:import
+		"token.tnsl"
+		"tokenizer.tnsl"
+	:/
 ;/

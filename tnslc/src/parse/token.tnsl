@@ -14,13 +14,27 @@
 	EXPRESS OR IMPLIED
 #/
 
-;struct Token {
+/# The various types of tokens #/
+; enum TOKEN_TYPE [uint] {
+	LINESEP = 0,
+	INLNSEP = 1,
+	DELIMIT = 2,
+	AUGMENT = 3,
+	LITERAL = 4,
+	KEYTYPE = 5,
+	PREWORD = 6,
+	KEYWORD = 7,
+	DEFWORD = 8
+}
+
+/# Token struct definition #/
+;raw struct Token {
 	uint
 		type,
 		line,
 		char,
 
-	~{}char
+	~{}charp
 		data
 }
 
@@ -29,4 +43,245 @@
 	/; operator delete
 		;delete this.data
 	;/
+;/
+
+/#
+	Reserved words and characters, as well as
+	helper funcs for checking their token types.
+#/
+
+;const {}{}charp PREWORDS = {
+	"include",
+	"define",
+	"extern",
+	"size",
+	"align",
+	"address",
+	"rootfile",
+	"if",
+	"else",
+	"abi"
+}
+
+;const {}{}charp KEYTYPES = {
+	"bool",
+	"char",
+	"charp",
+
+	"int8",
+	"int16",
+	"int32",
+	"int64",
+	"int",
+	"uint8",
+	"uint16",
+	"uint32",
+	"uint64",
+	"uint",
+
+	"float32",
+	"float64",
+	"float",
+
+	"void",
+	"type"
+}
+
+;const {}{}charp KEYWORDS = {
+	"struct",
+	"interface",
+	"enum",
+	"is",
+	"extends",
+	
+	"loop",
+	"continue",
+	"break",
+	
+	"match",
+	"case",
+	"default",
+	
+	"label",
+	"goto",
+	
+	"if",
+	"else",
+	
+	"const",
+	"static",
+	"volatile",
+	
+	"method",
+	"override",
+	"self",
+	"super",
+	"operator",
+	
+	"raw",
+	"asm",
+	"inline",
+
+	"delete",
+	
+	"module",
+	"export",
+}
+
+;const {}{}charp LITERALS = {
+	"true",
+	"false"
+}
+
+;const {}charp DELIMITS = "()[]{}"
+;const {}charp LINESEPS = ";:#"
+;const {}charp INLNSEPS = ","
+;const {}charp AUGMENTS = "~`.&|^><!+-*/%"
+
+;const {}{}charp MDELIMITS = {
+	# Code block
+	"/;",
+	";/",
+	
+	# Comment block
+	"/#",
+	"#/",
+	
+	# Preproc block
+	"/:",
+	":/",
+
+	# Redef blocks
+	";;",
+	"::",
+	";#",
+	":#",
+	"#;",
+	"#:"
+}
+
+;const {}{}charp MAUGMENTS = {
+	# Boolean
+	"==",
+	"&&",
+	"||",
+
+	# Bitwise shifts
+	"<<",
+	">>",
+
+	# PREaugmented augmentors
+	"&=",
+	"|=",
+	"^=",
+	"+=",
+	"-=",
+	"*=",
+	"/=",
+	"%=",
+	"~=",
+	"`=",
+
+	# POSTaugmented augmentors
+	"!&",
+	"!|",
+	"!^",
+	"!==",
+	"!&&",
+	"!||",
+	"!>",
+	"!<",
+	">==",
+	"<==",
+
+	# Increment and De-increment
+	"++",
+	"--"
+}
+
+; const uint MAX_MRESERVED = 3
+
+/##
+	Checks if the character point p is in the string cmp
+
+#; is_in_string (`const {}charp cmp, charp p) [bool]
+
+	/; for (int i = 0; i < len cmp) [i++]
+
+		/; if (s == cmp{i})
+			;return true
+		;/
+	;/
+
+	;return false
+;/
+
+
+/##
+	Checks if the string s is in the list cmp
+
+#; is_in_string_list (`const {}{}charp cmp, `{}charp s) [bool]
+
+	/; for (int i = 0; i < len cmp) [i++]
+
+		/; if (len s == len cmp{i})
+
+			/; for (int j = 0; j < len s) [j++]
+
+				/; if (s{j} !== cmp{i}{j})
+					;goto cont_outer
+				;/
+			;/
+
+			;return true
+		;/
+
+		;label cont_outer
+	;/
+
+	;return false
+;/
+
+/#
+	Get the token_type value for a given string of character points
+
+#; get_token_type (`{}charp s) [int]
+
+	/; if (len s > 1)
+
+		/; if (is_in_string_list(~PREWORDS, ~s))
+			;return TOKEN_TYPE.PREWORD
+		;; else if (is_in_string_list(~KEYTYPES, ~s))
+			;return TOKEN_TYPE.KEYTYPE
+		;; else if (is_in_string_list(~KEYWORDS, ~s))
+			;return TOKEN_TYPE.KEYWORD
+		;; else if (is_in_string_list(~LITERALS, ~s))
+			;return TOKEN_TYPE.LITERAL
+		;; else if (is_in_string_list(~MDELIMITS, ~s))
+			;return TOKEN_TYPE.DELIMIT
+		;; else if (is_in_string_list(~MAUGMENTS, ~s))
+			;return TOKEN_TYPE.AUGMENT
+		;/
+
+		;return TOKEN_TYPE.DEFWORD
+
+	;;else if (len s == 1)
+
+		/; if (is_in_string(~DELIMITS, s{0}))
+			;return TOKEN_TYPE.DELIMIT
+		;; else if (is_in_string(~LINESEPS, s{0}))
+			;return TOKEN_TYPE.LINESEP
+		;; else if (is_in_string(~INLNSEPS, s{0}))
+			;return TOKEN_TYPE.INLNSEP
+		;; else if (is_in_string(~AUGMENTS, s{0}))
+			;return TOKEN_TYPE.AUGMENT
+		;/
+
+		;return TOKEN_TYPE.DEFWORD
+	;/
+
+	# What, we just produce vacant tokens now?
+	# Something has gone wrong.
+
+	;return -1
 ;/
