@@ -3,7 +3,7 @@ Version 0.0.1
 
 ## Forward
 
-As of writing this forward, TNSL is not even a language yet.  Right now, it's mostly just a stupid idea that I've devoted too much brain-space to, and I'm not confident will ever take off.  The hard-core C folk will probably write it off, as well as the new-fangled rust/golangers with all their type safty.
+As of writing this forward, TNSL is not even a language yet.  Right now, it's mostly just a stupid idea that I've devoted too much brain-space to, and I'm not confident will ever take off.  The hard-core C folk will probably write it off, as well as the new-fangled rust/golangers with all their type safety.
 
 Right now, TNSL isn't a language.  But it *could* be.  And, really, I think it's a cool challenge to try to pack high-level features into a low-level environment.  I hope you find it interesting as well.
 
