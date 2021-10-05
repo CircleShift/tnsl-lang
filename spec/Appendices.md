@@ -186,9 +186,9 @@
 
 	void - void type
 
-	type - meta type (tnsl.reflect.type)
+	type* - meta type (tnsl.reflect._type)
 
-	vect* - libtnsl tnsl.vector.vector type
+	vect* - (tnsl.box._vect) type
 
 	
 	Values:
@@ -261,7 +261,7 @@
 
 	operator - define a method for when a reserved opertaor is used on a user defined struct
 
-	super - can reference the method of an extended type or interface
+	super* - can reference the method of an extended type or interface
 
 
 	Modules:
@@ -273,9 +273,9 @@
 
 	Memory control:
 
-	alloc* (and related) - allocate (or reallocate) memory from somewhere (tnsl.alg._alloc)
+	alloc* (and related) - allocate (or reallocate) memory from somewhere (tnsl.algo._alloc)
 
-	delete* - free allocated memory (tnsl.alg._delete)
+	dealloc* - free allocated memory (tnsl.algo._dealloc)
 
 \* keyword requires a libtnsl implimentation
 

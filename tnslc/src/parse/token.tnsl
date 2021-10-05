@@ -30,9 +30,9 @@
 /# Token struct definition #/
 ;raw struct Token {
 	uint
-		type,
+		token_type,
 		line,
-		char,
+		col,
 
 	~{}charp
 		data
@@ -42,6 +42,14 @@
 
 	/; operator delete
 		;delete this.data
+	;/
+
+	/; add_char (`{}charp part)
+		;uint l = len `this.data
+		;realloc this.data, l + len part
+		/;loop (uint i = 0; i < len part) [i++]
+			`this.data{l + i} = part{i}
+		;/
 	;/
 ;/
 
@@ -206,7 +214,7 @@
 
 #; is_in_string (`const {}charp cmp, charp p) [bool]
 
-	/; for (int i = 0; i < len cmp) [i++]
+	/; loop (int i = 0; i < len cmp) [i++]
 
 		/; if (s == cmp{i})
 			;return true
@@ -222,11 +230,11 @@
 
 #; is_in_string_list (`const {}{}charp cmp, `{}charp s) [bool]
 
-	/; for (int i = 0; i < len cmp) [i++]
+	/; loop (int i = 0; i < len cmp) [i++]
 
 		/; if (len s == len cmp{i})
 
-			/; for (int j = 0; j < len s) [j++]
+			/; loop (int j = 0; j < len s) [j++]
 
 				/; if (s{j} !== cmp{i}{j})
 					;goto cont_outer

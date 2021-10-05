@@ -18,3 +18,9 @@
 	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
 #/
+
+/; export module algo
+	/: include
+		"math"
+	:/
+;/

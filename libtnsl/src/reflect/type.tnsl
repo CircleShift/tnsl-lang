@@ -19,25 +19,63 @@
 	EXPRESS OR IMPLIED
 #/
 
-; raw struct _type_header {
-	uint
+/## tnsl.reflect._type
+	Header data which prefixes all non-raw structs.
+	Upper limits for classes and libs defined here:
+	- Max 2^32 libraries
+	- Max 2^16 classes per library
+	- Max 2^8 Generics per class
+#/
+; raw struct _type(uint8 N) {
+	uint32
 		_lib_index,
+	uint16
 		_type_index,
 	
-	~{}_type_header
+	{N}_type
 		_generic_list
 }
 
-; raw struct _method {
+/## tnsl.reflect._method
+	Metadata for methods (can be decoded from library
+	symbol tables).  Limits for methods defined here:
+	- Max 2^8 inputs
+	- Max 2^8 outputs
+#/
+; raw struct _method(uint8 I, O) {
+	~{}charp
+		name,
+	
+	{I}_type
+		inputs,
+	{O}_type
+		outputs,
+
 	~void
 		address
 }
 
-; raw struct _type {
-	~{}int
-		_offsets,
+/## tnsl.reflect._member
+	Metadata about struct members
+#/
+; raw struct _member {
+	~{}charp
+		name,
+	
+	uint
+		offset,
 
+	_type
+		_member_type
+}
+
+/## tnsl.reflect._type_addresses
+	Metadata about where things are stored
+	in a class
+#/
+; raw struct _type_addresses {
 	~{}uint
+		_offsets,
 		_super_offsets,
 	
 	~{}_type
@@ -47,7 +85,7 @@
 		_methods
 }
 
-/; method _type_header
+/; method _type
 
 	/; _is (_type_header base)
 	;/

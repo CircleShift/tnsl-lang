@@ -16,7 +16,7 @@ More information on these features can be found in the specification under libts
 ## Provided Sub-modules
 
 libtnsl provides the tnsl base module and the following sub-modules to address each feature:
-* alg
+* algo
   * Algorithms.  Also contains the math sub-module for basic math operations.
 * box
   * Data containers (vector, map, etc.)

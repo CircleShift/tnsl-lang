@@ -20,5 +20,11 @@
 #/
 
 /;export module tnsl
-
+	/: import
+		"algo"
+		"box"
+		"io"
+		"reflect"
+		"time"
+	:/
 ;/

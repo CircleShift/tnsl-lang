@@ -14,12 +14,25 @@
 	EXPRESS OR IMPLIED
 #/
 
+:using 'tnsl'
 
 /## 
 	parse.numeric_literal tokenizes the next numeric literal value in a file.
 	Returns a token with the proper data as well as the number of characters read
 
-#; numeric_literal () [Token, uint]
+#; numeric_literal (io.text_stream fstream) [Token, uint]
+	;Token out = {token_type: TOKEN_TYPE.LITERAL}
+	;uint counter = 0
 
-	
+	;bool l, d, run = false, false, true
+	;~{}charp num
+
+	;num, run = fstream.read_number()
+
+	/; loop (run) [num, run = fstream.read_number()]
+		;out.add_data(num)
+		;delete num
+	;/
+
+	;return out, counter
 ;/
