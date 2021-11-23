@@ -1,3 +1,5 @@
+![TNSL Logo](./logo/tnsl-logo.svg)
+
 # tnsl-lang
 This is the base repository for the tnsl language, and includes the standard compiler implementation, specification, and libtnsl implementation.  The specification and compiler are licenced under the CDDL-1.0 (LICENCE.md), while libtnsl is dual-licenced under both the CDDL-1.0 (LICENCE.md) and BSD-3-Clause (libtnsl/LICENCE-BSD3.md).
 
