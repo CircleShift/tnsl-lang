@@ -41,14 +41,14 @@
 /; method Token
 
 	/; operator delete
-		;delete this.data
+		;delete self.data
 	;/
 
-	/; add_char (`{}charp part)
-		;uint l = len `this.data
-		;realloc this.data, l + len part
-		/;loop (uint i = 0; i < len part) [i++]
-			`this.data{l + i} = part{i}
+	/; add_char (~{}charp part)
+		;uint l = len self.data`
+		;realloc self.data, l + len part
+		/;loop (uint i = 0) [i++; i < len part]
+			;self.data`{l + i} = part{i}
 		;/
 	;/
 ;/
@@ -212,7 +212,7 @@
 /##
 	Checks if the character point p is in the string cmp
 
-#; is_in_string (`const {}charp cmp, charp p) [bool]
+#; is_in_string (const {}charp` cmp, charp p) [bool]
 
 	/; loop (int i = 0; i < len cmp) [i++]
 
@@ -228,7 +228,7 @@
 /##
 	Checks if the string s is in the list cmp
 
-#; is_in_string_list (`const {}{}charp cmp, `{}charp s) [bool]
+#; is_in_string_list (const {}{}charp` cmp, {}charp` s) [bool]
 
 	/; loop (int i = 0; i < len cmp) [i++]
 
@@ -253,7 +253,7 @@
 /#
 	Get the token_type value for a given string of character points
 
-#; get_token_type (`{}charp s) [int]
+#; get_token_type ({}charp` s) [int]
 
 	/; if (len s > 1)
 

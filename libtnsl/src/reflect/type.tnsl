@@ -20,53 +20,21 @@
 #/
 
 /## tnsl.reflect._type
-	Header data which prefixes all non-raw structs.
+	Header data which non-raw structs point to.
 	Upper limits for classes and libs defined here:
-	- Max 2^32 libraries
-	- Max 2^16 classes per library
+	- Max 2^16 libraries
+	- Max 2^16 modules/sub-modules per library
+	- Max 2^16 classes per module
 	- Max 2^8 Generics per class
 #/
-; raw struct _type(uint8 N) {
-	uint32
-		_lib_index,
+; raw struct _type() {
 	uint16
-		_type_index,
+		_library_id,
+		_module_id,
+		_type_id,
 	
-	{N}_type
-		_generic_list
-}
-
-/## tnsl.reflect._method
-	Metadata for methods (can be decoded from library
-	symbol tables).  Limits for methods defined here:
-	- Max 2^8 inputs
-	- Max 2^8 outputs
-#/
-; raw struct _method(uint8 I, O) {
-	~{}charp
-		name,
-	
-	{I}_type
-		inputs,
-	{O}_type
-		outputs,
-
-	~void
-		address
-}
-
-/## tnsl.reflect._member
-	Metadata about struct members
-#/
-; raw struct _member {
-	~{}charp
-		name,
-	
-	uint
-		offset,
-
-	_type
-		_member_type
+	{uint8}_type
+		_generics
 }
 
 /## tnsl.reflect._type_addresses
@@ -74,22 +42,30 @@
 	in a class
 #/
 ; raw struct _type_addresses {
-	~{}uint
-		_offsets,
-		_super_offsets,
-	
 	~{}_type
 		_supers,
+
+	~{}uint
+		_super_offsets,
 	
 	~{}_method
-		_methods
+		_methods,
+
+	~{}_member
+		_members
 }
 
 /; method _type
 
-	/; _is (_type_header base)
+	/; _is (_type base) [bool]
 	;/
 
-	/; _get_method ()
+	/; inline _get (_type t, ~void s, _member m) [~void]
+	;/
+
+	/; inline raw _call (_type t, ~void s, _method m, ~void p)
+	;/
+
+	/; _offset (_type cast) [uint]
 	;/
 ;/

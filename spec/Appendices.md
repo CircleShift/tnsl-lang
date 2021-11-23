@@ -201,6 +201,8 @@
 
 	len - size (in elements) of an array
 
+	null - represents a broken pointer.  This value only has context for pointers and is defined as a ~void.
+
 
 	User defined types:
 

@@ -20,6 +20,8 @@
 #/
 
 /;export module tnsl
+	; const ~void _null = 0x0
+
 	/: import
 		"algo"
 		"box"

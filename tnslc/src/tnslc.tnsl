@@ -14,32 +14,25 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; export module tnslc
-	:import "flags"
-	:import "parse"
-	:import "ast"
-	:import "compile"
+/; module tnslc
+	:import "flags/flags.tnsl"
+	:import "parse/parse.tnsl"
+	:import "ast/ast.tnsl"
+	:import "compile/compile.tnsl"
 ;/
 
-:using 'tnsl'
-:using 'tnslc'
 
 /; main (~{}{}char args) [int]
-	;var arg_list = flags.parse(args)
+	;tnslc.flags.Flags argList = tnslc.flags.parse(args)
 
-	;var token_list = parse.tokenize(arg_list)
+	;{}tnslc.parse.Token tokenList = tnslc.parse.tokenize(argList)
 
-	;var ast = ast.generate(token_list)
+	;tnslc.ast.Node ast = ast.generate(tokenList)
 
-	/; try
-		;var out_file = file.open(arg_list.output_file_path)
-		;var data = compile.generate(arg_list, ast)
-		
-		;out_file.write(data)
-		;out_file.close()
+	;tnsl.io.File outFile = tnsl.io.open_file(argList.outPath)
+	;[]uint8 data = tnslc.compile.generate(argList, ast)
+	
+	;outFile.write(data)
 
-	;; catch (error e)
-		;io.stdout.write(e.msg)
-		;return e.code
-	;/
+	;outFile.close()
 ;/

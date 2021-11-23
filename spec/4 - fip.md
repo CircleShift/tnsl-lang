@@ -6,19 +6,23 @@ To use higher level features in TNSL, an implimentation of libtnsl must be in pl
 
 ## Section 2 - libtnsl and Types
 
-`libtnsl` has the authority to define how types are stored in memory (to some extent) and how method resolution works on static and dynamic structs.  `libtnsl` *must* provide certain methods for some language features to be available.  These functions, and their uses are now listed, but a comprehensive list of language keywords can be found in Appendix B.
+`libtnsl` has the authority to define how types are stored in memory (to some extent) and how method resolution works on static and dynamic structs.  `libtnsl` *must* provide certain methods for some language features to be available.  These functions, and their uses are now listed.  A comprehensive list of language keywords can be found in Appendix B.
+
+### 2.0 - nullptr
+
+`tnsl._null` *must* be defined as a universal null pointer value.  **No type except pointers may be `null`**, but pointers *must* have a null value to distinguish if they point to a meaningful position in memory.
 
 ### 2.1 - The libtnsl Type Extension
 
 `tnsl.reflect._type` *must* be defined as a raw struct which contains minimum information for type identification.  This information is stored with every static or dynamic struct so that programs can reflect type information.
 
-`tnsl.reflect._member` *must* be defined as a raw struct which contains minimum information for member variable identification within a type.  The information need not be stored with every member variable, but should be stored somewhere such that the `tnsl.reflect._get` method can make use of it.
+`tnsl.reflect._member` *should* be defined as a raw struct which contains minimum information for member variable identification within a type.  The information need not be stored with every member variable, but should be stored somewhere such that the `tnsl.reflect._get` method can make use of it.
 
 `tnsl.reflect._method` *must* be defined as a raw struct which contains minimum information for method identification within a type.  The information need not be stored with every member function, but should be stored somewhere such that the `tnsl.reflect._call` method can make use of it.
 
 `tnsl.reflect._is` *must* be defined as a function taking two parameters of type `tnsl.reflect._type` and returning a single `bool` as output.  This function is called when the `is` operator is envoked.
 
-`tnsl.reflect._get` *must* be defined as a function taking three parameters.  The first parameter will be of type `tnsl.reflect._type`, the second parameter will be of type `~void`, and the third parameter will be of type `tnsl.reflect._member`.  The function will return a single `~void` as output.
+`tnsl.reflect._get` *should* be defined as a function taking three parameters.  The first parameter will be of type `tnsl.reflect._type`, the second parameter will be of type `~void`, and the third parameter will be of type `tnsl.reflect._member`.  The function will return a single `~void` as output.
 
 In the parameters, the first relates to the type of the struct given, or at least how the callee views the struct.  The second is a pointer to the struct itself.  The third is the requested member to get.  The `~void` returned must point to the requested value.
 
@@ -34,11 +38,11 @@ In the parameters, the first relates to the type of the struct given, or at leas
 
 `tnsl.algo._dealloc` *must* be defined as a function taking a single parameter of type `~void` as the pointer to a chunk of allocated memory.  The function should deallocate the memory.
 
-### 2.3 - Extra Types Extension
+### 2.3 - Expanded Types Extension
 
 `tnsl.box._vect` *must* be a raw struct which vector or simd instructions can be preformed on.
 
-`tnsl.box._string` *must* be a raw struct which stores a string of text.  This text may be ASCII or Unicode, but reguardless must be stored as `charp` values internally.
+`tnsl.box._string` *must* be a raw struct which stores a string of text.  This text may be ASCII or Unicode, and should be stored as `charp` values internally.
 
 ## Section 3 - Cross calling C
 

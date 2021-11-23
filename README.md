@@ -26,7 +26,11 @@ The standard TNSL compiler suite.  Contains a universal front end for producing 
 	- arm64
 	- risc-v
 
-### Status
+## notice
+
+Until the go based interpereter is done, some code may not be correct TNSL code to account for inconsistancies in the bootstrap interpereter.  However, the code shouldn't be too far from normal TNSL, the only real difference should be import statements, which will be fixed after the compiler can compile itself.
+
+## Status
 
 	Specification:    incomplete
 	libtnsl:          incomplete

@@ -19,8 +19,11 @@
 	EXPRESS OR IMPLIED
 #/
 
-: extern const {}_library _LIB_TABLE
+/## tnsl.asm
 
-; raw struct _library {
+	Unexported module for internal library use.  Bridges
+	the gaps between the main language and assembly for
+	the selected ISA/OS combo.
 	
-}
+#; module asm
+;/

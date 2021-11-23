@@ -24,4 +24,10 @@
 	Type and method resolution, reflection and other required methods such as is
 
 #; export module reflect
+	/: import
+		"type.tnsl"
+		"virtual.tnsl"
+		"resolver.tnsl"
+		"dispatch.tnsl"
+	:/
 ;/

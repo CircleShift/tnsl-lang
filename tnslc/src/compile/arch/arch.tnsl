@@ -14,9 +14,7 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; export module arch
-	:import "common.tnsl"
-	:import "isa_arm.tnsl"
-	:import "isa_risc_v.tnsl"
-	:import "isa_x86.tnsl"
+/; module arch
+	:import "compile/arch/common.tnsl"
+	:import "compile/arch/isa_x86.tnsl"
 ;/

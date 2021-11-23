@@ -1,0 +1,144 @@
+/##
+	Copyright 2021 Kyle Gunger
+
+	Dual licensed under the CDDL 1.0 and BSD 3-Clause licenses.
+
+	This file may only be used in accordance with one of the two
+	licenses.  You should have received a copy of each license with
+	the source code.  In the event that you did not recieve a copy
+	of the licenses, they may be found at the following URLs:
+
+	CDDL 1.0:
+	https://opensource.org/licenses/CDDL-1.0
+
+	BSD 3-Clause:
+	https://opensource.org/licenses/BSD-3-Clause
+
+	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
+	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
+	EXPRESS OR IMPLIED
+#/
+
+/## _LIB_TABLE
+	The array of library export trees.
+
+	Convention:
+		- index 0 is always reserved for language-specific types + libtnsl
+		- index 0 module 0 represents the fundimental in-built types like int
+#/
+: extern const {}~library _LIB_TABLE
+
+; raw struct library {
+	# Version
+	uint16
+		major,
+		minor,
+		patch
+
+	~sym_node
+		root_node
+}
+
+/## tnsl.reflect._method
+	Metadata for methods (can be decoded from library
+	symbol tables).  Limits for methods defined here:
+	- Max 2^8 inputs
+	- Max 2^8 outputs
+#/
+; raw struct _method {
+	{uint8}charp
+		name,
+	
+	{uint8}~_type
+		inputs,
+		outputs,
+
+	~void
+		address
+}
+
+/## tnsl.reflect._member
+	Metadata about struct members
+#/
+; raw struct _member {
+	{uint8}charp
+		name,
+	
+	_type
+		member_type,
+
+	uint
+		byte_offset
+}
+
+/## tnsl.reflect.sym_node
+	Represents a module in a symbol tree
+#/
+; raw struct sym_node {
+	{uint8}charp
+		name,
+	
+	uint16
+		id,
+	
+	{}~sym_node
+		sub_modules,
+
+	{}~sym_type
+		sub_types
+}
+
+/## tnsl.reflect.sym_type
+	Represents a type in a symbol tree
+#/
+; raw struct sym_type {
+	{uint8}charp
+		name,
+	
+	{uint8}~sym_type
+		super_types,
+
+}
+
+###############################
+#  Traverse the Library Tree  #
+###############################
+
+/; get_sym_node (~sym_node root, uint16 mod_id) [~sym_node]
+	/;loop (root != null)
+		/; loop (uint16 sub = 0; sub < len `root.sub_modules) [sub++]
+			/; if (mod_id < `root.sub_modules{sub}.id)
+				/; if (sub == 0)
+					; return null
+				;/
+				;root = `root.sub_modules{sub - 1}
+				; continue 1
+			;; else if (mod_id == `root.sub_modules{sub}.id)
+				; return `root.sub_modules{sub}
+			;/
+		;/
+
+		; break
+	;/
+
+	; return null
+;/
+
+/; get_sym_node (uint16 lib_id, mod_id) [~sym_node]
+
+	;~library lib = _LIB_TABLE{lib_id}
+
+	;return get_sym_node(`lib.root_node, mod_id)
+;/
+
+/; get_sym_type(uint16 lib_id, mod_id, typ_id) [~sym_type]
+
+	;~library lib = _LIB_TABLE{lib_id}
+	;~sym_node mod = get_sym_node(`lib.root_node, mod_id)
+
+	;return `mod.sub_types{typ_id}
+;/
+
+/; get_sym_type(`const {}charp path) [~sym_type]
+
+;/

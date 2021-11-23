@@ -21,6 +21,9 @@
 
 /; export module algo
 	/: include
+		"alloc.tnsl"
+		"dealloc.tnsl"
+		
 		"math"
 	:/
 ;/
