@@ -2,9 +2,9 @@
 
 ## Section 1 - Style Guide
 
-This style guide is primarially for anyone working on tnsl-lang and to a baseline good practice.  However, obviously different programmers and groups will feel differently, the real recommendation is to keep your project consistant.  Pick and choose what you need such that it fits your needs and everyone is on board, just keep it consistant.
+This style guide is primarially for anyone working on tnsl-lang and to a baseline good practice.  However, different programmers and groups will feel differently, the real recommendation is to keep your project consistant.  Pick and choose what you need such that it fits your needs and everyone is on board, just keep it consistant.
 
-This section will probably feel less formal than the others simply due to how objective things are.
+This section will probably feel less formal than the others simply due to how subjective things are.
 
 ### Tabs or Spaces
 
@@ -14,14 +14,16 @@ You will for the most part see tabs being used over spaces in tnsl-lang.  This i
 
 NOTE: Remember that naming convention is no substitute for readability.  If your names don't make sense, neither does your code.  x, y, and z may be fine, but that doesn't help anyone else figure out what you're using them for.  If a particular implementation *does* use variables that are hard to name, feel free to use letter identifiers, but add some short comments to explain what you're doing and how (see comments for more info).
 
-- UPPER_SNAKE_CASE for constants and enums
+- UPPER_SNAKE_CASE for constants and enum values
 
 - lower_snake_case for functions, and methods
 
-- UpperCamelCase or flatcase for modules, types, and interfaces
+- UpperCamelCase or flatcase for enums, types, and interfaces
 	- it is recommended that interfaces start with the letter i
 
 - lowerCamelCase (hungarian notation acceptable) for type/struct members
+
+- flatcase for modules
 
 ## Comments
 
@@ -55,7 +57,7 @@ Access to the standard library can be disabled (bare metal mode) by using the `-
 
 ### T-LETs
 
-What T-LETs exactly are is discussed later.  You can have tnslc produce them by passing the `--output tlet` flag.
+What T-LETs exactly are is discussed later.  You can have tnslc produce them by passing the `--otype tlet` flag.
 
 ## Section 3 - The Pre-Processor
 
@@ -66,6 +68,8 @@ An exhaustive account of the full pre-processor can be found in the tnslc specif
 Use the `include` directive to include other code.  This can be a library using single quotation marks (example: `:include 'tnslc'`), another file using a path with double quotes (example: `:include "c.tnsl"` reads as `:include "./c.tnsl"`), or a module in a subfolder using expanded syntax (`:include "some_module"` reads as `:include "./some_module/some_module.tnsl"`).
 
 No header guard is needed, tnslc can pick up on if a file has already been included in the project.
+
+Cyclic dependency for files is fine.  Cyclic dependency for structs is not.
 
 ## Section 4 - libtnsl
 
