@@ -4,31 +4,32 @@
 
 ### Folder Structure
 
-TNSL project structure has a root source folder with TNSL files contained within the folder and sub-folders.  There is no strictly enforced system, but the standard organization is to place code sub-modules in sub-folders, and name the module entry point file the same name as its enclosing folder.
+Normal TNSL project structure has a root source folder with TNSL files contained within the folder and sub-folders.  It is normal for the root folder to represent a single library or binary, although there is no strict rule enforcing this.  Standard organization is to place sub-modules in sub-folders.  The file name for the module entry point should match the folder name.
 
-The main file to compile is known as the root file, which generally resides in the root source folder.  This file will contain either a main method, or the pre-processor statement `rootfile` to denote the root of a library.  A main file may contain both.
+The file representing the compile target is known as the root file, which generally resides in the root source folder.  This file will contain a main method, and/or the pre-processor statement `rootfile` to denote the root of a library.  If both are present, the compiler will generate an executable by default unless the `--otype` flag is set to `library` or `tlet`.
 
 ### TNSL Files
 
-TNSL files contain the .tnsl extension and contain one or more of the following:
+TNSL files end with the `.tnsl` extension and may contain the following:
 - Comments
 - Pre-processor statements
 - Modules
+- Constant and variable definitions
 - Named function blocks
+- Struct definitions
 - Method and interface blocks
-- Constant, variable, and type definitions
 
-TNSL files may only contain the following enclosed in function or method blocks:
+The following may only occur within named function or method blocks:
 - Re-assignment of variables
 - Control flow blocks
-- Use of variables in definition of variables
 - Function calls
+- Anonymous blocks (Scope blocks)
 
 ## Section 2 - Blocks
 
 ### TNSL Block Notation
 
-Blocks in tnsl consist of a slash and a character denoting the type of block as opening, and the inverse of these symbols as closing.  The three types of blocks are comment, pre-processor, and code.  Code blocks can be further broken down into modules, functions, methods, and control blocks.
+Blocks in tnsl consist of a slash `/` and a character denoting the type of block.  The reverse of these symbols end the block.  The three types of blocks are comment, pre-processor, and code.  Code blocks can be further broken down into modules, functions, control flow, methods, and interfaces.
 
 	Examples of standard block opening and closing characters:
 
@@ -41,7 +42,7 @@ Blocks in tnsl consist of a slash and a character denoting the type of block as 
 	/; - open code
 	;/ - close code
 
-In addition to the standard opening and closing characters, there exist "swivel" character sets to quickly close and re-open a block type
+In addition to the standard opening and closing characters, there exist "swivel" character sets to quickly close and open a block type
 
 	;; - close code, then open code
 	#; - close comment, open code
@@ -50,66 +51,51 @@ In addition to the standard opening and closing characters, there exist "swivel"
 	#: - close comment, open pre-processor
 	:# - close pre-processor, open comment
 
-Code blocks may have inputs and/or outputs.  Inputs are enclosed by `()` and outputs are enclosed by `[]`
-
-Usage examples:
-
-	# This is a line comment
-
-	/#
-		This is a block comment, the next block is a module named "my_module",
-		it contains one function named "my_function" with no inputs or
-		outputs.
-	#/
-
-	/; module my_module
-		
-		/##
-			This is a documentation comment, notice the two #s at the
-			beginning of the block instead of just one.
-
-		#; my_function
-		
-		;/
-	;/
-
 ### Modules
 
-Modules are to TNSL what namespaces are to c++, a way to contain a group of related functions, types, methods, and other namespaces such that they won't interfere with outside code.  Modules may only be accessed (by other programs) if they are exported using the `export` keyword when defining the module.  Modules contained within the module (Sub-modules) are not automatically exported, and must also use the keyword if they wish to be accessible by other programs.  Unexported modules may still be used within the project from which they originate.
+Modules are akin to namespaces in C++
+
+They hold a group of related modules, functions, structs, and variables.  These named definitions may be used by other projects if the `export` keyword is used in conjunction with the `module` keywor; otherwise, the names are not exported into the file's symbol table.
 
 ### Module definition example:
 
 *File a.tnsl (project a)*
 
-	/; export module my_module
-		/; module my_hidden_module
-			# Can access all from my_module, and my_hidden_module
+	/; export module pubmod
+		/; module hidden
+			# Can access all from pubmod, and pubmod.hidden
 		;/
-		# Can access all from my_module, and my_hidden_module
+		# Can access all from pubmod, and pubmod.hidden
 	;/
-	# Can access all from my_module, and my_hidden_module
+	# Can access all from pubmod, and pubmod.hidden
 
 *File aa.tnsl (project a)*
 
 	/; my_function_a
-		# Can access all from my_module, and my_hidden_module
+		# Can access all from pubmod, and pubmod.hidden
 	;/
-	# Can access all from my_module, and my_hidden_module
+	# Can access all from pubmod, and pubmod.hidden
 
 *File b.tnsl (project b)*
 
 	/; my_function
-		# Can access all from my_module, but not from my_hidden_module
+		# Can access all from pubmod, but not pubmod.hidden
 	;/
-	# Can access all from my_module, but not from my_hidden_module
+	# Can access all from pubmod, but not pubmod.hidden
 
 ### Functions
 
 TNSL functions are code blocks whose definition contains none of the following: control flow keywords, the module keyword, the method keyword.  TNSL functions are called methods if they are contained within a method block.  TNSL methods may only be called with relation to the user defined type they are linked to.  If a TNSL function has no user defined name, it is anonymous.  Anonymous functions can be stored as void type variables or called immediately.  If an anonymous function is not stored, it is interpreted as inline and called immediately (this is known as a scope block).
 
-TNSL functions may have inputs (enclosed with `()`) and/or outputs (enclosed with `[]`).  Inputs must be named; naming outputs is optional.
+Function blocks may have inputs and/or outputs.  Inputs are enclosed by `()` and outputs are enclosed by `[]`
 
-TNSL functions may have their call stack modified by the `raw` and/or `inline` keywords.  If the `inline` keyword is placed around the function declaration, the function will still be exported (if it is being exported), but any time it is used in the project's code, it will be optimized as if in-line.
+Input lists must begin with a type and conclude with at least one named parameter.  If no type is given after a comma, it is assumed that the previous type carries over.
+
+Output lists consist of a comma seperated list of types.
+
+Either of these may be omitted for no input and/or output.
+
+TNSL functions may have their call stack modified by the `raw` and/or `inline` keywords.  If the `inline` keyword is placed before the function declaration, the function will still be exported (if it is being exported), but any time it is used in the project's code, it will be optimized as if in-line.
 
 The use of the `raw` keyword has several effects:  the function will have no generated assembly preamble, the function will allow `raw return` statements, the function will not be optimized, and the function will allow `asm` statements.  Any function may be labeled `raw`, even `main` and anonymous functions.
 
@@ -127,9 +113,10 @@ Examples:
 		<statements>
 	;/
 
-	# funtion calling an anonymous function
+	# funtion with a scope block
 	/; my_third_function
-		# an anonymous function (scope block)
+		<statements>
+		# a scope block
 		/;
 			<statements>
 		;/
