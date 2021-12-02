@@ -1,11 +1,11 @@
 ![TNSL Logo](./logo/tnsl-logo.svg)
 
 # tnsl-lang
-This is the base repository for the tnsl language, and includes the standard compiler implementation, specification, and libtnsl implementation.  The specification and compiler are licenced under the CDDL-1.0 (LICENCE.md), while libtnsl is dual-licenced under both the CDDL-1.0 (LICENCE.md) and BSD-3-Clause (libtnsl/LICENCE-BSD3.md).
+This is the base repository for the tnsl language, and includes the standard compiler implementation, specification, and libtnsl implementation.  The specification and compiler are licenced under the CDDL-1.0 ([LICENCE.md](./LICENCE.md)), while libtnsl is dual-licenced under both the CDDL-1.0 ([LICENCE.md](./LICENCE.md)) and BSD-3-Clause ([LICENCE-BSD3.md](./libtnsl/LICENCE-BSD3.md)).
 
 ## tnsl specification
 
-Under the folder `spec` is the TNSL language's specification.  It has been broken up into chapters in markdown format.  Any sub-folders are details on other related projects such as libtnsl (the standard library) and tnslc (the default compiler).
+Under the folder `spec` is the [TNSL language specification](./spec/README.md).  It has been broken up into chapters in markdown format.  Any sub-folders are details on other related projects such as [libtnsl](./spec/libtnsl/README.md) (the standard library) and [tnslc](./spec/tnslc/README.md) (the default compiler).
 
 	Current specification version:
 	0.0.1

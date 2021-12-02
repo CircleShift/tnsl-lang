@@ -11,7 +11,7 @@ Right now, TNSL isn't a language.  But it *could* be.  And, really, I think it's
 
 ## Chapter Index
 
-1. The Language
+1. [The Language](./1.md)
 
 	- Files
 	- Blocks
@@ -20,7 +20,7 @@ Right now, TNSL isn't a language.  But it *could* be.  And, really, I think it's
 	- Operators
 	- `raw` and `asm`
 
-2. Related features
+2. [Related features](./2.md)
 
 	- Style guide
 	- Compiler Options
@@ -28,21 +28,22 @@ Right now, TNSL isn't a language.  But it *could* be.  And, really, I think it's
 	- libtnsl
 	- TNSL-lang export trees (T-LETs)
 
-3. The TNSL Calling ABI
+3. [The TNSL Calling ABI](./3.md)
 
 	- Differences from C
 	- Exporting C-like Functions
 	- Types and Arrays in Memory
 
-4. Features in Position
+4. [Features in Position](./4.md)
 
 	- Bare Metal
 	- `libtnsl` as it relates to Types
 	- Cross Calling to C
 
-- Appendix A - Reserved Characters
-- Appendix B - Reserved Words
-- Appendix C - Speed vs the Type System
+- [Appendix](./Appendices.md)
+	- A: Reserved Characters
+	- B: Reserved Words
+	- C: Speed vs the Type System
 
 ## Credits
 
