@@ -31,6 +31,7 @@
 		- The limited type system provides either fine or loose control depending on your use case (read the docs for more info about `structs`)
 		- Lack of headers make code less redundant and confusing (for me)
 		- The language attempts to cram a limited and useful set of high-level features into any environment assuming that a standard library exists to support those features.
+		- Even though there is the *option* to use high level features, a programmer can very easily use none and instead favor fine control over memory and types akin to C or C++.
 		- The standard library actually provides some control over how the language functions, so it can be adapted for many environments without compilation failure.
 		- Similar to go, tnsl provides support for multiple return values.
 
