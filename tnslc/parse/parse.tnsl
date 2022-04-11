@@ -14,9 +14,7 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; export module parse
-	/:import
-		"token.tnsl"
-		"tokenizer.tnsl"
-	:/
+/; module parse
+	:include "tnslc/parse/token.tnsl"
+	:include "tnslc/parse/tokenizer.tnsl"
 ;/

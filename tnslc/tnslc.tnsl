@@ -15,24 +15,27 @@
 #/
 
 /; module tnslc
-	:import "flags/flags.tnsl"
-	:import "parse/parse.tnsl"
-	:import "ast/ast.tnsl"
-	:import "compile/compile.tnsl"
+	:include "tnslc/parse/parse.tnsl"
 ;/
 
 
-/; main (~{}{}char args) [int]
-	;tnslc.flags.Flags argList = tnslc.flags.parse(args)
+/; test
 
-	;{}tnslc.parse.Token tokenList = tnslc.parse.tokenize(argList)
+;/
 
-	;tnslc.ast.Node ast = ast.generate(tokenList)
+/; main ({}{}charp args) [int]
+	/; if (len args < 1)
+		;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
+		;return 1
+	;/
 
-	;tnsl.io.File outFile = tnsl.io.open_file(argList.outPath)
-	;[]uint8 data = tnslc.compile.generate(argList, ast)
+	;tnsl.io.File src = tnsl.io.readFile(args{0})
+
+	;~{}tnslc.parse.Token psrc = tnslc.parse.tokenize(src)
 	
-	;outFile.write(data)
+	;tnsl.io.println(psrc`)
 
-	;outFile.close()
+	;src.close()
+
+	;return 0
 ;/

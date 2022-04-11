@@ -1,0 +1,53 @@
+/#
+	Copyright 2021 Kyle Gunger
+
+	This file is licensed under the CDDL 1.0 (the License)
+	and may only be used in accordance with the License.
+	You should have received a copy of the License with this
+	software/source code. If you did not, a copy can be found
+	at the following URL:
+
+	https://opensource.org/licenses/CDDL-1.0
+
+	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
+	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
+	EXPRESS OR IMPLIED
+#/
+
+/; is_space (charp c) [bool]
+	;return c == '\t' || c == '\n' || c == ' '
+;/
+
+/; break_token ({}charp dat, charp c) [bool]
+	/; if (len dat == 0)
+		;return false
+	
+	;/
+	;return is_space(c)
+;/
+
+/; parse_reserved ({}charp dat) [{}Token]
+
+;/
+
+/; tokenize (tnsl.io.File fstr) [~{}Token]
+	;{}Token out = {}
+	;{}charp tdat = {}
+
+	/; loop (int i = fstr.read(); i !== -1) [i = fstr.read()]
+		/; if (break_token(tdat, i))
+			/; if (len tdat > 0)
+				;{}charp tmp = tdat
+				;Token ttk = {0, 0, 0, ~tmp}
+				;out.append(ttk)
+				;tdat = {}
+			;/
+		;; else if ( !is_space(i) )
+			;tdat.append(i)
+		;/
+	;/
+
+	;tnsl.io.println(tdat)
+
+	;return ~out
+;/
