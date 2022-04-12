@@ -2,6 +2,14 @@
 
 The reference compiler for the TNSL programming language.  The compiler is written in TNSL.
 
+## Usage:
+
+Place the interpreter `tint` in the parent folder and execute `run.sh` with the argument being the flags for the compiler.
+
+Examples:
+- `./run.sh dummy.tnsl` - Run the compiler on the dummy file
+- `./run.sh "dummy.tnsl ../libtnsl/libtnsl.tnsl"` - Run the compiler on the dummy file but also link libtnsl
+
 ### Credits
 
 	Copyright 2021 Kyle Gunger

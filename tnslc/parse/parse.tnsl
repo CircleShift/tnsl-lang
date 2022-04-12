@@ -15,6 +15,17 @@
 #/
 
 /; module parse
-	:include "tnslc/parse/token.tnsl"
-	:include "tnslc/parse/tokenizer.tnsl"
+	:include "parse/token.tnsl"
+	:include "parse/tokenizer.tnsl"
+;/
+
+/; print_tokens(~{}parse.Token dat)
+	/;loop (int i = 0; i < len dat`) [i++]
+		;tnsl.io.print("{ ")
+		;tnsl.io.print(dat`{i}.token_type)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(dat`{i}.data`)
+		;tnsl.io.print(" } ")
+	;/
+	;tnsl.io.print("\n")
 ;/

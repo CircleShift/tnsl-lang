@@ -18,10 +18,22 @@
 	;return c == '\t' || c == '\n' || c == ' '
 ;/
 
+/; is_digit (charp c) [bool]
+	;return c !< '0' && c !> '9'
+;/
+
 /; break_token ({}charp dat, charp c) [bool]
 	/; if (len dat == 0)
 		;return false
 	
+	;; else if (is_in_string(~RESERVED, dat{len dat - 1}))
+		/; if (is_in_string(~RESERVED, c))
+			;dat.append(c)
+			;return get_token_type(~dat) == TOKEN_TYPE.DEFWORD
+		;; else if (len dat == 1 && dat{0} == '.')
+			;return !is_digit(c)
+		;/
+		;return true
 	;/
 	;return is_space(c)
 ;/
@@ -38,13 +50,17 @@
 		/; if (break_token(tdat, i))
 			/; if (len tdat > 0)
 				;{}charp tmp = tdat
-				;Token ttk = {0, 0, 0, ~tmp}
+				;Token ttk = {get_token_type(~tmp), 0, 0, ~tmp}
 				;out.append(ttk)
 				;tdat = {}
 			;/
-		;; else if ( !is_space(i) )
+		;/
+		/; if ( !is_space(i) )
 			;tdat.append(i)
 		;/
+	;/
+
+	/; if (len tdat > 0)
 	;/
 
 	;tnsl.io.println(tdat)

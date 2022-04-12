@@ -218,7 +218,7 @@
 #; is_in_string (~{}charp cmp, charp p) [bool]
 
 	/; loop (int i = 0; i < len cmp`) [i++]
-		/; if (s == cmp`{i})
+		/; if (p == cmp`{i})
 			;return true
 		;/
 	;/
@@ -233,7 +233,7 @@
 
 	/; loop (int i = 0; i < len cmp`) [i++]
 
-		/; if (len s == len cmp`{i})
+		/; if (len s` == len cmp`{i})
 
 			/; loop (int j = 0; j < len s`) [j++]
 
@@ -255,7 +255,7 @@
 
 #; get_token_type (~{}charp s) [int]
 
-	/; if (len s > 1)
+	/; if (len s` > 1)
 
 		/; if (is_in_string_list(~PREWORDS, s))
 			;return TOKEN_TYPE.PREWORD

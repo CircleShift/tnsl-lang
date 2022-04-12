@@ -15,7 +15,7 @@
 #/
 
 /; module tnslc
-	:include "tnslc/parse/parse.tnsl"
+	:include "parse/parse.tnsl"
 ;/
 
 
@@ -25,7 +25,7 @@
 
 /; main ({}{}charp args) [int]
 	/; if (len args < 1)
-		;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
+		# ;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
 		;return 1
 	;/
 
@@ -33,7 +33,7 @@
 
 	;~{}tnslc.parse.Token psrc = tnslc.parse.tokenize(src)
 	
-	;tnsl.io.println(psrc`)
+	;tnslc.print_tokens(psrc)
 
 	;src.close()
 
