@@ -25,6 +25,10 @@
 		;tnsl.io.print(dat`{i}.token_type)
 		;tnsl.io.print(" ")
 		;tnsl.io.print(dat`{i}.data`)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(dat`{i}.line)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(dat`{i}.col)
 		;tnsl.io.print(" } ")
 	;/
 	;tnsl.io.print("\n")

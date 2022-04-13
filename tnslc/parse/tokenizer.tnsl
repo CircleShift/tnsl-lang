@@ -39,32 +39,68 @@
 	;return is_whitespace(c)
 ;/
 
-/; parse_reserved ({}charp dat) [{}Token]
+/; strip_and_expand (~{}Token dat) [{}Token]
+	;{}Token out = {}
 
+	;{}charp cbst = "/#", cben = "#/"
+
+	;bool cblk = false
+
+	/; loop (int i = 0; i < len dat`) [i++]
+		/; if (!cblk)
+			/; if (string_equate(dat`{i}.data, ~cbst))
+				;cblk = true
+			;; else
+				;out.append(dat`{i})
+			;/
+
+		;; else if (string_equate(dat`{i}.data, ~cben))
+			;cblk = false
+		;/
+	;/
+	
+	;return out
 ;/
 
 /; tokenize (tnsl.io.File fstr) [~{}Token]
 	;{}Token out = {}
 	;{}charp tdat = {}
+	;bool comment = false
+	;int line = 1, col = 1
 
 	/; loop (int i = fstr.read(); i !== -1) [i = fstr.read()]
-		/; if (break_token(tdat, i))
-			/; if (len tdat > 0)
+		/; if (break_token(tdat, i) && !comment)
+			/; if (len tdat == 1 && tdat{0} == '#')
+				;tdat = {}
+				;comment = true
+			;; else if (len tdat > 0)
 				;{}charp tmp = tdat
-				;Token ttk = {get_token_type(~tmp), 0, 0, ~tmp}
+				;Token ttk = {get_token_type(~tmp), line, col, ~tmp}
 				;out.append(ttk)
 				;tdat = {}
 			;/
 		;/
-		/; if ( !is_whitespace(i) )
+
+		/; if ( !is_whitespace(i) && !comment )
 			;tdat.append(i)
+		;; else if (i == '\n')
+			;line++
+			;col = 0
+			/; if (comment)
+				;comment = false
+			;/
 		;/
+
+		;col++
 	;/
 
 	/; if (len tdat > 0)
+		;Token ttk = {get_token_type(~tdat), line, col, ~tdat}
+		;out.append(ttk)
 	;/
 
 	;tnsl.io.println(tdat)
 
+	;out = strip_and_expand(~out)
 	;return ~out
 ;/
