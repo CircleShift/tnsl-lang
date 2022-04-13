@@ -1,3 +1,4 @@
 /; main [float]
+	;int i = 0
 	;return a.b
 ;/

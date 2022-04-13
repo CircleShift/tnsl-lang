@@ -40,6 +40,18 @@
 
 /; method Token
 
+	/; print
+		;tnsl.io.print("{ ")
+		;tnsl.io.print(self.token_type)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(self.data`)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(self.line)
+		;tnsl.io.print(" ")
+		;tnsl.io.print(self.col)
+		;tnsl.io.print(" } ")
+	;/
+
 	/; operator delete
 		;delete self.data
 	;/
@@ -310,6 +322,10 @@
 		;return TOKEN_TYPE.DEFWORD
 
 	;;else if (len s` == 1)
+		
+		/; if (is_digit(s`{0}))
+			;return TOKEN_TYPE.LITERAL
+		;/
 
 		/; if (is_in_string(~DELIMITS, s`{0}))
 			;return TOKEN_TYPE.DELIMIT

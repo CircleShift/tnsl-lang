@@ -15,5 +15,5 @@
 #/
 
 /; export module ast
-	:import "node.tnsl"
+	:include "ast/node.tnsl"
 ;/
