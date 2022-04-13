@@ -1,3 +1,3 @@
 /; main [float]
-	;return .342
+	;return a.b
 ;/

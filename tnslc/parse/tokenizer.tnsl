@@ -14,12 +14,8 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; is_space (charp c) [bool]
-	;return c == '\t' || c == '\n' || c == ' '
-;/
-
-/; is_digit (charp c) [bool]
-	;return c !< '0' && c !> '9'
+/; is_float (~{}charp dat) [bool]
+	;return is_numeric_literal(dat) && is_in_string(dat, '.')
 ;/
 
 /; break_token ({}charp dat, charp c) [bool]
@@ -34,8 +30,13 @@
 			;return !is_digit(c)
 		;/
 		;return true
+	;; else if (is_in_string(~RESERVED, c))
+		/; if (is_numeric_literal(~dat) && !is_float(~dat) && c == '.')
+			;return false
+		;/
+		;return true
 	;/
-	;return is_space(c)
+	;return is_whitespace(c)
 ;/
 
 /; parse_reserved ({}charp dat) [{}Token]
@@ -55,7 +56,7 @@
 				;tdat = {}
 			;/
 		;/
-		/; if ( !is_space(i) )
+		/; if ( !is_whitespace(i) )
 			;tdat.append(i)
 		;/
 	;/

@@ -250,12 +250,48 @@
 	;return false
 ;/
 
+/; is_numeric_literal(~{}charp dat) [bool]
+	/; if (len dat` == 0)
+		;return false
+	;/
+
+	;bool dec = true, flt = false
+	
+	;int i = 0
+
+	/; if (len dat` > 1)
+		/; if (dat`{0} == '0' && !is_digit(dat`{1}) && dat`{1} !== '.')
+			;dec = false
+			;i = 2
+		;/
+	;/
+
+	/; loop (i < len dat`) [i++]
+		/; if (!is_digit(dat`{i}) && dec)
+			/; if (dat`{i} == '.')
+				/; if (flt || !dec)
+					;return false
+				;/
+				;flt = true
+			;; else if (dec)
+				;return false
+			;/
+		;/
+	;/
+	
+	;return true
+;/
+
 /#
 	Get the token_type value for a given string of character points
 
 #; get_token_type (~{}charp s) [int]
 
 	/; if (len s` > 1)
+
+		/; if (is_numeric_literal(s))
+			;return TOKEN_TYPE.LITERAL
+		;/
 
 		/; if (is_in_string_list(~PREWORDS, s))
 			;return TOKEN_TYPE.PREWORD
