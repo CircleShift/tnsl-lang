@@ -21,7 +21,8 @@
 /; break_token ({}charp dat, charp c) [bool]
 	/; if (len dat == 0)
 		;return false
-	
+	;; else if (dat{0} == '"' || dat{0} == '\'')
+		;return string_closed(dat, c)
 	;; else if (is_in_string(~RESERVED, dat{len dat - 1}))
 		/; if (is_in_string(~RESERVED, c))
 			;dat.append(c)
@@ -98,8 +99,6 @@
 		;Token ttk = {get_token_type(~tdat), line, col, ~tdat}
 		;out.append(ttk)
 	;/
-
-	;tnsl.io.println(tdat)
 
 	;out = strip_and_expand(~out)
 	;return ~out

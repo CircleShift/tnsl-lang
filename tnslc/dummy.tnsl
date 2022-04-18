@@ -1,4 +1,5 @@
 /; main [float]
 	;int i = 0
+	;{}charp c = "abc"
 	;return a.b
 ;/

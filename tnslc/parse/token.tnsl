@@ -294,6 +294,27 @@
 	;return true
 ;/
 
+/; string_closed ({}charp dat, charp c) [bool]
+	/; if (len dat < 2)
+		;return false
+	;/
+
+	;charp closing = dat{0}
+	;bool escaping = false
+
+	/; loop (int i = 1; i < len dat) [i++]
+		/; if (dat{i} == closing && !escaping)
+			;return true
+		;; else if (dat{i} == '\\' && !escaping)
+			;escaping = true
+		;; else
+			;escaping = false
+		;/
+	;/
+
+	;return false
+;/
+
 /#
 	Get the token_type value for a given string of character points
 
@@ -301,7 +322,7 @@
 
 	/; if (len s` > 1)
 
-		/; if (is_numeric_literal(s))
+		/; if (is_numeric_literal(s) || s`{0} == '"' || s`{0} == '\'')
 			;return TOKEN_TYPE.LITERAL
 		;/
 
