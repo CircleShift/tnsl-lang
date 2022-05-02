@@ -14,34 +14,8 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; export module ast
-	:include "ast/block.tnsl"
-	:include "ast/list.tnsl"
-	:include "ast/statement.tnsl"
-	:include "ast/tree.tnsl"
-	:include "ast/value.tnsl"
+/; tree_list_value [{}Node]
+	;{}Node out = {}
+
+	;return out
 ;/
-
-;{}charp CNULL = ""
-
-# AST node (non-block)
-;struct Node {
-	tnslc.Token
-		# associated token to the node
-		tok,
-
-	~{}Node
-		# sub-nodes
-		sub
-}
-
-;enum NODE_TYPE [int] {
-	FILE  = 9,
-	TYPE  = 10,
-	VALUE = 11,
-	DEFN  = 12,
-
-	#...
-
-	PREP = 1000
-}

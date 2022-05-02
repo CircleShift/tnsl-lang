@@ -1,0 +1,48 @@
+/##
+	Copyright 2021 Kyle Gunger
+
+	This file is licensed under the CDDL 1.0 (the License)
+	and may only be used in accordance with the License.
+	You should have received a copy of the License with this
+	software/source code. If you did not, a copy can be found
+	at the following URL:
+
+	https://opensource.org/licenses/CDDL-1.0
+
+	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
+	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
+	EXPRESS OR IMPLIED
+#/
+
+/; is_keyword_statement ({}charp word) [bool]
+	;return string_equate(word, "struct") || string_equate(word, "interface") || string_equate(word, "enum") ||
+			string_equate(word, "continue") || string_equate(word, "break") || string_equate(word, "label") ||
+			string_equate(word, "goto") || string_equate(word, "virtual") || string_equate(word, "asm") ||
+			string_equate(word, "delete")
+;/
+
+/; is_definition (~{}Token tokens, ~int i) [bool] ;/
+
+/; tree_keyword_statement (~{}Token tokens, ~int i) [Node]
+
+;/
+
+/; tree_statement (~{}Token tokens, ~int i) [Node]
+	;i`++
+	/; if (i` !< len tokens`)
+		;return make_null_node()
+	
+	;; else if (is_keyword_statement(tokens`{i`}.data`))
+		;return tree_keyword_statement(tokens, i)
+
+	;; else if (is_definition(tokens, i))
+		;return tree_definition(tokens, i)
+
+	;/
+	
+	;return tree_value(tokens, i)
+;/
+
+/; tree_preproc [Node]
+
+;/

@@ -18,13 +18,13 @@
     Utility functions that may be useful in many places.
 #/
 
-/; string_equate(~{}charp s1, s2) [bool]
-    /; if (len s1` !== len s2`)
+/; string_equate({}charp s1, s2) [bool]
+    /; if (len s1 !== len s2)
         ;return false
     ;/
 
-    /; loop (int i = 0; i < len s1`) [i++]
-        /; if (s1`{i} !== s2`{i})
+    /; loop (int i = 0; i < len s1) [i++]
+        /; if (s1{i} !== s2{i})
             ;return false
         ;/
     ;/

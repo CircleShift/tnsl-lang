@@ -14,35 +14,27 @@
 	EXPRESS OR IMPLIED
 #/
 
-:include "util.tnsl"
-
-/; export module tnslc
-	:include "parse/parse.tnsl"
-	:include "ast/ast.tnsl"
+/; tree_type [Node]
+	;Token type_tok = {NODE_TYPE.TYPE, 0, 0, ~CNULL}
+	;{}Node type_sub = {}
+	;return {type_tok, ~type_sub}
 ;/
 
-
-/; test
+/; tree_value [Node]
 
 ;/
 
-/; main ({}{}charp args) [int]
-	/; if (len args < 1)
-		# ;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
-		;return 1
+/; tree_definition [Node]
+	;Token def_tok = {NODE_TYPE.DEFN, 0, 0, ~CNULL}
+	;{}Node def_sub = {}
+
+	;def_sub.append(tree_type())
+	
+	;{}Node vals = tree_list_value()
+
+	/; loop (int i = 0; i < len vals) [i++]
+		;def_sub.append(vals{i})
 	;/
 
-	;tnsl.io.File src = tnsl.io.readFile(args{0})
-
-	;~{}tnslc.Token psrc = tnslc.parse.tokenize(src)
-
-	;src.close()
-
-	;tnslc.print_tokens(psrc)
-	
-	;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
-
-	
-
-	;return 0
+	;return {def_tok, ~def_sub}
 ;/

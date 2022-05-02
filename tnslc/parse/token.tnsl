@@ -14,58 +14,6 @@
 	EXPRESS OR IMPLIED
 #/
 
-/# The various types of tokens #/
-; enum TOKEN_TYPE [int] {
-	LINESEP = 0,
-	INLNSEP = 1,
-	DELIMIT = 2,
-	AUGMENT = 3,
-	LITERAL = 4,
-	KEYTYPE = 5,
-	PREWORD = 6,
-	KEYWORD = 7,
-	DEFWORD = 8
-}
-
-/# Token struct definition #/
-; struct Token {
-	int
-		token_type,
-		line,
-		col,
-
-	~{}charp
-		data
-}
-
-/; method Token
-
-	/; print
-		;tnsl.io.print("{ ")
-		;tnsl.io.print(self.token_type)
-		;tnsl.io.print(" ")
-		;tnsl.io.print(self.data`)
-		;tnsl.io.print(" ")
-		;tnsl.io.print(self.line)
-		;tnsl.io.print(" ")
-		;tnsl.io.print(self.col)
-		;tnsl.io.print(" } ")
-	;/
-
-	/; operator delete
-		;delete self.data
-	;/
-
-	/; add_char (~{}charp part)
-		# ;uint l = len self.data`
-		# ;realloc self.data, l + len part
-		/;loop (int i = 0; i < len part`) [i++]
-			# ;self.data`{l + i} = part{i}
-			;self.data`.append(part`{i})
-		;/
-	;/
-;/
-
 /#
 	Reserved words and characters, as well as
 	helper funcs for checking their token types.
@@ -142,6 +90,7 @@
 	"raw",
 	"asm",
 	"inline",
+	"virtual",
 
 	"delete",
 	
@@ -151,7 +100,8 @@
 
 ;{}{}charp LITERALS = {
 	"true",
-	"false"
+	"false",
+	"null"
 }
 
 ;{}charp RESERVED = "`~!#%^&*()-=+[]{}|;:,.<>/"
