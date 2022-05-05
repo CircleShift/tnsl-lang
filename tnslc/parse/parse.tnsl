@@ -19,6 +19,14 @@
 	:include "parse/tokenizer.tnsl"
 ;/
 
+/; create_panic ({}charp err)
+	;tnsl.io.println("ABOUT TO INDUCE PANIC... STAND BY")
+	;tnsl.io.print("Error code given: ")
+	;tnsl.io.println(err)
+	;{}int i = {0}
+	;i{2}
+;/
+
 /# The various types of tokens #/
 ; enum TOKEN_TYPE [int] {
 	LINESEP = 0,
@@ -64,7 +72,7 @@
 	/; add_char (~{}charp part)
 		# ;uint l = len self.data`
 		# ;realloc self.data, l + len part
-		/;loop (int i = 0; i < len part`) [i++]
+		/; loop (int i = 0; i < len part`) [i++]
 			# ;self.data`{l + i} = part{i}
 			;self.data`.append(part`{i})
 		;/
@@ -72,7 +80,7 @@
 ;/
 
 /; print_tokens(~{}Token dat)
-	/;loop (int i = 0; i < len dat`) [i++]
+	/; loop (int i = 0; i < len dat`) [i++]
 		;dat`{i}.print()
 	;/
 	;tnsl.io.print("\n")

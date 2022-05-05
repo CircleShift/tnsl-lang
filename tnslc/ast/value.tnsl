@@ -21,7 +21,10 @@
 ;/
 
 /; tree_value [Node]
+	;Token def_tok = {NODE_TYPE.VALUE, 0, 0, ~CNULL}
+	;{}Node def_sub = {}
 
+	;return {def_tok, ~def_sub}
 ;/
 
 /; tree_definition [Node]

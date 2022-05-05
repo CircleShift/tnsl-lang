@@ -28,7 +28,7 @@
 
 /; main ({}{}charp args) [int]
 	/; if (len args < 1)
-		# ;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
+		;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
 		;return 1
 	;/
 
@@ -41,8 +41,6 @@
 	;tnslc.print_tokens(psrc)
 	
 	;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
-
-	
 
 	;return 0
 ;/
