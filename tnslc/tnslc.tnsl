@@ -19,14 +19,12 @@
 /; export module tnslc
 	:include "parse/parse.tnsl"
 	:include "ast/ast.tnsl"
+	:include "compile/compile.tnsl"
 ;/
 
-
-/; test
-
-;/
 
 /; main ({}{}charp args) [int]
+
 	/; if (len args < 1)
 		;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
 		;return 1

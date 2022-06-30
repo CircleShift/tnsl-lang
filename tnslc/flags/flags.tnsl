@@ -14,3 +14,35 @@
 	EXPRESS OR IMPLIED
 #/
 
+/; module flags
+	:include "flags/defaults.tnsl"
+;/
+
+;enum ISA [uint] {
+	X86 = 0,
+	X64 = 1,
+	ARM = 2,
+	ARM64 = 3,
+	RISCV = 4
+}
+
+;enum FORMATS [uint] {
+	ELF = 0
+	PE =  1
+}
+
+;struct Settings {
+
+	# ISA settings
+	uint isa,
+	bool littleEndian,
+
+	# Output format settings
+	uint format
+}
+
+/; parse_flags () [Settings]
+	;Settings out = flags.get_defaults()
+
+	;return out
+;/

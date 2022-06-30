@@ -14,4 +14,9 @@
 	EXPRESS OR IMPLIED
 #/
 
-; struct instruction {}
+# Instructions are always stored in big-endian format internally.
+# The settings for the isa/compiler dictate weather the instruction
+# data will be reversed when the sections are being written.
+; struct instruction {
+	{}uint8 data
+}

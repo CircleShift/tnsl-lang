@@ -32,16 +32,13 @@
 	"abi"
 }
 
-;const {}{}charp KEYTYPES = {
-	"bool",
-	"char",
-	"charp",
-
+;{}{}charp KEYTYPES = {
 	"int8",
 	"int16",
 	"int32",
 	"int64",
 	"int",
+	
 	"uint8",
 	"uint16",
 	"uint32",
@@ -52,6 +49,7 @@
 	"float64",
 	"float",
 
+	"bool",
 	"void",
 	"type"
 }
@@ -60,7 +58,6 @@
 	"struct",
 	"interface",
 	"enum",
-	"is",
 	"extends",
 	
 	"loop",
@@ -83,8 +80,6 @@
 	
 	"method",
 	"override",
-	"self",
-	"super",
 	"operator",
 	
 	"raw",
@@ -93,6 +88,9 @@
 	"virtual",
 
 	"delete",
+	"alloc",
+	"salloc",
+	"realloc",
 	
 	"module",
 	"export"
@@ -101,7 +99,11 @@
 ;{}{}charp LITERALS = {
 	"true",
 	"false",
-	"null"
+	
+	"null",
+
+	"self",
+	"super"
 }
 
 ;{}charp RESERVED = "`~!#%^&*()-=+[]{}|;:,.<>/"
@@ -169,7 +171,11 @@
 
 	# Increment and De-increment
 	"++",
-	"--"
+	"--",
+
+	"is",
+	"len",
+	"size"
 }
 
 ;int MAX_MRESERVED = 3

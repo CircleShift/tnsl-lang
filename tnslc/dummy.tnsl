@@ -1,1 +1,5 @@
-;int a = 0
+;int a = 0x11
+
+/; main
+    ;tnsl.io.println(a)
+;/

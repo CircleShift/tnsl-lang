@@ -1,0 +1,6 @@
+/; raw inline syscall (int i)
+    ; asm "
+    mov eax, {i}
+    int 80h
+    "
+;/

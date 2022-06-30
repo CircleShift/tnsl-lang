@@ -16,8 +16,60 @@
 
 /; tree_list_value [{}Node]
 	;{}Node out = {}
+	;return out
+;/
 
+/; tree_list_type [{}Node]
+	;{}Node out = {}
+	;return out
+;/
+
+/; tree_list_statement (~{}Token tok, ~int cur) [{}Node]
+	;{}Node out = {}
+
+	/; loop (cur` < len tok`) [cur` = cur` + 1]
+		;Node stmt = tree_statement(tok, cur)
+		;append(out, stmt)
+
+		;Token tmp = tok`{cur`}
+		/; if (string_equate(tmp.data, "]") || string_equate(tmp.data, ")"))
+			;cur` = cur` + 1
+			;break
+		;; else if (string_equate(tmp.data, ";") == false)
+			;create_panic("Unexpected token in list of statements")
+		;/
+	;/
 	
+	;return out
+;/
+
+/; tree_list_params (~{}Token tok, ~int cur) [{}Node]
+	;{}Node out = {}
+
+	/; if (string_equate(tok`{cur`}.data, ")"))
+		;return out
+	;/
+
+	/; if (type_then_name(tok, cur) == false)
+		;create_panic("Parameter list must start with a type and name combo.")
+	;/
+
+	/; loop (cur` < len tok`) [cur` = cur` + 1]
+		;Node tmp
+		/; if (type_then_name(tok, cur))
+			;tmp = tree_type(tok, cur)
+			;append(out, tmp)
+		;/
+
+		;tmp = tree_value(tok, cur)
+
+		/; if (string_equate(tok`{cur`}.data, ")"))
+			;cur` = cur` + 1
+			;break
+		;; else if (string_equate(tok`{cur`}.data, ",") == false)
+			;create_panic("A value in a list of params must be followed with a comma")
+		;/
+	;/
 
 	;return out
 ;/

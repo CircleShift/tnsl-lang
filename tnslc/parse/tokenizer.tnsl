@@ -14,11 +14,11 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; is_float (~{}charp dat) [bool]
+/; is_float (~{}uint8 dat) [bool]
 	;return is_numeric_literal(dat) && is_in_string(dat, '.')
 ;/
 
-/; break_token ({}charp dat, charp c) [bool]
+/; break_token ({}uint8 dat, uint8 c) [bool]
 	/; if (len dat == 0)
 		;return false
 
@@ -74,7 +74,7 @@
 
 /; tokenize (tnsl.io.File fstr) [~{}Token]
 	;{}Token out = {}
-	;{}charp tdat = {}
+	;{}uint8 tdat = {}
 	;bool comment = false
 	;int line = 1, col = 1
 
@@ -84,7 +84,7 @@
 				;tdat = {}
 				;comment = true
 			;; else if (len tdat > 0)
-				;{}charp tmp = tdat
+				;{}uint8 tmp = tdat
 				;Token ttk = {get_token_type(~tmp), line, col, ~tmp}
 				;out.append(ttk)
 				;tdat = {}

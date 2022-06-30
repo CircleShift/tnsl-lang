@@ -15,8 +15,7 @@
 #/
 
 /; make_null_node [Node]
-	;{}charp null_str = ""
-	;Token null_tok = {0, 0, 0, ~null_str}
+	;Token null_tok = {0, 0, 0, ~CNULL}
 	;{}Node sub = {}
 	;return {null_tok, ~sub}
 ;/

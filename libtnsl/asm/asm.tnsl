@@ -26,4 +26,7 @@
 	the selected ISA/OS combo.
 	
 #; module asm
+	
+	:include "asm/x86.tnsl"
+
 ;/

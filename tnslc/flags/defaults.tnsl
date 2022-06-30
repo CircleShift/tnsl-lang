@@ -14,7 +14,11 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; module format
-	# :include "compile/format/out.tnsl"
-	:include "compile/format/elf.tnsl"
+/# defaults.tnsl
+ # This file provides the default settings for the compiler
+ # if the user has not provided flags which overrides them.
+#/
+
+/; get_defaults [Settings]
+
 ;/
