@@ -16,7 +16,7 @@
 
 /; module compile
 	# :include "compile/arch/arch.tnsl"
-	:include "compile/format/format.tnsl"
+	:include "compile/arch/isa_x86.tnsl"
 	# :include "compile/comp.tnsl"
 ;/
 
@@ -24,3 +24,11 @@
 /; do_compile ({}charp file, ast.Node data, Settings settings)
 
 ;/
+
+;struct Symtab {
+	{}{}charp
+		sym_names,
+	
+	{}uint
+		sym_sizes
+}

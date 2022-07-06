@@ -250,6 +250,13 @@
 	;return true
 ;/
 
+/; is_text_literal(~{}charp dat) [bool]
+	/; if (len dat` < 1)
+		;return false
+	;/
+	;return dat`{0} == '"' || dat`{0} == '\''
+;/
+
 /; string_closed ({}charp dat, charp c) [bool]
 	/; if (len dat < 2)
 		;return false

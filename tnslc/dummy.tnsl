@@ -1,5 +1,12 @@
 ;int a = 0x11
+;bool aaaa = false
 
 /; main
-    ;tnsl.io.println(a)
+	/; if (a !== 11)
+		;tnsl.io.println(a)
+	;/
+
+	/; loop (!aaaa) [a !== 17]
+		;tnsl.io.println("Looping!")
+	;/
 ;/

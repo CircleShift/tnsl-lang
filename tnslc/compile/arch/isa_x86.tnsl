@@ -13,3 +13,17 @@
 	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
 #/
+
+
+
+/; gen_symtab (Node program) [Symtab]
+
+;/
+
+/; symtab_to_section (Symtab sym) [{}charp]
+
+;/
+
+/; block_to_asm ({}charp block_name, Node block) [{}charp]
+
+;/

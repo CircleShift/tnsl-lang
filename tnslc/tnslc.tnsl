@@ -38,7 +38,7 @@
 
 	;tnslc.print_tokens(psrc)
 	
-	;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
+	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 
 	;return 0
 ;/

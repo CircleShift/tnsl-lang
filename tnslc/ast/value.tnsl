@@ -14,9 +14,21 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; tree_type [Node]
+/; tree_type (~{}Token tok, ~int cur) [Node]
 	;Token type_tok = {NODE_TYPE.TYPE, 0, 0, ~CNULL}
 	;{}Node type_sub = {}
+
+	# Pre type keyword checks
+	/; loop (tok`{cur`}.token_type !== TOKEN_TYPE.DEFWORD && tok`{cur`}.token_type !== TOKEN_TYPE.KEYTYPE)
+		/; if (tok`{cur`}.token_type == TOKEN_TYPE.KEYWORD)
+
+		;/
+	;/
+
+	/;
+
+	;/
+
 	;return {type_tok, ~type_sub}
 ;/
 

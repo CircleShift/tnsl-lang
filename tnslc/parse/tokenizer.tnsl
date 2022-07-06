@@ -91,7 +91,7 @@
 			;/
 		;/
 
-		/; if ( !is_whitespace(i) && !comment )
+		/; if ( (!is_whitespace(i) || is_text_literal(~tdat)) && !comment )
 			;tdat.append(i)
 		;; else if (i == '\n')
 			;line++

@@ -29,7 +29,7 @@
 
 	/; loop (cur` < len tok`) [cur` = cur` + 1]
 		;Node stmt = tree_statement(tok, cur)
-		;append(out, stmt)
+		;out.append(stmt)
 
 		;Token tmp = tok`{cur`}
 		/; if (string_equate(tmp.data, "]") || string_equate(tmp.data, ")"))
@@ -58,7 +58,7 @@
 		;Node tmp
 		/; if (type_then_name(tok, cur))
 			;tmp = tree_type(tok, cur)
-			;append(out, tmp)
+			;out.append(tmp)
 		;/
 
 		;tmp = tree_value(tok, cur)
