@@ -32,6 +32,20 @@
     ;return true
 ;/
 
+/; add_strings (~{}charp a, b) [{}charp]
+    ;{}charp out = ""
+
+    /; loop (int i = 0; i < len a`) [i++]
+        ;out.append(a`{i})
+    ;/
+
+    /; loop (int i = 0; i < len b`) [i++]
+        ;out.append(b`{i})
+    ;/
+
+    ;return out
+;/
+
 /; is_whitespace (charp c) [bool]
 	;return c == '\t' || c == '\n' || c == ' '
 ;/
@@ -43,4 +57,58 @@
 /; is_alpha (charp c) [bool]
     ;bool low = c !< 'A' && c !> 'Z', high = c !< 'a' && c >! 'z'
     ;return low || high
+;/
+
+/; digit_to_char(int i) [charp]
+    ;charp out = '0'
+    ;out = out + (i % 10)
+    ;return out
+;/
+
+/; string_from_int(int i) [{}charp]
+    ;{}charp c = ""
+
+    /; if (i < 0)
+        ;c = "-"
+        ;i = -i
+    ;/
+
+    ;c.append(digit_to_char(i))
+
+    /; loop (i !== 0) [i = i / 10]
+        ;c.append(digit_to_char(i))
+    ;/
+
+    ;return c
+;/
+
+/; get_escape_code (charp c) [charp]
+    /; if (c == '\'')
+        ;return '\''
+    ;; else if (c == 'n')
+        ;return '\n'
+    ;; else if (c == 't')
+        ;return '\t'
+    ;; else if (c == '\r')
+        ;return '\r'
+    ;; else if (c == '\b')
+        ;return '\b'
+    ;/
+
+    ;return 0
+;/
+
+/; unquote_char ({}charp c) [charp]
+    /; if (c{1} == '\\')
+        /; if (c{2} == 'u')
+            ;return 0
+        ;/
+        ;return get_escape_code(c{2})
+    ;/
+
+    ;return c{1}
+;/
+
+/; unquote_string ({}charp str) [{}charp]
+
 ;/

@@ -1,12 +1,30 @@
-;int a = 0x11
-;bool aaaa = false
+; struct Token {
+	int
+		token_type,
+		line,
+		col,
 
-/; main
-	/; if (a !== 11)
-		;tnsl.io.println(a)
-	;/
+	~{}charp
+		data
+}
 
-	/; loop (!aaaa) [a !== 17]
-		;tnsl.io.println("Looping!")
-	;/
+;struct Node {
+	Token
+		# associated token to the node
+		tok,
+
+	~{}Node
+		# sub-nodes
+		sub
+}
+
+;{}charp cnull = "a"
+
+/; main [int]
+	;{}Node s = {}
+	;Node n = {{1, 2, 3, ~cnull}, ~s}
+	;s.append(n)
+	;tnsl.io.println(~s)
+	;tnsl.io.println(n.sub)
+	;return 0
 ;/

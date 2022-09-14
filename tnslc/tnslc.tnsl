@@ -18,7 +18,6 @@
 
 /; export module tnslc
 	:include "parse/parse.tnsl"
-	:include "ast/ast.tnsl"
 	:include "compile/compile.tnsl"
 ;/
 
