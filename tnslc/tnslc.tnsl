@@ -25,7 +25,7 @@
 /; main ({}{}charp args) [int]
 
 	/; if (len args < 1)
-		;tnsl.io.println("Usage: tnslc [File to compile] <path to libtnsl>")
+		;tnsl.io.println(string_from_int(97265))
 		;return 1
 	;/
 

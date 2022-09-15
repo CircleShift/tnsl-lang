@@ -46,6 +46,16 @@
     ;return out
 ;/
 
+/; reverse_string({}charp str) [{}charp]
+	;{}charp out = ""
+
+	/; loop (int i = len str; i > 0) [i = i - 1]
+		;out.append(str{i - 1})
+	;/
+
+	;return out
+;/
+
 /; is_whitespace (charp c) [bool]
 	;return c == '\t' || c == '\n' || c == ' '
 ;/
@@ -74,33 +84,63 @@
     ;/
 
     ;c.append(digit_to_char(i))
+	;i = i / 10
 
     /; loop (i !== 0) [i = i / 10]
         ;c.append(digit_to_char(i))
     ;/
 
-    ;return c
+    ;return reverse_string(c)
+;/
+
+/; int_from_string ({}charp str) [int]
+	;bool inv = str{0} == '-'
+	;int out = 0
+
+	/; loop ()
+
+	;/
+	
+	/; if (inv)
+		;out = -out
+	;/
+
+	;return out
 ;/
 
 /; get_escape_code (charp c) [charp]
     /; if (c == '\'')
         ;return '\''
+    ;; else if (c == 'a')
+        ;return '\a'
+    ;; else if (c == 'b')
+        ;return '\b'
+    ;; else if (c == 'e')
+        ;return '\e'
+    ;; else if (c == 'f')
+        ;return '\f'
     ;; else if (c == 'n')
         ;return '\n'
-    ;; else if (c == 't')
-        ;return '\t'
-    ;; else if (c == '\r')
+    ;; else if (c == 'r')
         ;return '\r'
-    ;; else if (c == '\b')
-        ;return '\b'
-    ;/
+	;; else if (c == 't')
+        ;return '\t'
+	;; else if (c == 'v')
+        ;return '\v'
+	;/
 
     ;return 0
 ;/
 
+/; parse_hex_code ({}charp c) [charp]
+	/;
+
+	;/
+;/
+
 /; unquote_char ({}charp c) [charp]
     /; if (c{1} == '\\')
-        /; if (c{2} == 'u')
+        /; if (c{2} == 'x')
             ;return 0
         ;/
         ;return get_escape_code(c{2})
