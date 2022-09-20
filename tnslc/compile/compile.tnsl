@@ -22,10 +22,8 @@
 
 
 /; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
-	;hsec`.append('b')
-
 	;cur`++
-	
+
 	/; loop (cur` < len data`) [cur`++]
 		/; if (string_equate(data`{cur`}.data`, ";/") || string_equate(data`{cur`}.data`, ";;"))
 			;break
@@ -33,6 +31,9 @@
 			;bool ch = true
 			/; loop (ch)
 				;compile_block(cur, data, hsec, csec, dsec)
+				/; if (cur` !< len data`)
+					;break
+				;/
 				;ch = string_equate(data`{cur`}.data`, ";;")
 			;/			
 		;; else if (string_equate(data`{cur`}.data`, ";"))
@@ -42,8 +43,13 @@
 ;/
 
 /; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
-	;csec`.append('c')
-	;dsec`.append('d')
+	;cur`++
+	/; if (cur` < len data`)
+		/; if (string_equate(data`{cur`}.data`, "asm"))
+			;{}charp raw_asm = unquote_string(data`{cur` + 1}.data`)
+			;add_strings(csec, ~raw_asm)
+		;/
+	;/
 ;/
 
 /; do_compile ({}charp file, ~{}Token data)

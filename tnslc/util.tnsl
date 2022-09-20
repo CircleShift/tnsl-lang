@@ -103,6 +103,8 @@
 /; get_escape_code (charp c) [charp]
     /; if (c == '\'')
         ;return '\''
+    ;; else if (c == '"')
+        ;return '"'
     ;; else if (c == 'a')
         ;return '\a'
     ;; else if (c == 'b')
@@ -125,15 +127,32 @@
 ;/
 
 /; parse_hex_code ({}charp c) [charp]
-	/;
+    ;charp out = 0
+	
+    /; loop (int i = 0; i < len c) [i++]
+        ;out = out * 16
+        ;charp tmp = c{i}
+        /; if (tmp !< 'a')
+            ;tmp = tmp - 'a' + 'A'
+        ;/
 
+        /; if (tmp !< '0' && tmp !> '9')
+            ;out = out + tmp - '0'
+        ;; else if (tmp !< 'A' && tmp !> 'F')
+            ;out = out + 10 + (tmp - 'A')
+        ;; else
+            ;break
+        ;/
 	;/
+
+    ;return out
 ;/
 
 /; unquote_char ({}charp c) [charp]
     /; if (c{1} == '\\')
         /; if (c{2} == 'x')
-            ;return 0
+            ;{}charp d = {c{3}, c{4}}
+            ;return parse_hex_code(d)
         ;/
         ;return get_escape_code(c{2})
     ;/
@@ -142,5 +161,27 @@
 ;/
 
 /; unquote_string ({}charp str) [{}charp]
+    ;{}charp out = ""
+    ;{}charp unc = "'"
 
+    /; loop (int i = 1; i < len str - 1) [i++]
+        /; if (str{i} == '\\')
+            ;unc.append('\\')
+            ;unc.append(str{i + 1})
+            ;i++
+            
+            /; if (str{i} == 'x')
+                ;unc.append(str{i + 1})
+                ;unc.append(str{i + 2})
+                ;i = i + 2
+            ;/
+
+            ;out.append(unquote_char(unc))
+            ;unc = "'"
+        ;; else
+            ;out.append(str{i})
+        ;/
+    ;/
+
+    ;return out
 ;/
