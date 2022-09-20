@@ -32,18 +32,10 @@
     ;return true
 ;/
 
-/; add_strings (~{}charp a, b) [{}charp]
-    ;{}charp out = ""
-
-    /; loop (int i = 0; i < len a`) [i++]
-        ;out.append(a`{i})
-    ;/
-
+/; add_strings (~{}charp a, b)
     /; loop (int i = 0; i < len b`) [i++]
-        ;out.append(b`{i})
+        ;a`.append(b`{i})
     ;/
-
-    ;return out
 ;/
 
 /; reverse_string({}charp str) [{}charp]

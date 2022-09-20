@@ -21,10 +21,67 @@
 ;/
 
 
-/; do_compile ({}charp file, ~{}Token data)
-	/;
+/; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+	;hsec`.append('b')
 
+	;cur`++
+	
+	/; loop (cur` < len data`) [cur`++]
+		/; if (string_equate(data`{cur`}.data`, ";/") || string_equate(data`{cur`}.data`, ";;"))
+			;break
+		;; else if (string_equate(data`{cur`}.data`, "/;"))
+			;bool ch = true
+			/; loop (ch)
+				;compile_block(cur, data, hsec, csec, dsec)
+				;ch = string_equate(data`{cur`}.data`, ";;")
+			;/			
+		;; else if (string_equate(data`{cur`}.data`, ";"))
+			;compile_statement(cur, data, hsec, csec, dsec)
+		;/
 	;/
+;/
+
+/; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+	;csec`.append('c')
+	;dsec`.append('d')
+;/
+
+/; do_compile ({}charp file, ~{}Token data)
+	;{}charp hsec = ".global _start\n"
+	;{}charp csec = ".text\n"
+	;{}charp dsec = ".data\n"
+
+	;int j = len data`
+
+	/; loop (int i = 0; i < j) [i++]
+		/; if (string_equate(data`{i}.data`, "/;"))
+			;compile_block(~i, data, ~hsec, ~csec, ~dsec)
+		;; else if (string_equate(data`{i}.data`, ";"))
+			;compile_statement(~i, data, ~hsec, ~csec, ~dsec)
+		;; else
+			;break
+		;/
+	;/
+
+	;tnsl.io.File out = tnsl.io.writeFile(file)
+	
+	/; loop (int i = 0; i < len hsec) [i++]
+		;out.write(hsec{i})
+	;/
+
+	;out.write('\n')
+
+	/; loop (int i = 0; i < len csec) [i++]
+		;out.write(csec{i})
+	;/
+
+	;out.write('\n')
+
+	/; loop (int i = 0; i < len dsec) [i++]
+		;out.write(dsec{i})
+	;/
+
+	;out.write('\n')
 ;/
 
 ;struct Symtab {
