@@ -1,8 +1,28 @@
-/; main
-    ;asm "mov $0, %eax"
-    ;asm "call doug"
+/; _alloc
+    ;asm "mov %rax, %rdi"
+    ;asm "push %r8"
+    ;asm "push %r9"
+    ;asm "push %r10"
+    ;asm "mov $0, %r10"
+    ;asm "call malloc"
+    ;asm "pop %r10"
+    ;asm "pop %r9"
+    ;asm "pop %r8"
 ;/
 
-/; doug
+/; _delete
+    ;asm "mov %rax, %rdi"
+    ;asm "push %r9"
+    ;asm "push %r10"
+    ;asm "mov $0, %r10"
+    ;asm "call free"
+    ;asm "pop %r10"
+    ;asm "pop %r9"
+;/
 
+/; main
+    ;asm "mov $10, %rax"
+    ;asm "call _alloc"
+    ;asm "call _delete"
+    ;asm "mov $0, %rax"
 ;/
