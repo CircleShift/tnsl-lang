@@ -22,20 +22,119 @@
 
 
 ;{}{}charp COMMON_ASM = {
-	"\tret"
+	"\tret",
+	"push %",
+	"pop %"
 }
 
+;struct VType {
+	uint _size,
+	{}charp name
+}
+
+;struct VTrack {
+	{}{}charp
+		sym_names,
+	
+	{}VType
+		sym_types
+}
+
+# Null type
+;VType NT = {0, "null"}
+
+/; find_var ({}charp name, ~VTrack tab) [{}charp]
+	/; loop (int i = 0; i < 8) [i++]
+		/; if (string_equate(tab`.sym_names{i}, name))
+			;{}charp out = "r"
+			;{}charp n = string_from_int(i + 8)
+			;add_strings(~out, ~n)
+			/; if (tab`.sym_sizes{i}._size == 4)
+				;out.append('d')
+			;; else if (tab`.sym_sizes{i}._size == 2)
+				;out.append('w')
+			;; else if (tab`.sym_sizes{i}._size == 1)
+				;out.append('b')
+			;/
+			;return out
+		;/
+	;/
+
+	;tnsl.io.print("Failed to find vairable ")
+	;tnsl.io.println(name)
+;/
+
+/; token_is(~int cur, ~{}Token data, {}charp str) [bool]
+	;return string_equate(data`{cur`}.data`, str)
+;/
+
+/; setup_vtrack (~int cur, ~{}Token data, ~VTrack tab)
+	;cur`++
+
+	/; loop (cur` < len data`) [cur`++]
+		/; if (token_is(cur, data, ")"))
+			;break
+		;; 
+		;/
+	;/
+;/
+
+/; header_guard (~VTrack tab, ~{}charp csec)
+
+;/
+
+/; ret_guard (~VTrack tab, {}charp to_ret, ~{}charp csec)
+	;tail_guard(csec)
+
+;/
+
+/; tail_guard (~{}charp csec)
+;/
+
+/; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+	;cur`++
+	/; if (cur` < len data`)
+		/; if (token_is(cur, data, "asm"))
+			;cur`++
+			;{}charp raw_asm = unquote_string(data`{cur`}.data`)
+			;raw_asm.append('\n')
+			;csec`.append('\t')
+			;add_strings(csec, ~raw_asm)
+		;/
+	;/
+;/
+
 /; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+	;VTrack tab = {
+		{"", "", "", "", "", "", "", ""},
+		{NT, NT, NT, NT, NT, NT, NT, NT}
+	}
+
 	;{}charp name = {}
+	;bool r = false
 	/; loop (cur`++; cur` < len data`) [cur`++]
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
 			;name = data`{cur`}.data`
 			;add_strings(csec, ~name)
 			;csec`.append(':')
 			;csec`.append('\n')
+		;; else if (token_is(cur, data, "("))
+			;setup_vtrack(cur, data, ~tab)
+		;; else if (token_is(cur, data, "["))
+			/; loop (cur`++; cur` < len data`) [cur`++]
+				/; if (token_is(cur, data, "]"))
+					;break
+				;/
+			;/
+		;; else if (token_is(cur, data, "raw"))
+			;r = true
 		;; else
 			;break
 		;/
+	;/
+
+	/; if (!r)
+		;header_guard(tab, csec)
 	;/
 
 	/; loop (cur` < len data`) [cur`++]
@@ -61,20 +160,11 @@
 		;/
 	;/
 
-	;csec`.append('\n')
-;/
-
-/; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
-	;cur`++
-	/; if (cur` < len data`)
-		/; if (string_equate(data`{cur`}.data`, "asm"))
-			;cur`++
-			;{}charp raw_asm = unquote_string(data`{cur`}.data`)
-			;raw_asm.append('\n')
-			;csec`.append('\t')
-			;add_strings(csec, ~raw_asm)
-		;/
+	/; if (!r)
+		;tail_guard(csec)
 	;/
+
+	;csec`.append('\n')
 ;/
 
 /; do_compile ({}charp file, ~{}Token data)
@@ -116,10 +206,3 @@
 	;out.close()
 ;/
 
-;struct Symtab {
-	{}{}charp
-		sym_names,
-	
-	{}uint
-		sym_sizes
-}

@@ -1,4 +1,4 @@
-/; _alloc
+/; raw _alloc
     ;asm "mov %rax, %rdi"
     ;asm "push %r8"
     ;asm "push %r9"
@@ -10,7 +10,7 @@
     ;asm "pop %r8"
 ;/
 
-/; _delete
+/; raw _delete
     ;asm "mov %rax, %rdi"
     ;asm "push %r9"
     ;asm "push %r10"
@@ -20,7 +20,7 @@
     ;asm "pop %r9"
 ;/
 
-/; main
+/; main [int]
     ;asm "mov $10, %rax"
     ;asm "call _alloc"
     ;asm "call _delete"
