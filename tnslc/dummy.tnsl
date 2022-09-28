@@ -1,3 +1,8 @@
-/; asm_test
-	;asm "_start:\n"
+/; main
+    ;asm "mov $0, %eax"
+    ;asm "call doug"
+;/
+
+/; doug
+
 ;/

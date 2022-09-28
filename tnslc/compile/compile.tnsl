@@ -21,11 +21,26 @@
 ;/
 
 
+;{}{}charp COMMON_ASM = {
+	"\tret"
+}
+
 /; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
-	;cur`++
+	;{}charp name = {}
+	/; loop (cur`++; cur` < len data`) [cur`++]
+		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
+			;name = data`{cur`}.data`
+			;add_strings(csec, ~name)
+			;csec`.append(':')
+			;csec`.append('\n')
+		;; else
+			;break
+		;/
+	;/
 
 	/; loop (cur` < len data`) [cur`++]
-		/; if (string_equate(data`{cur`}.data`, ";/") || string_equate(data`{cur`}.data`, ";;"))
+		/; if (string_equate(data`{cur`}.data`, ";/"))
+			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 			;break
 		;; else if (string_equate(data`{cur`}.data`, "/;"))
 			;bool ch = true
@@ -38,22 +53,32 @@
 			;/			
 		;; else if (string_equate(data`{cur`}.data`, ";"))
 			;compile_statement(cur, data, hsec, csec, dsec)
+		;; else
+			;tnsl.io.print("Failed to compile token [compile_block]: ")
+			;data`{cur`}.print()
+			;tnsl.io.println("")
+			;break
 		;/
 	;/
+
+	;csec`.append('\n')
 ;/
 
 /; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
 	;cur`++
 	/; if (cur` < len data`)
 		/; if (string_equate(data`{cur`}.data`, "asm"))
-			;{}charp raw_asm = unquote_string(data`{cur` + 1}.data`)
+			;cur`++
+			;{}charp raw_asm = unquote_string(data`{cur`}.data`)
+			;raw_asm.append('\n')
+			;csec`.append('\t')
 			;add_strings(csec, ~raw_asm)
 		;/
 	;/
 ;/
 
 /; do_compile ({}charp file, ~{}Token data)
-	;{}charp hsec = ".global _start\n"
+	;{}charp hsec = ".global main\n"
 	;{}charp csec = ".text\n"
 	;{}charp dsec = ".data\n"
 

@@ -24,12 +24,14 @@
 
 /; main ({}{}charp args) [int]
 
-	/; if (len args < 2)
-		;tnsl.io.println("Usage: tnslc [file in] [file out]")
+	/; if (len args < 1)
+		;tnsl.io.println("Usage: tnslc [file in]")
 		;return 1
 	;/
 
-	;tnsl.io.File src = tnsl.io.readFile(args{0})
+	;{}charp file = args{0}
+
+	;tnsl.io.File src = tnsl.io.readFile(file)
 
 	;~{}tnslc.Token psrc = tnslc.parse.tokenize(src)
 
@@ -39,7 +41,9 @@
 	
 	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 
-	;tnslc.do_compile(args{1}, psrc)
+	;file.append('.')
+	;file.append('S')
+	;tnslc.do_compile(file, psrc)
 
 	;return 0
 ;/
