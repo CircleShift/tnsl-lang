@@ -18,3 +18,178 @@
 	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
 #/
+
+;struct Vector (type T) {
+	uint 
+		length,
+		dataSize,
+	
+	~T data
+}
+
+/; method Vector
+
+	# Constructors
+
+	/; Vector
+		;self.length = 0
+		;self.dataSize = 1
+		;alloc self.data, size T
+	;/
+
+	/; Vector (T first)
+		;self.length = 1
+		;self.dataSize = 1
+		;alloc self.data, size T
+		;self.data{0} = first
+	;/
+
+	/; Vector ({}T arr)
+		;self.length = len arr
+		;self.data_size = 1
+
+		/; loop (self.dataSize < self.length)
+			;self.dataSize *= 2
+		;/
+
+		;alloc self.data, self.dataSize * size T
+
+		/; loop (uint i = 0; i < self.length) [i++]
+			;self.data{i} = arr{i}
+		;/
+	;/
+
+
+	# Operator overloads
+
+	/; operator {} (uint index) [~T]
+		/; if (index !< 0 && index < self.length)
+			;return self.data + index
+		;/
+		# Probably not what errors will look like long term, but
+		# serves as a proof of concept for now
+		;throw Error{"Bad Index"}
+	;/
+
+	/; operator len [uint]
+		;return self.length
+	;/
+
+	/; operator == (Vector(T) vec) [bool]
+		/; if (vec.length != self.length)
+			;return false
+		;/
+
+		/; loop (uint i = 0; i < self.length) [i++]
+			/; if (vec.data{i} != self.data{i})
+				;return false
+			;/
+		;/
+
+		;return true
+	;/
+
+	/; operator delete
+		;delete self.data
+	;/
+
+	# Internal
+
+	/; _grow 
+		;realloc self.data, self.dataSize * 2 * size T
+		;self.dataSize *= 2
+	;/
+
+	/; _shrink
+		;realloc self.data, self.dataSize / 2 * size T
+		;self.dataSize /= 2
+	;/
+
+	# Basic operations
+
+	/; add (T item, uint index)
+		/; if (index < 0 || index > self.length)
+			;throw Error{"Bad Index"}
+		;/
+
+		# If it checks out then we check if we should grow
+		/; if (self.length >= self.dataSize)
+			# Might throw a memory allocation error
+			;self._grow()
+		;/
+
+		/; loop (uint i = self.length; i > index) [i--]
+			;self.data{i} = self.data{i - 1}
+		;/
+
+		;self{} = replace
+
+		;self.length += 1
+	;/
+
+	/; remove (uint index) [T]
+		;T out = self{index}
+
+		/; loop (uint i = index; i < self.length - 1) [i++]
+			;self.data{i} = self.data{i + 1}
+		;/
+
+		self.length -= 1
+
+		/; if (self.length < self.dataSize / 4)
+			;self._shrink()
+		;/
+
+		;return out
+	;/
+
+	/; remove_item (T item) [bool]
+		;bool removed = false
+
+		/; loop (uint i = 0; i < self.length) [i++]
+			/; if (!removed && self.data{i} == item)
+				;removed = true
+			;; else if (removed)
+				;self.data{i - 1} = self.data{i}
+			;/
+		;/
+
+		/; if (removed)
+			;self.length -= 1
+			/; if (self.length < self.dataSize / 4)
+				;self._shrink()
+			;/
+		;/
+
+		;return removed
+	;/
+
+	/; remove_all (T item) [uint]
+		;uint removed = 0
+
+		/; loop (uint i = 0; i < self.length - removed) [i++]
+			/; loop (self.data{i + removed} == item && removed < self.length)
+				;removed += 1
+			;; if (removed != 0 && removed < self.length)
+				;self.data{i} = self.data{i + removed}
+			;/
+		;/
+
+		;self.length -= removed
+		/; loop (self.length < self.dataSize / 4)
+			;self._shrink()
+		;/
+
+		;return removed
+	;/
+
+	/; push (T item) [uint]
+		;self.add(item, self.length)
+		;return self.length - 1
+	;/
+
+	/; pop [T]
+		;return self.remove(self.length - 1)
+	;/
+;/
+

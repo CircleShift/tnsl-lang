@@ -154,10 +154,6 @@
 
 	bool - boolean
 
-	char - ascii/extended ascii 8-bit value
-
-	charp - unicode 8-bit character part (using either UTF-8 or UN7+1)
-
 	int8 - 8-bit integer
 
 	int16 - 16-bit integer
@@ -168,9 +164,9 @@
 
 	int - the default-width integer
 
-	uint8 - 8-bit unsigned integer
+	uint8 - 8-bit unsigned integer (also used to store byte-width characters)
 
-	uint16 - 16-bit unsigned integer
+	uint16 - 16-bit unsigned integer (also used to store word-width characters)
 
 	uint32 - 32-bit unsigned integer
 
@@ -277,7 +273,7 @@
 
 	alloc* (and related) - allocate (or reallocate) memory from somewhere (tnsl.algo._alloc)
 
-	dealloc* - free allocated memory (tnsl.algo._dealloc)
+	dealloc* (and related) - free allocated memory (tnsl.algo._dealloc)
 
 \* keyword requires a libtnsl implimentation
 

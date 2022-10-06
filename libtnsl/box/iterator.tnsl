@@ -20,21 +20,149 @@
 #/
 
 # Interface for moving through a list
-/; interface ForwardsIterator (type T)
+/; interface Iterator (type T)
 
 	# Advance to the next element in the list
-	/; next [bool]
-	;/
+	/; next [bool] ;/
 
 	# Get the current element in the list
-	/; current [T]
-	;/
+	/; current [T] ;/
+
+	# Seek to the end of the iterator
+	# Returns true if this was successfull
+	/; end [bool] ;/
 ;/
 
 # Interface for moving through a list forwards or backwards
-/; interface TwoWayIterator (type T) extends ForwardsIterator(T)
+/; interface DoubleIterator (type T) extends Iterator(T)
 
 	# Move to the previous element in the list
-	/; prev [bool]
+	/; prev [bool] ;/
+
+	# Seek to the start of the iterator
+	# Returns true if this was successfull
+	/; start [bool] ;/
+;/
+
+# Iterate over an array
+;raw struct ArrayIterator (type T) extends DoubleIterator(T) {
+	uint place,
+	~{}T data
+}
+
+/; method ArrayIterator
+	/; ArrayIterator (~{}T arr)
+		;self.place = 0
+		;self.data = arr
+	;/
+
+	/; override next [bool]
+		/; if (self.place + 1 >= len self.data`)
+			;self.place = len self.data`
+			;return false
+		;/
+		;self.place++
+		;return true
+	;/
+
+	/; override current [T]
+		;return self.data`{self.place}
+	;/
+
+	/; override prev [bool]
+		/; if (self.place == 0)
+			;return false
+		;/
+		;self.place--
+		;return true
+	;/
+
+	/; override end [bool]
+		;self.place = len self.data`
+		;return true
+	;/
+
+	/; override start [bool]
+		;self.place = 0
+		;return true
+	;/
+;/
+
+# Iterate over a pointer
+;raw struct PointerIterator (type T) extends DoubleIterator(T) {
+	uint
+		place,
+		length,
+	
+	~T data
+}
+
+/; method PointerIterator
+	/; PointerIterator (~T ptr, uint length)
+		;self.place = 0
+		;self.length = length
+		;self.data = ptr
+	;/
+
+	/; override next [bool]
+		/; if (self.place + 1 >= self.length)
+			;self.place = self.length
+			;return false
+		;/
+		;self.place++
+		;return true
+	;/
+
+	/; override current [T]
+		;return self.data{self.place}
+	;/
+
+	/; override prev [bool]
+		/; if (self.place == 0)
+			;return false
+		;/
+		;self.place--
+		;return true
+	;/
+
+	/; override end [bool]
+		;self.place = self.length
+		;return true
+	;/
+
+	/; override start [bool]
+		;self.place = 0
+		;return true
+	;/
+;/
+
+;struct ReverseIterator (type T) extends DoubleIterator(T) {
+	DoubleIterator(T) it
+}
+
+/; method ReverseIterator
+	/; ReverseIterator (DoubleIterator(T) it)
+		;self.it = it
+		;self.it.end()
+	;/
+
+	/; override next [bool]
+		;return self.it.prev()
+	;/
+
+	/; override current [T]
+		;return self.it.current()
+	;/
+
+	/; override prev [bool]
+		;return self.it.next()
+	;/
+
+	/; override end [bool]
+		;return self.it.start()
+	;/
+
+	/; override start [bool]
+		;return self.it.end()
 	;/
 ;/

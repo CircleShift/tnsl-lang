@@ -1,0 +1,157 @@
+/##
+	Copyright 2021 Kyle Gunger
+
+	Dual licensed under the CDDL 1.0 and BSD 3-Clause licenses.
+
+	This file may only be used in accordance with one of the two
+	licenses.  You should have received a copy of each license with
+	the source code.  In the event that you did not recieve a copy
+	of the licenses, they may be found at the following URLs:
+
+	CDDL 1.0:
+	https://opensource.org/licenses/CDDL-1.0
+
+	BSD 3-Clause:
+	https://opensource.org/licenses/BSD-3-Clause
+
+	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
+	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
+	EXPRESS OR IMPLIED
+#/
+
+# ABS functions
+
+/; abs (int a) [int]
+    /; if (a < 0)
+        ;return -a
+    ;/
+    ;return a
+;/
+
+/; absf (float a) [float]
+    /; if (a < 0)
+        ;return -a
+    ;/
+    ;return a
+;/
+
+/; abst (type T, T a) [T]
+    /; if ( a < (0)[T] )
+        ;return -a
+    ;/
+    ;return a
+;/
+
+# Div funcs
+
+/; div (int a, b) [int, int]
+    ;int o1 = a / b, o2 = a % b
+    ;return o1, o2
+;/
+
+/; divf (float a, b) [float, float]
+    ;float o1 = a / b, o2 = a % b
+    ;return o1, o2
+;/
+
+/; divt (type T, T a, b) [T, T]
+    ;T o1 = a / b, o2 = a % b
+    ;return o1, o2
+;/
+
+# Min/Max functions
+
+/; max (int a, b) [int]
+    /; if (a > b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+/; maxf (float a, b) [float]
+    /; if (a > b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+/; maxt (type T, T a, b) [T]
+    /; if (a > b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+/; min (int a, b) [int]
+    /; if (a < b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+/; minf (float a, b) [float]
+    /; if (a > b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+/; mint (type T, T a, b) [T]
+    /; if (a < b)
+        ;return a
+    ;/
+    ;return b
+;/
+
+# Float rounding
+
+/; trunc (float a) [float]
+    ;return a - (a % 1.0)
+;/
+
+/; trunct (type T, T a) [T]
+    ;return a - (a % (1.0)[T])
+;/
+
+/; ceil (float a) [float]
+    /; if (trunc(a) !== a)
+        ;return trunc(a + 1.0)
+    ;/
+    ;return a
+;/
+
+/; ceilt (type T, T a) [T]
+    /; if (trunct(T, a) !== a)
+        ;return trunct(T, a + (1.0)[T])
+    ;/
+    ;return a
+;/
+
+/; floor (float a) [float]
+    /; if (trunc(a) !== a)
+        ;return trunc(a - 1.0)
+    ;/
+    ;return a
+;/
+
+/; floort (type T, T a) [T]
+    /; if (trunct(T, a) !== a)
+        ;return trunct(T, a - (1.0)[T])
+    ;/
+    ;return a
+;/
+
+/; round (float a) [float]
+    /; if (a % 1.0 < 0.5)
+        ;return floor(a)
+    ;/
+    ;return ceil(a)
+;/
+
+/; roundt (type T, T a) [T]
+    /; if (a % (1.0)[T] < (0.5)[T])
+        ;return floort(T, a)
+    ;/
+    ;return ceilt(T, a)
+;/
+

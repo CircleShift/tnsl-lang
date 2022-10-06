@@ -19,17 +19,48 @@
 	EXPRESS OR IMPLIED
 #/
 
-/##
-	module tnsl.box
-	Containers and data management classes
+;struct LNode (type T) {
+	T data,
+	~void next
+}
 
-#; export module box
-	/: import
-		"_vect.tnsl"
-		"iterator.tnsl"
-		"map.tnsl"
-		"string.tnsl"
-		"tree.tnsl"
-		"vector.tnsl"
-	:/ 
+/; method LNode
+	/; get_next_type (type B) [LNode(B)]
+		;return (self.next)[~LNode(B)]`
+	;/
+
+	/; get_next [LNode(T)]
+		;return (self.next)[~LNode(T)]`
+	;/
 ;/
+
+;struct DLNode (type T) extends LNode(T) {
+	super,
+	~void prev
+}
+
+/; method DLNode
+	/; get_prev_type (type B) [LNode(B)]
+		;return (self.prev)[~LNode(B)]`
+	;/
+
+	/; get_prev [LNode(T)]
+		;return (self.prev)[~LNode(T)]`
+	;/
+;/
+
+;struct List {
+	uint length,
+
+	LNode
+		first,
+		last
+}
+
+;struct DList {
+	uint length,
+
+	DLNode
+		first,
+		last
+}

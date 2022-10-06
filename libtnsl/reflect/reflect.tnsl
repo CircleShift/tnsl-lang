@@ -25,7 +25,7 @@
 
 #; export module reflect
 	/: import
-		"type.tnsl"
+		"_type.tnsl"
 		"virtual.tnsl"
 		"resolver.tnsl"
 		"dispatch.tnsl"

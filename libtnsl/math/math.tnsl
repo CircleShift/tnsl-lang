@@ -19,17 +19,8 @@
 	EXPRESS OR IMPLIED
 #/
 
-/##
-	module tnsl.box
-	Containers and data management classes
-
-#; export module box
-	/: import
-		"_vect.tnsl"
-		"iterator.tnsl"
-		"map.tnsl"
-		"string.tnsl"
-		"tree.tnsl"
-		"vector.tnsl"
-	:/ 
+/; export module math
+	/; include
+		"basic.tnsl"
+	;/
 ;/

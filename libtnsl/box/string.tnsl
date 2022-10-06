@@ -18,3 +18,31 @@
 	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
 #/
+
+;raw enum TEXT_ENCODING {
+	UTF_8,
+	UN7_1,
+	ASCII
+}
+
+;struct String extends Vector (uint8) {
+	uint 
+}
+
+/; method String
+	/; cmp (String str) [int]
+		/; loop (self.)
+
+		;/
+	;/
+
+	/; override operator == (String str) [bool]
+		;return cmp(str) == 0
+	;/
+;/
+
+;struct WString extends Vector (uint16) {}
+
+/; method WString
+
+;/

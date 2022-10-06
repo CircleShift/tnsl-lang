@@ -43,25 +43,23 @@
 # Null type
 ;VType NT = {0, "null"}
 
-/; find_var ({}charp name, ~VTrack tab) [{}charp]
-	/; loop (int i = 0; i < 8) [i++]
+/; name_to_index ({}charp name, ~VTrack tab) [int]
+	/; loop (int i = 0; i < len tab`.sym_names) [i++]
 		/; if (string_equate(tab`.sym_names{i}, name))
-			;{}charp out = "r"
-			;{}charp n = string_from_int(i + 8)
-			;add_strings(~out, ~n)
-			/; if (tab`.sym_sizes{i}._size == 4)
-				;out.append('d')
-			;; else if (tab`.sym_sizes{i}._size == 2)
-				;out.append('w')
-			;; else if (tab`.sym_sizes{i}._size == 1)
-				;out.append('b')
-			;/
-			;return out
+			;return i
 		;/
 	;/
 
 	;tnsl.io.print("Failed to find vairable ")
 	;tnsl.io.println(name)
+
+	;return -1
+;/
+
+/; index_to_loc (int index, ~VTrack tab) [{}charp]
+	;{}charp out = ""
+
+	
 ;/
 
 /; token_is(~int cur, ~{}Token data, {}charp str) [bool]

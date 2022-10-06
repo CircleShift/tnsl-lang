@@ -26,6 +26,7 @@
 		"algo"
 		"box"
 		"io"
+		"math"
 		"reflect"
 		"time"
 	:/
