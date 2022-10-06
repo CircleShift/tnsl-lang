@@ -30,7 +30,7 @@ libtnsl provides the tnsl base module and the following sub-modules to address e
 Each sub-module should have its own README to address features
 
 ---
-	Copyright 2021 Kyle Gunger
+	Copyright 2021-2022 Kyle Gunger
 
 	Dual licensed under the CDDL 1.0 and BSD 3-Clause licenses.
 

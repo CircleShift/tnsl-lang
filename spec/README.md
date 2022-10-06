@@ -47,7 +47,7 @@ Right now, TNSL isn't a language.  But it *could* be.  And, really, I think it's
 
 ## Credits
 
-	Copyright 2021 Kyle Gunger
+	Copyright 2021-2022 Kyle Gunger
 
 	This file is licensed under the CDDL 1.0 (the License)
 	and may only be used in accordance with the License.

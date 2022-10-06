@@ -42,7 +42,7 @@ It is reccommended that if you are going to clone this repository and attempt to
 
 ## Credits
 
-	Copyright 2021 Kyle Gunger
+	Copyright 2021-2022 Kyle Gunger
 
 	This file is licensed under the CDDL 1.0 (the License)
 	and may only be used in accordance with the License.
