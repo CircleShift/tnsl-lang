@@ -19,14 +19,14 @@
 	EXPRESS OR IMPLIED
 #/
 
-;raw enum TEXT_ENCODING {
+;enum TEXT_ENCODING [uint] {
 	UTF_8,
 	UN7_1,
 	ASCII
 }
 
-;struct String extends Vector (uint8) {
-	uint 
+;struct String extends Vector(uint8) {
+	uint encoding
 }
 
 /; method String

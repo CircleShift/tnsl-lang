@@ -16,15 +16,14 @@
 
 /; module compile
 	# :include "compile/arch/arch.tnsl"
-	:include "compile/isa_x86.tnsl"
 	# :include "compile/comp.tnsl"
 ;/
 
 
 ;{}{}charp COMMON_ASM = {
 	"\tret",
-	"push %",
-	"pop %"
+	"\tpush %",
+	"\tpop %"
 }
 
 ;struct VType {

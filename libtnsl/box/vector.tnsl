@@ -68,7 +68,7 @@
 		;/
 		# Probably not what errors will look like long term, but
 		# serves as a proof of concept for now
-		;throw Error{"Bad Index"}
+		;throw Error("Bad index", ERROR_CODE.OUT_OF_RANGE)
 	;/
 
 	/; operator len [uint]

@@ -18,3 +18,21 @@
 	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
 	EXPRESS OR IMPLIED
 #/
+
+;enum ERROR_CODE [uint] {
+	OUT_OF_RANGE
+}
+
+;struct Error {
+	String msg,
+	uint code,
+	~void data
+}
+
+/; method Error
+	/; Error (String msg, uint code)
+		;self.msg = msg
+		;self.code = code
+		;self.data = null
+	;/
+;/
