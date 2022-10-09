@@ -64,7 +64,7 @@
 	;int i = 0
 
 	/; loop (i < index) [i++]
-		/; if (tab`.sym_types{i}._size <= 8 && reg < 7)
+		/; if (tab`.sym_types{i}._size !> 8 && reg < 7)
 			;reg++
 		;; else
 			;stack_bytes = stack_bytes + tab`.sym_types{i}._size
