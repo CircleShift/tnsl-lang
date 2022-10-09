@@ -14,6 +14,128 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; add_asm
+/; push_asm ({}charp reg) [{}charp]
+	;{}charp out = "\tpush "
+	;add_strings(~out, ~reg)
+	;out.append('\n')
+	;return out
+;/
 
+/; pop_asm ({}charp reg) [{}charp]
+	;{}charp out = "\tpop "
+	;add_strings(~out, ~reg)
+	;out.append('\n')
+	;return out
+;/
+
+/; header_guard [{}charp]
+	;{}charp out = "", tmp = ""
+	;tmp = push_asm("%r8")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r9")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r10")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r11")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r12")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r13")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r14")
+	;add_strings(~out, ~tmp)
+	;tmp = push_asm("%r15")
+	;add_strings(~out, ~tmp)
+	;return out
+;/
+
+/; tail_guard [{}charp]
+	;{}charp out = "", tmp = ""
+	;tmp = pop_asm("%r15")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r14")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r13")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r12")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r11")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r10")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r9")
+	;add_strings(~out, ~tmp)
+	;tmp = pop_asm("%r8")
+	;add_strings(~out, ~tmp)
+	;return out
+;/
+
+/# Accepted common names:
+#    - ax
+#    - bx
+#    - cx
+#    - dx
+#    - sp
+#    - bp
+#    - si
+#    - di
+#    - 8-15
+#/
+/; get_reg (uint size, {}charp common) [{}charp]
+	;{}charp out = "%"
+
+	/; if (string_equate(common, "ax") || string_equate(common, "bx") || string_equate(common, "cx") || string_equate(common, "dx"))
+
+		/; if (size == 1)
+			common{1} = 'l'
+		;; else if (size == 4)
+			;out.append('e')
+		;; else if (size == 8)
+			;out.append('r')
+		;/
+
+		;add_strings(~out, ~common)
+
+	;; else if (string_equate(common, "sp") || string_equate(common, "bp") || string_equate(common, "si") || string_equate(common, "di"))
+		
+		/; if (size == 1)
+			;common.append('l')
+		;; else if (size == 4)
+			;out.append('e')
+		;; else if (size == 8)
+			;out.append('r')
+		;/
+
+		;add_strings(~out, ~common)
+
+	;; else
+
+		;{}charp out = "r"
+		;add_strings(~out, ~common)
+		/; if (size == 1)
+			;out.append('b')
+		;; else if (size == 2)
+			;out.append('w')
+		;; else if (size == 4)
+			;out.append('d')
+		;/
+		;return out
+	;/
+
+	;return out
+;/
+
+/; literal_num ({}charp num) [{}charp]
+	;{}charp out = "$"
+	;add_strings(~out, ~num)
+	;return out
+;/
+
+/; add_asm ({}charp from, to) [{}charp]
+	;{}charp out = "\tadd "
+	;add_strings(~out, ~from)
+	;out.append(',')
+	;out.append(' ')
+	;add_strings(~out, ~to)
+	;
 ;/
