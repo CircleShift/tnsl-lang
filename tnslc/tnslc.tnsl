@@ -19,6 +19,7 @@
 /; export module tnslc
 	:include "parse/parse.tnsl"
 	:include "compile/compile.tnsl"
+	:include "compile/isa_x86.tnsl"
 ;/
 
 

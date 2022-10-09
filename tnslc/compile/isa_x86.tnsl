@@ -14,18 +14,52 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; push_asm ({}charp reg) [{}charp]
-	;{}charp out = "\tpush "
-	;add_strings(~out, ~reg)
-	;out.append('\n')
+/; construct_statement({}charp base, {}{}charp args) [{}charp]
+	/; loop (int i = 0; i < len args) [i++]
+		;add_strings(~base, ~(args{i}))
+		/; if (i < len args - 1)
+			;base.append(',')
+			;base.append(' ')
+		;/
+	;/
+	;base.append('\n')
+	;return base
+;/
+
+/; literal_num ({}charp num) [{}charp]
+	;{}charp out = "$"
+	;add_strings(~out, ~num)
 	;return out
 ;/
 
+/; add_asm ({}charp from, to) [{}charp]
+	;return construct_statement("\tadd ", {from, to})
+;/
+
+/; sub_asm({}charp from, to) [{}charp]
+	;return construct_statement("\tsub ", {from, to})
+;/
+
+/; push_asm ({}charp reg) [{}charp]
+	;return construct_statement("\tpush ", {reg})
+;/
+
 /; pop_asm ({}charp reg) [{}charp]
-	;{}charp out = "\tpop "
-	;add_strings(~out, ~reg)
-	;out.append('\n')
-	;return out
+	;return construct_statement("\tpop ", {reg})
+;/
+
+/; cmp_asm ({}charp a, b) [{}charp]
+	;return construct_statement("\tcmp ", {a, b})
+;/
+
+/; jmp_asm ({}charp pos) [{}charp]
+	;return construct_statement("\tjmp ", {pos})
+;/
+
+/; mem_offset ({}charp pos, offset, scale) [{}charp]
+	;{}charp tmp = construct_statement("(", {pos, offset, scale})
+	;tmp{len tmp - 1} = ')'
+	;return tmp
 ;/
 
 /; header_guard [{}charp]
@@ -87,7 +121,7 @@
 	/; if (string_equate(common, "ax") || string_equate(common, "bx") || string_equate(common, "cx") || string_equate(common, "dx"))
 
 		/; if (size == 1)
-			common{1} = 'l'
+			;common{1} = 'l'
 		;; else if (size == 4)
 			;out.append('e')
 		;; else if (size == 8)
@@ -123,19 +157,4 @@
 	;/
 
 	;return out
-;/
-
-/; literal_num ({}charp num) [{}charp]
-	;{}charp out = "$"
-	;add_strings(~out, ~num)
-	;return out
-;/
-
-/; add_asm ({}charp from, to) [{}charp]
-	;{}charp out = "\tadd "
-	;add_strings(~out, ~from)
-	;out.append(',')
-	;out.append(' ')
-	;add_strings(~out, ~to)
-	;
 ;/

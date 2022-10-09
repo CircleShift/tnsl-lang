@@ -14,13 +14,6 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; module compile
-
-	# :include "compile/arch/arch.tnsl"
-	# :include "compile/comp.tnsl"
-;/
-
-:include "isa_x86.tnsl"
 
 ;{}{}charp COMMON_ASM = {
 	"\tret",
@@ -88,18 +81,6 @@
 	;/
 ;/
 
-/; header_guard (~VTrack tab, ~{}charp csec)
-
-;/
-
-/; ret_guard (~VTrack tab, {}charp to_ret, ~{}charp csec)
-	;tail_guard(csec)
-
-;/
-
-/; tail_guard (~{}charp csec)
-;/
-
 /; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
 	;cur`++
 	/; if (cur` < len data`)
@@ -115,8 +96,8 @@
 
 /; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
 	;VTrack tab = {
-		{"", "", "", "", "", "", "", ""},
-		{NT, NT, NT, NT, NT, NT, NT, NT}
+		{},
+		{}
 	}
 
 	;{}charp name = {}
@@ -182,7 +163,7 @@
 	;{}charp dsec = ".data\n"
 
 	;int j = len data`
-
+	/#
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
 			;compile_block(~i, data, ~hsec, ~csec, ~dsec)
@@ -192,6 +173,9 @@
 			;break
 		;/
 	;/
+	#/
+	;{}charp tmp = add_asm("%eax", "%edx")
+	;add_strings(~csec, ~tmp)
 
 	;tnsl.io.File out = tnsl.io.writeFile(file)
 	

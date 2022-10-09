@@ -1,28 +1,17 @@
-/; raw _alloc
+/; _alloc (uint bytes) [~void]
     ;asm "mov %rax, %rdi"
-    ;asm "push %r8"
-    ;asm "push %r9"
-    ;asm "push %r10"
     ;asm "mov $0, %r10"
     ;asm "call malloc"
-    ;asm "pop %r10"
-    ;asm "pop %r9"
-    ;asm "pop %r8"
 ;/
 
-/; raw _delete
+/; _delete (~void ptr)
     ;asm "mov %rax, %rdi"
-    ;asm "push %r9"
-    ;asm "push %r10"
     ;asm "mov $0, %r10"
     ;asm "call free"
-    ;asm "pop %r10"
-    ;asm "pop %r9"
 ;/
 
 /; main [int]
-    ;asm "mov $10, %rax"
-    ;asm "call _alloc"
-    ;asm "call _delete"
-    ;asm "mov $0, %rax"
+    ;~void ptr = _alloc(10)
+    ;_delete(ptr)
+    ;return 0
 ;/
