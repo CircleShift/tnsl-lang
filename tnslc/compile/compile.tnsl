@@ -249,9 +249,6 @@
 			;break
 		;/
 	;/
-	
-	;{}charp tmp = mem_offset("%edi", "%edx", "1")
-	;add_strings(~csec, ~tmp)
 
 	;tnsl.io.File out = tnsl.io.writeFile(file)
 	

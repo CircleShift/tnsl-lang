@@ -10,7 +10,7 @@
     ;asm "call free"
 ;/
 
-/; main [int]
+/; main (uint argc, ~~uint8 argv) [int]
     ;~void ptr = _alloc(10)
     ;_delete(ptr)
     ;return 0
