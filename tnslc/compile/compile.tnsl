@@ -22,7 +22,11 @@
 }
 
 ;struct VType {
-	uint _size,
+	uint
+		_size,
+	int
+		ptr,
+	
 	{}charp name
 }
 
@@ -34,8 +38,27 @@
 		sym_types
 }
 
+# Sizes of items
+;{}VType type_table = {
+	{1, 0, "int8"},
+	{2, 0, "int16"},
+	{4, 0, "int32"},
+	{8, 0, "int64"},
+	{8, 0, "int"},
+	{1, 0, "uint8"},
+	{2, 0, "uint16"},
+	{4, 0, "uint32"},
+	{8, 0, "uint64"},
+	{8, 0, "uint"},
+	{4, 0, "float32"},
+	{8, 0, "float64"},
+	{8, 0, "float"},
+	{1, 0, "bool"},
+	{8, 0, "void"}
+}
+
 # Null type
-;VType NT = {0, "null"}
+;VType NT = {0, 0, "null"}
 
 /; name_to_index ({}charp name, ~VTrack tab) [int]
 	/; loop (int i = 0; i < len tab`.sym_names) [i++]
@@ -64,19 +87,75 @@
 		;/
 	;/
 	
+	;return out
 ;/
 
 /; token_is(~int cur, ~{}Token data, {}charp str) [bool]
 	;return string_equate(data`{cur`}.data`, str)
 ;/
 
+/; skip_to_name (~int cur, ~{}Token data)
+	;int tmp = 0
+	/; loop (cur` < len data`) [cur`++]
+		;tmp = cur` + 1
+		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && ( token_is(~tmp, data, ",") || token_is(~tmp, data, ")") ))
+			;break
+		;/
+	;/
+;/
+
+/; vtype_by_name ({}charp name) [VType]
+	/; loop (int i = 0; i < len type_table) [i++]
+		;VType tmp = tnslc.type_table{i}
+		/; if (string_equate(name, tmp.name))
+			;return tmp
+		;/
+	;/
+	;return NT
+;/
+
+/; get_vtype (~int cur, ~{}Token data) [VType]
+	;uint ptr = 0
+	;VType out = NT
+
+	/; loop (cur` < len data`) [cur`++]
+		;int i = data`{cur`}.token_type
+		/; if (token_is(cur, data, "~") || token_is(cur, data, "{"))
+			;ptr++
+		;; else if (i == TOKEN_TYPE.DEFWORD || i == TOKEN_TYPE.KEYTYPE)
+			;out = vtype_by_name(data`{cur`}.data`)
+			;break
+		;; else if (!token_is(cur, data, "}"))
+			;break
+		;/
+	;/
+
+	;out.ptr = ptr
+
+	;return out
+;/
+
 /; setup_vtrack (~int cur, ~{}Token data, ~VTrack tab)
 	;cur`++
 
+	;VType last = NT
+
 	/; loop (cur` < len data`) [cur`++]
+		;int pre_skip = cur`
 		/; if (token_is(cur, data, ")"))
 			;break
-		;; 
+		;; else if (!token_is(cur, data, ","))
+			;skip_to_name(cur, data)
+			/; if (pre_skip == cur`)
+				;tab`.sym_types.append(last)
+				;tab`.sym_names.append(data`{cur`}.data`)
+			;; else
+				;cur` = pre_skip
+				;last = get_vtype(cur, data)
+				;skip_to_name(cur, data)
+				;tab`.sym_types.append(last)
+				;tab`.sym_names.append(data`{cur`}.data`)
+			;/
 		;/
 	;/
 ;/
@@ -95,12 +174,9 @@
 ;/
 
 /; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
-	;VTrack tab = {
-		{},
-		{}
-	}
+	;VTrack tab = { {}, {} }
 
-	;{}charp name = {}
+	;{}charp name = ""
 	;bool r = false
 	/; loop (cur`++; cur` < len data`) [cur`++]
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
@@ -163,7 +239,7 @@
 	;{}charp dsec = ".data\n"
 
 	;int j = len data`
-	/#
+	
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
 			;compile_block(~i, data, ~hsec, ~csec, ~dsec)
@@ -173,8 +249,8 @@
 			;break
 		;/
 	;/
-	#/
-	;{}charp tmp = add_asm("%eax", "%edx")
+	
+	;{}charp tmp = mem_offset("%edi", "%edx", "1")
 	;add_strings(~csec, ~tmp)
 
 	;tnsl.io.File out = tnsl.io.writeFile(file)
