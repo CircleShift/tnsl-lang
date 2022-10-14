@@ -49,18 +49,18 @@
 	;/
 ;/
 
-;struct List {
+;struct List (type T) {
 	uint length,
 
-	LNode
+	LNode(T)
 		first,
 		last
 }
 
-;struct DList {
+;struct DList (type T) {
 	uint length,
 
-	DLNode
+	DLNode(T)
 		first,
 		last
 }

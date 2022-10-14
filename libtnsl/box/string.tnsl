@@ -30,19 +30,26 @@
 }
 
 /; method String
-	/; cmp (String str) [int]
-		/; loop (self.)
+	# Returns index of first difference, or -1 if there is no difference
+	/; diff_index (String str) [int]
+		;uint l = math.mint(uint, str.length, self.length)
+		/; loop (uint i = 0; i < l) [i++]
+			/; if (self{i} != str{i})
+				;return i [int]
+			;/
+		;/
+
+		/; if ()
 
 		;/
+
+		;return -1
 	;/
 
 	/; override operator == (String str) [bool]
-		;return cmp(str) == 0
+		/; if (self.encoding != str.encoding || self.length != str.length)
+			;return false
+		;/
+		;return diff_index(str) == -1
 	;/
-;/
-
-;struct WString extends Vector (uint16) {}
-
-/; method WString
-
 ;/

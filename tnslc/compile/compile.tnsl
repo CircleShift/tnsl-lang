@@ -16,11 +16,10 @@
 
 
 ;{}{}charp COMMON_ASM = {
-	"\tret",
-	"\tpush %",
-	"\tpop %"
+	"\tret\n"
 }
 
+# Represents a type
 ;struct VType {
 	uint
 		_size,
@@ -30,6 +29,7 @@
 	{}charp name
 }
 
+# Tracks defined variables in a block
 ;struct VTrack {
 	{}{}charp
 		sym_names,
@@ -60,6 +60,7 @@
 # Null type
 ;VType NT = {0, 0, "null"}
 
+# Returns an index in the vtrack for a given variable name
 /; name_to_index ({}charp name, ~VTrack tab) [int]
 	/; loop (int i = 0; i < len tab`.sym_names) [i++]
 		/; if (string_equate(tab`.sym_names{i}, name))
@@ -73,6 +74,8 @@
 	;return -1
 ;/
 
+# Given an index in the vtrack, returns a string representation of the
+# register or memory where that variable is
 /; index_to_loc (int index, ~VTrack tab) [{}charp]
 	;{}charp out = ""
 	;int stack_bytes = 0
@@ -90,20 +93,34 @@
 	;return out
 ;/
 
+# Is struct returns true if the type name given is a struct
+/; is_struct ({}charp name) [bool]
+	/; loop (int i = 0; i < 15) [i++]
+		/; if (string_equate(type_table{i}, name))
+			;return false
+		;/
+	;/
+	;return true
+;/
+
+# Checks if the current token's data is equal to a string
 /; token_is(~int cur, ~{}Token data, {}charp str) [bool]
 	;return string_equate(data`{cur`}.data`, str)
 ;/
 
+# Skips in a definition or list until it finds a name
 /; skip_to_name (~int cur, ~{}Token data)
 	;int tmp = 0
 	/; loop (cur` < len data`) [cur`++]
 		;tmp = cur` + 1
-		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && ( token_is(~tmp, data, ",") || token_is(~tmp, data, ")") ))
+		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && 
+				( token_is(~tmp, data, ",") || token_is(~tmp, data, ")") || token_is(~tmp, data, "}") || token_is(~tmp, data, ";") ))
 			;break
 		;/
 	;/
 ;/
 
+# Searches the type table for a type
 /; vtype_by_name ({}charp name) [VType]
 	/; loop (int i = 0; i < len type_table) [i++]
 		;VType tmp = tnslc.type_table{i}
@@ -114,6 +131,7 @@
 	;return NT
 ;/
 
+# Parses a type in a definition or list
 /; get_vtype (~int cur, ~{}Token data) [VType]
 	;uint ptr = 0
 	;VType out = NT
@@ -135,6 +153,8 @@
 	;return out
 ;/
 
+# Assumes cur points to the beginning of the arguments list
+# Sets up the VTrack struct that is pointed to.
 /; setup_vtrack (~int cur, ~{}Token data, ~VTrack tab)
 	;cur`++
 
@@ -150,9 +170,7 @@
 				;tab`.sym_types.append(last)
 				;tab`.sym_names.append(data`{cur`}.data`)
 			;; else
-				;cur` = pre_skip
-				;last = get_vtype(cur, data)
-				;skip_to_name(cur, data)
+				;last = get_vtype(~pre_skip, data)
 				;tab`.sym_types.append(last)
 				;tab`.sym_names.append(data`{cur`}.data`)
 			;/
@@ -160,7 +178,8 @@
 	;/
 ;/
 
-/; compile_statement (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+# 
+/; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [bool]
 	;cur`++
 	/; if (cur` < len data`)
 		/; if (token_is(cur, data, "asm"))
@@ -169,15 +188,48 @@
 			;raw_asm.append('\n')
 			;csec`.append('\t')
 			;add_strings(csec, ~raw_asm)
+		;; else if (token_is(cur, data, "return"))
+			;return true
+		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
+			# set value
+			;int i = name_to_index(data`{cur`}.data`, tab)
+		;; else if (string_equate(data`{cur`+1}.data`, "("))
+			# Function call
+			;eval(cur, data, tab, gsc, hsec, csec, dsec, "ax")
+		;; else
+			#Definition
+			;VType def_t = get_vtype(cur, data)
+			;cur`++
+			
+			/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
+				;tab`.sym_types.append(def_t)
+				;tab`.sym_names.append(data`{cur`}.data`)
+				;cur`++
+				/; if (token_is(cur, data, ","))
+					;cur`++
+				;; else if (token_is(cur, data "="))
+					;{}charp loc = index_to_loc(len tab`.sym_names - 1, tab)
+					;eval(cur, data, tab, gsc, hsec, csec, dsec, loc)
+					/; if (token_is(cur, data, ","))
+						;cur`++
+					;/
+				;/
+			;/
+			/; if (string_equate(data`{cur`+1}.data`, "="))
+
+			;/
 		;/
 	;/
+
+	;return false
 ;/
 
-/; compile_block (~int cur, ~{}Token data, ~{}charp hsec, csec, dsec)
+/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
 	;VTrack tab = { {}, {} }
-
+	;VType out_type = NT
 	;{}charp name = ""
 	;bool r = false
+
 	/; loop (cur`++; cur` < len data`) [cur`++]
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
 			;name = data`{cur`}.data`
@@ -187,11 +239,9 @@
 		;; else if (token_is(cur, data, "("))
 			;setup_vtrack(cur, data, ~tab)
 		;; else if (token_is(cur, data, "["))
-			/; loop (cur`++; cur` < len data`) [cur`++]
-				/; if (token_is(cur, data, "]"))
-					;break
-				;/
-			;/
+			;cur`++
+			;out_type = get_vtype(cur, data)
+			;cur`++
 		;; else if (token_is(cur, data, "raw"))
 			;r = true
 		;; else
@@ -199,12 +249,18 @@
 		;/
 	;/
 
+	;tnsl.io.println(out_type.name)
+
 	/; if (!r)
-		;header_guard(tab, csec)
+		;header_guard(csec)
 	;/
 
-	/; loop (cur` < len data`) [cur`++]
+	;bool ret = false
+	/; loop (cur` < len data` && !ret) [cur`++]
 		/; if (string_equate(data`{cur`}.data`, ";/"))
+			/; if (!r)
+				;tail_guard(csec)
+			;/
 			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 			;break
 		;; else if (string_equate(data`{cur`}.data`, "/;"))
@@ -217,17 +273,19 @@
 				;ch = string_equate(data`{cur`}.data`, ";;")
 			;/			
 		;; else if (string_equate(data`{cur`}.data`, ";"))
-			;compile_statement(cur, data, hsec, csec, dsec)
+			;ret = compile_statement(cur, data, ~tab, gsc, hsec, csec, dsec)
+			/; if (ret)
+				/; if (!r)
+					;tail_guard(csec)
+				;/
+				;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
+			;/
 		;; else
 			;tnsl.io.print("Failed to compile token [compile_block]: ")
 			;data`{cur`}.print()
 			;tnsl.io.println("")
 			;break
 		;/
-	;/
-
-	/; if (!r)
-		;tail_guard(csec)
 	;/
 
 	;csec`.append('\n')
@@ -240,11 +298,13 @@
 
 	;int j = len data`
 	
+	;VTrack global_scope = {{}, {}}
+
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
 			;compile_block(~i, data, ~hsec, ~csec, ~dsec)
 		;; else if (string_equate(data`{i}.data`, ";"))
-			;compile_statement(~i, data, ~hsec, ~csec, ~dsec)
+			;compile_global(~i, data, ~hsec, ~csec, ~dsec)
 		;; else
 			;break
 		;/

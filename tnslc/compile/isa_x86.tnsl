@@ -62,7 +62,7 @@
 	;return tmp
 ;/
 
-/; header_guard [{}charp]
+/; header_guard (~{}charp csec) [{}charp]
 	;{}charp out = "", tmp = ""
 	;tmp = push_asm("%r8")
 	;add_strings(~out, ~tmp)
@@ -80,10 +80,10 @@
 	;add_strings(~out, ~tmp)
 	;tmp = push_asm("%r15")
 	;add_strings(~out, ~tmp)
-	;return out
+	;add_strings(csec, ~out)
 ;/
 
-/; tail_guard [{}charp]
+/; tail_guard (~{}charp csec) [{}charp]
 	;{}charp out = "", tmp = ""
 	;tmp = pop_asm("%r15")
 	;add_strings(~out, ~tmp)
@@ -101,7 +101,7 @@
 	;add_strings(~out, ~tmp)
 	;tmp = pop_asm("%r8")
 	;add_strings(~out, ~tmp)
-	;return out
+	;add_strings(csec, ~out)
 ;/
 
 /# Accepted common names:
@@ -157,4 +157,12 @@
 	;/
 
 	;return out
+;/
+
+/; make_label ({}charp func_name, func_place, ~{}charp csec)
+	;func_name.append("_")
+	;add_strings(~func_name, ~func_place)
+	;add_strings(csec, ~func_name)
+	;csec`.append(':')
+	;csec`.append('\n')
 ;/
