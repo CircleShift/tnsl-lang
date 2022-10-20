@@ -56,6 +56,13 @@
 	;return construct_statement("\tjmp ", {pos})
 ;/
 
+/; cjmp_asm ({}charp suffix, pos) [{}charp]
+	;{}charp p = "\tj"
+	;add_strings(~p, ~suffix)
+	;p.append(' ')
+	;return construct_statement(p, {pos})
+;/
+
 /; mem_offset ({}charp pos, offset, scale) [{}charp]
 	;{}charp tmp = construct_statement("(", {pos, offset, scale})
 	;tmp{len tmp - 1} = ')'
@@ -102,6 +109,13 @@
 	;tmp = pop_asm("%r8")
 	;add_strings(~out, ~tmp)
 	;add_strings(csec, ~out)
+;/
+
+/; is_common_reg ({}charp n) [bool]
+	;return string_equate(n, "ax") || string_equate(n, "bx") || string_equate(n, "cx") || string_equate(n, "dx")
+			|| string_equate(n, "sp")  || string_equate(n, "bp") ||  string_equate(n, "si")  || string_equate(n, "di")
+			|| string_equate(n, "8") || string_equate(n, "9") || string_equate(n, "10") || string_equate(n, "11")
+			|| string_equate(n, "12") || string_equate(n, "13") || string_equate(n, "14") || string_equate(n, "15")
 ;/
 
 /# Accepted common names:
@@ -162,7 +176,7 @@
 /; make_label ({}charp func_name, func_place, ~{}charp csec)
 	;func_name.append("_")
 	;add_strings(~func_name, ~func_place)
+	;func_name.append(':')
+	;func_name.append('\n')
 	;add_strings(csec, ~func_name)
-	;csec`.append(':')
-	;csec`.append('\n')
 ;/

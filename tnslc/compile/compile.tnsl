@@ -62,7 +62,7 @@
 
 # Returns an index in the vtrack for a given variable name
 /; name_to_index ({}charp name, ~VTrack tab) [int]
-	/; loop (int i = 0; i < len tab`.sym_names) [i++]
+	/; loop (int i = 0; i < len (tab`.sym_names)) [i++]
 		/; if (string_equate(tab`.sym_names{i}, name))
 			;return i
 		;/
@@ -94,12 +94,17 @@
 ;/
 
 # Is struct returns true if the type name given is a struct
-/; is_struct ({}charp name) [bool]
+/; is_struct (VType t) [bool]
+	/; if (t.ptr > 0)
+		;return false
+	;/
+
 	/; loop (int i = 0; i < 15) [i++]
-		/; if (string_equate(type_table{i}, name))
+		/; if (string_equate(type_table{i}.name, t.name))
 			;return false
 		;/
 	;/
+
 	;return true
 ;/
 
@@ -178,9 +183,47 @@
 	;/
 ;/
 
-# 
+# Mostly deals with structs and enums
+/; compile_global
+
+;/
+
+# Sets up a call and reports back where the return value is stored
+/; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
+	;return "ax"
+;/
+
+/; set_value ({}charp from, to, int size, ~{}charp csec)
+	/; if (is_common_reg(from))
+		;from = get_reg(size, from)
+	;; if (is_common_reg(to))
+		;to = get_reg(size, to)
+	;/
+
+	;{}charp tmp = "\tmov"
+	/; if (size == 1)
+		;mov.append('b')
+	;; else if (size == 2)
+		;mov.append('d')
+	;; else if (size == 4)
+		;mov.append('w')
+	;; else if (size == 8)
+		;mov.append('q')
+	;/
+
+	;tmp = construct_statement(tmp, {from, to})
+	;add_strings(csec, ~tmp)
+;/
+
+# Value evaluation, reports back where the computed value is stored
+/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
+	
+;/
+
+# Compile a statement in a function
 /; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [bool]
 	;cur`++
+	;bool r = false
 	/; if (cur` < len data`)
 		/; if (token_is(cur, data, "asm"))
 			;cur`++
@@ -188,14 +231,17 @@
 			;raw_asm.append('\n')
 			;csec`.append('\t')
 			;add_strings(csec, ~raw_asm)
-		;; else if (token_is(cur, data, "return"))
-			;return true
+		;; else if (token_is(cur, data, "raw"))
+			;cur`++
+			;r = true
 		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
 			# set value
 			;int i = name_to_index(data`{cur`}.data`, tab)
+			;{}charp loc = index_to_loc(i)
+			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
 		;; else if (string_equate(data`{cur`+1}.data`, "("))
 			# Function call
-			;eval(cur, data, tab, gsc, hsec, csec, dsec, "ax")
+			;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
 		;; else
 			#Definition
 			;VType def_t = get_vtype(cur, data)
@@ -204,12 +250,11 @@
 			/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
 				;tab`.sym_types.append(def_t)
 				;tab`.sym_names.append(data`{cur`}.data`)
-				;cur`++
 				/; if (token_is(cur, data, ","))
 					;cur`++
-				;; else if (token_is(cur, data "="))
+				;; else if (token_is(cur, data, "="))
 					;{}charp loc = index_to_loc(len tab`.sym_names - 1, tab)
-					;eval(cur, data, tab, gsc, hsec, csec, dsec, loc)
+					;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
 					/; if (token_is(cur, data, ","))
 						;cur`++
 					;/
@@ -218,11 +263,21 @@
 			/; if (string_equate(data`{cur`+1}.data`, "="))
 
 			;/
+		;; if (token_is(cur, data, "return"))
+			/; if (!r)
+				;cur`++
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, "ax")
+				;tail_guard(csec)
+			;/
+			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
+			;return true
 		;/
 	;/
 
 	;return false
 ;/
+
+
 
 /; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
 	;VTrack tab = { {}, {} }
@@ -266,7 +321,7 @@
 		;; else if (string_equate(data`{cur`}.data`, "/;"))
 			;bool ch = true
 			/; loop (ch)
-				;compile_block(cur, data, hsec, csec, dsec)
+				;compile_block(cur, data, gsc, hsec, csec, dsec)
 				/; if (cur` !< len data`)
 					;break
 				;/
@@ -274,12 +329,6 @@
 			;/			
 		;; else if (string_equate(data`{cur`}.data`, ";"))
 			;ret = compile_statement(cur, data, ~tab, gsc, hsec, csec, dsec)
-			/; if (ret)
-				/; if (!r)
-					;tail_guard(csec)
-				;/
-				;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
-			;/
 		;; else
 			;tnsl.io.print("Failed to compile token [compile_block]: ")
 			;data`{cur`}.print()
@@ -302,9 +351,9 @@
 
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
-			;compile_block(~i, data, ~hsec, ~csec, ~dsec)
+			;compile_block(~i, data, ~global_scope, ~hsec, ~csec, ~dsec)
 		;; else if (string_equate(data`{i}.data`, ";"))
-			;compile_global(~i, data, ~hsec, ~csec, ~dsec)
+			;compile_global(~i, data, ~global_scope, ~hsec, ~csec, ~dsec)
 		;; else
 			;break
 		;/
