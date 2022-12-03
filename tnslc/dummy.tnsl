@@ -1,3 +1,7 @@
+;struct test {
+    int i, j, k, l
+}
+
 /; _alloc (uint bytes) [~void]
     ;asm "mov %rax, %rdi"
     ;asm "mov $0, %r10"

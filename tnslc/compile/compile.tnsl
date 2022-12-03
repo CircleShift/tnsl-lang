@@ -74,6 +74,26 @@
 	;return -1
 ;/
 
+/; reg_by_num(int r) [{}charp]
+	/; if (r == 0)
+		;return "ax"
+	;; if (r == 1)
+		;return "bx"
+	;; if (r == 2)
+		;return "cx"
+	;; if (r == 3)
+		;return "dx"
+	;; if (r == 4)
+		;return "sp"
+	;; if (r == 5)
+		;return "bp"
+	;; if (r == 6)
+		;return "si"
+	;; if (r == 7)
+	;/
+	;return string_from_int(r)
+;/
+
 # Given an index in the vtrack, returns a string representation of the
 # register or memory where that variable is
 /; index_to_loc (int index, ~VTrack tab) [{}charp]
@@ -88,6 +108,12 @@
 		;; else
 			;stack_bytes = stack_bytes + tab`.sym_types{i}._size
 		;/
+	;/
+
+	/; if (is_struct(tab`.sym_types{index}))
+		;out = "(todo: structs)"
+	;; else
+		;out = reg_by_num(reg)
 	;/
 	
 	;return out
@@ -106,6 +132,82 @@
 	;/
 
 	;return true
+;/
+
+# Using the type name and member name, create a label of form "_type.member"
+/; construct_offset_label ({}charp t, {}charp n) [{}charp]
+	;{}charp out = "_"
+	;add_strings(~out, ~t)
+	;out.append('.')
+	;add_strings(~out, ~n)
+	;return out
+;/
+
+/; construct_offset_value (int offset) [{}charp]
+	;{}charp out = ".qword "
+	;{}charp tmp = string_from_int(offset)
+	;add_strings(~out, ~tmp)
+	;return out
+;/
+
+# Parse a struct and add it to the table
+/; def_struct (~int cur, ~{}Token data, ~{}charp dsec) [VType]
+	;VType out = {0, 0, ""}
+	;cur`++
+
+	;{}charp a = "_"
+	;add_strings(~a, data`{cur`}.data)
+	;out.name = data`{cur`}.data`
+
+	;cur`++
+	;cur`++
+	# Should be indexed at first type in the type list
+
+	/; if (token_is(cur, data, "}"))
+		;return NT
+	;/
+
+	;VType ctype = get_vtype(cur, data)
+	;cur`++
+
+	/; loop (cur` < len data`) [cur`++]
+		/; if (token_is(cur, data, "}"))
+			;break
+		;; else if (token_is(cur, data, ","))
+			;cur`++
+		;/
+
+		;cur`++
+		/; if (token_is(cur, data, ",") || token_is(cur, data, "}"))
+			# Use ctype
+			;cur`--
+			;{}charp l = construct_offset_label(out.name, data`{cur`}.data`)
+			;l.append(':')
+			;l.append(' ')
+			;{}charp p = construct_offset_value(out._size)
+
+			/; if (ctype.ptr > 0)
+				;p = construct_offset_value(8)
+				;out._size = out._size + 8
+			;; else
+				;out._size = out._size + ctype._size
+			;/
+
+			;p.append('\n')
+			;add_strings(~l, ~p)
+			# add "_type.member: .qword #offset_value" to data section
+			
+			;add_strings(dsec, ~l)
+			
+		;; else
+			# Get type
+			;cur`--
+			;ctype = get_vtype(cur, data)
+		;/
+	;/
+
+	;type_table.append(out)
+	;return out
 ;/
 
 # Checks if the current token's data is equal to a string
@@ -184,8 +286,11 @@
 ;/
 
 # Mostly deals with structs and enums
-/; compile_global
-
+/; compile_global (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
+	;cur`++
+	/; if (token_is(cur, data, "struct"))
+		;def_struct(cur, data, dsec)
+	;/
 ;/
 
 # Sets up a call and reports back where the return value is stored

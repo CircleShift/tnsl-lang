@@ -28,14 +28,14 @@
     ;return a
 ;/
 
-/; absf (float a) [float]
+/; abs_f (float a) [float]
     /; if (a < 0)
         ;return -a
     ;/
     ;return a
 ;/
 
-/; abst (type T, T a) [T]
+/; abs_t (type T, T a) [T]
     /; if ( a < (0)[T] )
         ;return -a
     ;/
@@ -49,12 +49,12 @@
     ;return o1, o2
 ;/
 
-/; divf (float a, b) [float, float]
+/; div_f (float a, b) [float, float]
     ;float o1 = a / b, o2 = a % b
     ;return o1, o2
 ;/
 
-/; divt (type T, T a, b) [T, T]
+/; div_t (type T, T a, b) [T, T]
     ;T o1 = a / b, o2 = a % b
     ;return o1, o2
 ;/
@@ -68,14 +68,14 @@
     ;return b
 ;/
 
-/; maxf (float a, b) [float]
+/; max_f (float a, b) [float]
     /; if (a > b)
         ;return a
     ;/
     ;return b
 ;/
 
-/; maxt (type T, T a, b) [T]
+/; max_t (type T, T a, b) [T]
     /; if (a > b)
         ;return a
     ;/
@@ -89,14 +89,14 @@
     ;return b
 ;/
 
-/; minf (float a, b) [float]
+/; min_f (float a, b) [float]
     /; if (a > b)
         ;return a
     ;/
     ;return b
 ;/
 
-/; mint (type T, T a, b) [T]
+/; min_t (type T, T a, b) [T]
     /; if (a < b)
         ;return a
     ;/
@@ -109,7 +109,7 @@
     ;return a - (a % 1.0)
 ;/
 
-/; trunct (type T, T a) [T]
+/; trunc_t (type T, T a) [T]
     ;return a - (a % (1.0)[T])
 ;/
 
@@ -120,9 +120,9 @@
     ;return a
 ;/
 
-/; ceilt (type T, T a) [T]
-    /; if (trunct(T, a) !== a)
-        ;return trunct(T, a + (1.0)[T])
+/; ceil_t (type T, T a) [T]
+    /; if (trunc_t(T, a) !== a)
+        ;return trunc_t(T, a + (1.0)[T])
     ;/
     ;return a
 ;/
@@ -134,9 +134,9 @@
     ;return a
 ;/
 
-/; floort (type T, T a) [T]
-    /; if (trunct(T, a) !== a)
-        ;return trunct(T, a - (1.0)[T])
+/; floor_t (type T, T a) [T]
+    /; if (trunc_t(T, a) !== a)
+        ;return trunc_t(T, a - (1.0)[T])
     ;/
     ;return a
 ;/
@@ -148,10 +148,10 @@
     ;return ceil(a)
 ;/
 
-/; roundt (type T, T a) [T]
+/; round_t (type T, T a) [T]
     /; if (a % (1.0)[T] < (0.5)[T])
-        ;return floort(T, a)
+        ;return floor_t(T, a)
     ;/
-    ;return ceilt(T, a)
+    ;return ceil_t(T, a)
 ;/
 
