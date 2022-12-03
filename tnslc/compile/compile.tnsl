@@ -144,7 +144,7 @@
 ;/
 
 /; construct_offset_value (int offset) [{}charp]
-	;{}charp out = ".qword "
+	;{}charp out = ".quad "
 	;{}charp tmp = string_from_int(offset)
 	;add_strings(~out, ~tmp)
 	;return out
