@@ -15,6 +15,7 @@
 #/
 
 :include "util.tnsl"
+:include "paths.tnsl"
 
 /; export module tnslc
 	:include "parse/parse.tnsl"
@@ -38,7 +39,10 @@
 
 	;src.close()
 
-	;tnslc.print_tokens(psrc)
+	;tnsl.io.print(len psrc`)
+	;tnsl.io.println(" tokens parsed.")
+	
+	# ;tnslc.print_tokens(psrc)
 	
 	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 
