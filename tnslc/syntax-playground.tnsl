@@ -1,0 +1,69 @@
+# This file is for playing with syntax and seeing what works and what does not.
+
+
+## TEST 1 - newlines seperate statements, not ;
+## newlines can be escaped with \
+
+/; test1
+    int main = 0
+
+    /; loop (int i = 0, i < 5) [i++]
+        tnsl.io.println("Hi!")
+    ;/
+
+    String str = {}
+
+    /; loop (char j = ' ', j != 'k') \
+            [j++]
+        
+        str.append(j)
+    ;/
+
+    tnsl.io.println(str)
+
+    return main
+;/
+
+## END TEST 1
+
+## TEST 2 - get '.' augment auto de-references pointers
+
+struct a {
+    int i, j
+}
+
+struct b {
+    String str,
+    ~a ints
+}
+
+/; ptr_test1 
+    b str_b = {"Hello", {0, 1}}
+    
+    ~b ptr_b = ~str_b
+
+    tnsl.io.println(ptr_b.str)
+    # vs
+    tnsl.io.println(ptr_b`.str)
+    # both work
+
+    ptr_b.ints.i = 12
+    ptr_b.ints.j = ptr_b.ints.i / 4
+    # vs
+    ptr_b`.ints`.i = 12
+    ptr_b`.ints`.j = ptr_b`.ints`.i / 4
+    # Again, the second one is more descriptive, but is it better?
+
+    ptr_call(ptr_b)
+    ref_call(ptr_b)
+;/
+
+/; ptr_call (~b ptr)
+    ptr.ints.i = 8
+;/
+
+/; ref_call (b` ref)
+    ref.ints.j = 9
+;/
+
+## END TEST 2
