@@ -52,8 +52,16 @@
 	;return construct_statement("\tcmp ", {a, b})
 ;/
 
+/; mov_asm ({}charp a, b) [{}charp]
+	;return construct_statement("\tmov ", {a, b})
+;/
+
 /; jmp_asm ({}charp pos) [{}charp]
 	;return construct_statement("\tjmp ", {pos})
+;/
+
+/; call_asm ({}charp pos) [{}charp]
+	;return construct_statement("\tcall ", {pos})
 ;/
 
 /; cjmp_asm ({}charp suffix, pos) [{}charp]

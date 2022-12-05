@@ -84,11 +84,11 @@
 	;; if (r == 3)
 		;return "dx"
 	;; if (r == 4)
-		;return "sp"
-	;; if (r == 5)
-		;return "bp"
-	;; if (r == 6)
 		;return "si"
+	;; if (r == 5)
+		;return "di"
+	;; if (r == 6)
+		;return "bp"
 	;; if (r == 7)
 	;/
 	;return string_from_int(r)
@@ -293,8 +293,46 @@
 	;/
 ;/
 
+/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec, int reg)
+	/; if (token_is(cur, data, ";/"))
+		;return
+	;/
+
+	/; loop (cur` < len data`)
+		/; if (data`{cur`}.token_type == TOKEN_TYPE.LITERAL)
+
+		;; else if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
+		
+		;/
+	;/
+;/
+
 # Sets up a call and reports back where the return value is stored
 /; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
+	
+		# Store the name of the function we are calling
+	;{}charp to_call = data`{cur`}.data`
+
+		# Set read head to first parameter
+	;cur` = cur` + 2
+	;int reg = 0
+	/; loop (!token_is(cur, data, ")"))
+		/; if (token_is(cur, data, ","))
+			;cur`++
+		;; else
+			/; if (reg < 7)
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, reg)
+				;reg++
+			;; else
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, reg)
+				;push_asm(get_reg(8, "bp"))
+			;/
+		;/
+	;/
+
+	;{}charp call_ist = call_asm(to_call)
+
+	;add_strings(csec, ~call_ist)
 	;return "ax"
 ;/
 
@@ -320,11 +358,6 @@
 	;add_strings(csec, ~tmp)
 ;/
 
-# Value evaluation, reports back where the computed value is stored
-/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
-	
-;/
-
 # Compile a statement in a function
 /; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [bool]
 	;cur`++
@@ -339,14 +372,22 @@
 		;; else if (token_is(cur, data, "raw"))
 			;cur`++
 			;r = true
-		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
-			# set value
-			;int i = name_to_index(data`{cur`}.data`, tab)
-			;{}charp loc = index_to_loc(i)
-			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
+		;; else if (token_is(cur, data, "return"))
+			;cur`++
+			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
+			;tail_guard(csec)
+			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
+			;return true
 		;; else if (string_equate(data`{cur`+1}.data`, "("))
 			# Function call
 			;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
+		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
+			# set value
+			;int i = name_to_index(data`{cur`}.data`, tab)
+			;{}charp tmp = index_to_loc(i)
+			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
+			;tmp = mov_asm(get_reg(tab`.sym_types{i}._size, "ax"), tmp)
+			;add_strings(csec, ~tmp)
 		;; else
 			#Definition
 			;VType def_t = get_vtype(cur, data)
@@ -369,11 +410,6 @@
 
 			;/
 		;; if (token_is(cur, data, "return"))
-			/; if (!r)
-				;cur`++
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, "ax")
-				;tail_guard(csec)
-			;/
 			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 			;return true
 		;/
