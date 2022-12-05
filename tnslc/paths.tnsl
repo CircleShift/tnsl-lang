@@ -46,7 +46,7 @@
         /; if (str{i} == c)
             ;out.append(tmp)
             ;{}charp tmp = ""
-            ;true
+            ;true # work around for interpreter bug
         ;; else
             ;tmp.append(str{i})
         ;/
