@@ -1,5 +1,9 @@
 ;struct test {
-    int i, j, k, l
+    int8 i, j, k, l
+}
+
+;struct test2 {
+    test a, b
 }
 
 /; _alloc (uint bytes) [~void]

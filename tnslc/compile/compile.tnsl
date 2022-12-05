@@ -74,6 +74,7 @@
 	;return -1
 ;/
 
+# The commonly used registers in order
 /; reg_by_num(int r) [{}charp]
 	/; if (r == 0)
 		;return "ax"
@@ -143,6 +144,7 @@
 	;return out
 ;/
 
+# Using the given offset (in bytes), return an asm value of form ".quad <offset>"
 /; construct_offset_value (int offset) [{}charp]
 	;{}charp out = ".quad "
 	;{}charp tmp = string_from_int(offset)
@@ -293,6 +295,7 @@
 	;/
 ;/
 
+# Evaluate a value and return it to the register pointed at by reg
 /; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec, int reg)
 	/; if (token_is(cur, data, ";/"))
 		;return
@@ -334,6 +337,10 @@
 
 	;add_strings(csec, ~call_ist)
 	;return "ax"
+;/
+
+/; set_struct_value (~{}charp csec)
+
 ;/
 
 /; set_value ({}charp from, to, int size, ~{}charp csec)
@@ -481,26 +488,43 @@
 	;csec`.append('\n')
 ;/
 
-/; do_compile ({}charp file, ~{}Token data)
-	;{}charp hsec = ".global main\n"
-	;{}charp csec = ".text\n"
-	;{}charp dsec = ".data\n"
+/; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec)
+	;tnsl.io.File inc = file_path.open_r()
+	;~{}Token data = parse.tokenize(inc)
+	;inc.close()
+	;compile_file(file_path, data, global, hsec, csec, dsec)
+;/
 
-	;int j = len data`
+/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}charp hsec, csec, dsec)
 	
-	;VTrack global_scope = {{}, {}}
+	;int j = len data`
 
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
-			;compile_block(~i, data, ~global_scope, ~hsec, ~csec, ~dsec)
+			;compile_block(~i, data, global, hsec, csec, dsec)
 		;; else if (string_equate(data`{i}.data`, ";"))
-			;compile_global(~i, data, ~global_scope, ~hsec, ~csec, ~dsec)
+			;compile_global(~i, data, global, hsec, csec, dsec)
+		;; else if (string_equate(data`{i}.data`, ":"))
+			;i = i + 2
+			;Path inc = rel.rel_file(unquote_string(data`{i}.data`))
+			;compile_include(inc, global, hsec, csec, dsec)
 		;; else
 			;break
 		;/
 	;/
 
-	;tnsl.io.File out = tnsl.io.writeFile(file)
+;/
+
+/; do_compile ({}charp file_out, Path rel)
+	;{}charp hsec = ".global main\n"
+	;{}charp csec = ".text\n"
+	;{}charp dsec = ".data\n"
+	
+	;VTrack global_scope = {{}, {}}
+
+	;compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec)
+
+	;tnsl.io.File out = tnsl.io.writeFile(file_out)
 	
 	/; loop (int i = 0; i < len hsec) [i++]
 		;out.write(hsec{i})

@@ -23,7 +23,9 @@
 
     /; full_path [{}charp]
         ;{}charp out = join((self.dirs), '/')
-        ;out.append('/')
+        /; if (len (self.dirs) > 0)
+            ;out.append('/')
+        ;/
         ;add_strings(~out, ~(self.file))
         ;return out
     ;/

@@ -42,13 +42,14 @@
 	;tnsl.io.print(len psrc`)
 	;tnsl.io.println(" tokens parsed.")
 	
-	# ;tnslc.print_tokens(psrc)
+	;tnslc.print_tokens(psrc)
 	
 	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 
+	;Path rel = path_from_str(file)
 	;file.append('.')
 	;file.append('S')
-	;tnslc.do_compile(file, psrc)
+	;tnslc.do_compile(file, rel)
 
 	;return 0
 ;/
