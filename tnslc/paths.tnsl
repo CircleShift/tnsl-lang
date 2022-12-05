@@ -1,0 +1,80 @@
+# Requires util.tnsl
+;struct Path {
+    {}{}charp dirs,
+    {}charp file
+}
+
+/; method Path
+    /; rel_file ({}charp rpath) [Path]
+        ;{}{}charp spl = split(rpath, '/')
+        ;Path out = {{}, ""}
+
+        /; loop (int i = 0; i < len (self.dirs)) [i++]
+            ;out.dirs.append(self.dirs{i})
+        ;/
+        
+        /; loop (int i = 0; i < len spl - 1) [i++]
+            ;out.dirs.append(spl{i})
+        ;/
+        
+        ;out.file = spl{len spl - 1}
+        ;return out
+    ;/
+
+    /; full_path [{}charp]
+        ;{}charp out = join((self.dirs), '/')
+        ;out.append('/')
+        ;add_strings(~out, ~(self.file))
+        ;return out
+    ;/
+
+    /; open_w [tnsl.io.File]
+        ;return tnsl.io.writeFile(self.full_path())
+    ;/
+
+    /; open_r [tnsl.io.File]
+        ;return tnsl.io.readFile(self.full_path())
+    ;/
+
+;/
+
+/; split({}charp str, charp c) [{}{}charp]
+    ;{}{}charp out = {}
+    ;{}charp tmp = ""
+
+    /; loop (int i = 0; i < len str) [i++]
+        /; if (str{i} == c)
+            ;out.append(tmp)
+            ;{}charp tmp = ""
+            ;true
+        ;; else
+            ;tmp.append(str{i})
+        ;/
+    ;/
+    ;out.append(tmp)
+    
+    ;return out
+;/
+
+/; join ({}{}charp s, charp j) [{}charp]
+    ;{}charp out = ""
+    /; loop (int i = 0; i < len s) [i++]
+        /; loop (int j = 0; j < len s{i}) [j++]
+            ;out.append(s{i}{j})
+        ;/
+        /; if (i < len s - 1)
+            ;out.append(j)
+        ;/
+    ;/
+    ;return out
+;/
+
+/; path_from_str ({}charp f) [Path]
+    ;{}{}charp spl = split(f, '/')
+    ;Path out = {{}, ""}
+    /; loop (int i = 0; i < len spl - 1) [i++]
+        ;out.dirs.append(spl{i})
+    ;/
+    ;out.file = spl{len spl - 1}
+    ;return out
+;/
