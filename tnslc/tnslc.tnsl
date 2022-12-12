@@ -23,26 +23,13 @@
 	:include "compile/isa_x86.tnsl"
 ;/
 
-
 /; main ({}{}charp args) [int]
-
 	/; if (len args < 1)
 		;tnsl.io.println("Usage: tnslc [file in]")
 		;return 1
 	;/
 
 	;{}charp file = args{0}
-
-	;tnsl.io.File src = tnsl.io.readFile(file)
-
-	;~{}tnslc.Token psrc = tnslc.parse.tokenize(src)
-
-	;src.close()
-
-	;tnsl.io.print(len psrc`)
-	;tnsl.io.println(" tokens parsed.")
-	
-	;tnslc.print_tokens(psrc)
 	
 	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 

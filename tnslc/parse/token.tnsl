@@ -237,7 +237,7 @@
 	/; loop (i < len dat`) [i++]
 		/; if (!is_digit(dat`{i}) && dec)
 			/; if (dat`{i} == '.')
-				/; if (flt || !dec)
+				/; if (flt)
 					;return false
 				;/
 				;flt = true

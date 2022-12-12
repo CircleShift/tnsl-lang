@@ -26,39 +26,107 @@
 	int
 		ptr,
 	
-	{}charp name
+	{}charp name,
+
+	{}{}charp sub_types
 }
+
+/; method VType
+	/; get_sub_type({}charp name) [{}charp]
+		/; loop (int i = 0; i < len (self.sub_types)) [i = i + 2]
+			/; if (string_equate(~name, ~(self.sub_types{i + 1})))
+				;return (self.sub_types{i})
+			;/
+		;/
+		;return ""
+	;/
+;/
 
 # Tracks defined variables in a block
 ;struct VTrack {
 	{}{}charp
 		sym_names,
 	
+	{}bool
+		on_stack,
+
 	{}VType
 		sym_types
 }
 
+/; method VTrack
+	# returns true if the value is allocated to the stack
+	/; add_track({}charp name, VType _type) [bool]
+		;bool to_stack = is_struct(_type)
+		;int count = 0
+
+		/; loop (int i = 0; i < len (self.on_stack) && !to_stack) [i++]
+			/; if (!self.on_stack{i})
+				;count++
+			;/
+
+			/; if (count > 7)
+				;to_stack = true
+			;/
+		;/
+
+		;self.sym_names.append(name)
+		;self.sym_types.append(_type)
+		;self.on_stack.append()
+	;/
+
+	# Returns true if the variable is being tracked
+	/; in_vtrack({}charp name) [bool]
+		/; loop (int i = 0; i < len (self.on_stack)) [i++]
+			/; if (string_equate(~name, ~(self.sym_names{i})))
+				;return true
+			;/
+		;/
+		;return false
+	;/
+
+	# Returns the total allocated memory on the stack for this tracker
+	/; stack_total [int]
+		;int out = 0
+		/; loop (int i = 0; i < len (self.on_stack)) [i++]
+			/; if (self.on_stack{i})
+				;out = out + (self.sym_types{i}._size)
+			;/
+		;/
+		;return out
+	;/
+
+	# returns the type of the named variable
+	/; get_vtype ({}charp name) [VType]
+		/; loop (int i = 0; i < len (self.on_stack)) [i++]
+			/; if (string_equate(~name, ~(self.sym_names{i})))
+				;return (self.sym_types{i})
+			;/
+		;/
+	;/
+;/
+
 # Sizes of items
 ;{}VType type_table = {
-	{1, 0, "int8"},
-	{2, 0, "int16"},
-	{4, 0, "int32"},
-	{8, 0, "int64"},
-	{8, 0, "int"},
-	{1, 0, "uint8"},
-	{2, 0, "uint16"},
-	{4, 0, "uint32"},
-	{8, 0, "uint64"},
-	{8, 0, "uint"},
-	{4, 0, "float32"},
-	{8, 0, "float64"},
-	{8, 0, "float"},
-	{1, 0, "bool"},
-	{8, 0, "void"}
+	{1, 0, "int8", {}},
+	{2, 0, "int16", {}},
+	{4, 0, "int32", {}},
+	{8, 0, "int64", {}},
+	{8, 0, "int", {}},
+	{1, 0, "uint8", {}},
+	{2, 0, "uint16", {}},
+	{4, 0, "uint32", {}},
+	{8, 0, "uint64", {}},
+	{8, 0, "uint", {}},
+	{4, 0, "float32", {}},
+	{8, 0, "float64", {}},
+	{8, 0, "float", {}},
+	{1, 0, "bool", {}},
+	{8, 0, "void", {}}
 }
 
 # Null type
-;VType NT = {0, 0, "null"}
+;VType NT = {0, 0, "null", {}}
 
 # Returns an index in the vtrack for a given variable name
 /; name_to_index ({}charp name, ~VTrack tab) [int]
@@ -145,20 +213,40 @@
 ;/
 
 # Using the given offset (in bytes), return an asm value of form ".quad <offset>"
-/; construct_offset_value (int offset) [{}charp]
-	;{}charp out = ".quad "
+/; construct_value (int size, int offset) [{}charp]
+	;{}charp out = ".byte "
+	/; if (size == 2)
+		;out = ".word "
+	;; if (size == 4)
+		;out = ".long"
+	;; if (size == 8)
+		;out = ".quad "
+	;/
 	;{}charp tmp = string_from_int(offset)
 	;add_strings(~out, ~tmp)
 	;return out
 ;/
 
+/; construct_text_value ({}charp t) [{}charp]
+	;{}charp tmp = unquote_string(t)
+	;{}charp out = construct_value(1, len tmp)
+	;{}charp tmp = "\n\t.ascii "
+	;add_strings(~out, ~tmp)
+	;add_strings(~out, ~t)
+	;return out
+;/
+
+/; construct_mov_literal({}charp value, reg) [{}charp]
+	;{}charp tmp = "$"
+	;add_strings(~tmp, ~value)
+	;return mov_asm(tmp, reg)
+;/
+
 # Parse a struct and add it to the table
 /; def_struct (~int cur, ~{}Token data, ~{}charp dsec) [VType]
-	;VType out = {0, 0, ""}
+	;VType out = {0, 0, "", {}}
 	;cur`++
 
-	;{}charp a = "_"
-	;add_strings(~a, data`{cur`}.data)
 	;out.name = data`{cur`}.data`
 
 	;cur`++
@@ -186,14 +274,17 @@
 			;{}charp l = construct_offset_label(out.name, data`{cur`}.data`)
 			;l.append(':')
 			;l.append(' ')
-			;{}charp p = construct_offset_value(out._size)
+			;{}charp p = construct_value(8, out._size)
 
 			/; if (ctype.ptr > 0)
-				;p = construct_offset_value(8)
+				;p = construct_value(8, 8)
 				;out._size = out._size + 8
 			;; else
 				;out._size = out._size + ctype._size
 			;/
+
+			;out.sub_types.append(ctype.name)
+			;out.sub_types.append(data`{cur`}.data`)
 
 			;p.append('\n')
 			;add_strings(~l, ~p)
@@ -212,7 +303,7 @@
 	;return out
 ;/
 
-# Checks if the current token's data is equal to a string
+# Checks if the current token's data member is equal to a given string
 /; token_is(~int cur, ~{}Token data, {}charp str) [bool]
 	;return string_equate(data`{cur`}.data`, str)
 ;/
@@ -301,11 +392,27 @@
 		;return
 	;/
 
+	;int val_layer = 0
+
 	/; loop (cur` < len data`)
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.LITERAL)
-
+			/; if (data`{cur`}.data`{0} == '"')
+				# String literal
+			
+			;; else if (data`{cur`}.data`{0} == '\'')
+				# Char literal
+			;; else
+				# int literal
+				;{}charp tmp = construct_mov_literal(data`{cur`}.data`, get_reg(8, reg_by_num(val_layer)))
+				;add_strings(csec, ~tmp)
+				;val_layer++
+				;cur`++
+			;/
 		;; else if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
-		
+		;; else if (token_is(cur, data, "~"))
+		;; else if (data`{cur`}.token_type == TOKEN_TYPE.AUGMENT)
+		;; else
+			;break
 		;/
 	;/
 ;/
@@ -343,6 +450,11 @@
 
 ;/
 
+/; copy_struct ({}charp from, to, VType t) [{}charp]
+	;{}charp out = ""
+	;{}charp init = ""
+;/
+
 /; set_value ({}charp from, to, int size, ~{}charp csec)
 	/; if (is_common_reg(from))
 		;from = get_reg(size, from)
@@ -376,6 +488,7 @@
 			;raw_asm.append('\n')
 			;csec`.append('\t')
 			;add_strings(csec, ~raw_asm)
+			;cur`++
 		;; else if (token_is(cur, data, "raw"))
 			;cur`++
 			;r = true
@@ -428,7 +541,7 @@
 
 
 /; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
-	;VTrack tab = { {}, {} }
+	;VTrack tab = { {}, {}, {} }
 	;VType out_type = NT
 	;{}charp name = ""
 	;bool r = false
@@ -459,7 +572,7 @@
 	;/
 
 	;bool ret = false
-	/; loop (cur` < len data` && !ret) [cur`++]
+	/; loop (cur` < len data` && !ret)
 		/; if (string_equate(data`{cur`}.data`, ";/"))
 			/; if (!r)
 				;tail_guard(csec)
@@ -489,9 +602,16 @@
 ;/
 
 /; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec)
+	;tnsl.io.print("[TNSLC:INCLUDE] ")
+	;tnsl.io.println(file_path.full_path())
+
 	;tnsl.io.File inc = file_path.open_r()
 	;~{}Token data = parse.tokenize(inc)
 	;inc.close()
+
+	;tnsl.io.print(len data`)
+	;tnsl.io.println(" tokens parsed.")
+	
 	;compile_file(file_path, data, global, hsec, csec, dsec)
 ;/
 
@@ -522,7 +642,7 @@
 	
 	;VTrack global_scope = {{}, {}}
 
-	;compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec)
+	;tnslc.compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec)
 
 	;tnsl.io.File out = tnsl.io.writeFile(file_out)
 	
