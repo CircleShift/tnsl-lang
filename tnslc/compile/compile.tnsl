@@ -32,13 +32,26 @@
 }
 
 /; method VType
-	/; get_sub_type({}charp name) [{}charp]
+	/; get_sub_type({}charp name) [VType]
 		/; loop (int i = 0; i < len (self.sub_types)) [i = i + 2]
 			/; if (string_equate(~name, ~(self.sub_types{i + 1})))
-				;return (self.sub_types{i})
+				;return vtype_by_name(self.sub_types{i})
 			;/
 		;/
-		;return ""
+		;return NT
+	;/
+
+	/; get_offset({}charp name) [int]
+		;int out = 0
+		/; loop (int i = 0; i < len (self.sub_types)) [i = i + 2]
+			/; if (string_equate(~name, ~(self.sub_types{i + 1})))
+				;return out
+			;; else
+				;VType tmp = vtype_by_name(self.sub_types{i})
+				;out = out + tmp.size
+			;/
+		;/
+		;return -1
 	;/
 ;/
 
@@ -56,7 +69,7 @@
 
 /; method VTrack
 	# returns true if the value is allocated to the stack
-	/; add_track({}charp name, VType _type) [bool]
+	/; add_track({}charp name, VType _type) [int]
 		;bool to_stack = is_struct(_type)
 		;int count = 0
 
@@ -72,7 +85,13 @@
 
 		;self.sym_names.append(name)
 		;self.sym_types.append(_type)
-		;self.on_stack.append()
+		;self.on_stack.append(to_stack)
+
+		/; if (count > 7)
+			;return -1
+		;/
+
+		;return count
 	;/
 
 	# Returns true if the variable is being tracked
@@ -514,8 +533,8 @@
 			;cur`++
 			
 			/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
-				;tab`.sym_types.append(def_t)
-				;tab`.sym_names.append(data`{cur`}.data`)
+				;int stack = tab`.add_track()
+				
 				/; if (token_is(cur, data, ","))
 					;cur`++
 				;; else if (token_is(cur, data, "="))

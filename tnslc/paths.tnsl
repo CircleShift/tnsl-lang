@@ -58,16 +58,17 @@
     ;return out
 ;/
 
-/; join ({}{}charp s, charp j) [{}charp]
+/; join ({}{}charp s, charp jc) [{}charp]
     ;{}charp out = ""
     /; loop (int i = 0; i < len s) [i++]
         /; loop (int j = 0; j < len s{i}) [j++]
             ;out.append(s{i}{j})
         ;/
         /; if (i < len s - 1)
-            ;out.append(j)
+            ;out.append(jc)
         ;/
     ;/
+    
     ;return out
 ;/
 
