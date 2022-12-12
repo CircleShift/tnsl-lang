@@ -43,11 +43,11 @@
 
 	/; get_offset({}charp name) [int]
 		;int out = 0
-		/; loop (int i = 0; i < len (self.sub_types)) [i = i + 2]
-			/; if (string_equate(~name, ~(self.sub_types{i + 1})))
+		/; loop (int i = 0; i < len (self.on_stack)) [i++]
+			/; if (string_equate(~name, ~(self.sub_types{i*2 + 1})))
 				;return out
-			;; else
-				;VType tmp = vtype_by_name(self.sub_types{i})
+			;; else if (self.on_stack{i})
+				;VType tmp = vtype_by_name(self.sub_types{i*2})
 				;out = out + tmp.size
 			;/
 		;/
@@ -621,6 +621,16 @@
 ;/
 
 /; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec)
+	# Autocomplete in the case of module syntax
+	;bool d = file_path.extension_is("tnsl")
+	/; if (!d)
+		;file_path.dirs.append(file_path.file)
+		;{}charp ftmp = file_path.file
+		;{}charp tmp = ".tnsl"
+		;add_strings(~ftmp, ~tmp)
+		;file_path.file = ftmp
+	;/
+
 	;tnsl.io.print("[TNSLC:INCLUDE] ")
 	;tnsl.io.println(file_path.full_path())
 

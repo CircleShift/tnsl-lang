@@ -38,6 +38,26 @@
         ;return tnsl.io.readFile(self.full_path())
     ;/
 
+    /; extension_is ({}charp chk) [bool]
+        ;{}charp ext = ""
+        ;int dot = -1
+        /; loop (int i = len (self.file) - 1; i > 0) [i = i - 1]
+            /; if (self.file{i} == '.')
+                ;dot = i
+                ;break
+            ;/
+        ;/
+
+        /; if (dot > 0)
+            ;dot++
+            /; loop (dot < len (self.file)) [dot++]
+                ;ext.append(self.file{dot})
+            ;/
+        ;/
+
+        ;return string_equate(chk, ext)
+    ;/
+
 ;/
 
 /; split({}charp str, charp c) [{}{}charp]
