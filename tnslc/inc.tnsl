@@ -1,1 +1,3 @@
-:include "dummy.tnsl"
+/; module main
+    :include "dummy.tnsl"
+;/

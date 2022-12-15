@@ -28,14 +28,15 @@
 	
 	{}charp name,
 
-	{}{}charp sub_types
+	{}VType sub_types,
+	{}{}charp sub_names
 }
 
 /; method VType
 	/; get_sub_type({}charp name) [VType]
-		/; loop (int i = 0; i < len (self.sub_types)) [i = i + 2]
-			/; if (string_equate(~name, ~(self.sub_types{i + 1})))
-				;return vtype_by_name(self.sub_types{i})
+		/; loop (int i = 0; i < len (self.sub_types)) [i++]
+			/; if (string_equate(~name, ~(self.sub_names{i})))
+				;return self.sub_types{i}
 			;/
 		;/
 		;return NT
@@ -52,6 +53,15 @@
 			;/
 		;/
 		;return -1
+	;/
+
+	/; print
+		;tnsl.io.print("Size: ")
+		;tnsl.io.print(self._size)
+		;tnsl.io.print(" | Ptr: ")
+		;tnsl.io.print(self.ptr)
+		;tnsl.io.print(" | Name: ")
+		;tnsl.io.println(self.name)
 	;/
 ;/
 
@@ -118,7 +128,7 @@
 	# returns the type of the named variable
 	/; get_vtype ({}charp name) [VType]
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
-			/; if (string_equate(~name, ~(self.sym_names{i})))
+			/; if (string_equate(name, self.sym_names{i}))
 				;return (self.sym_types{i})
 			;/
 		;/
@@ -127,25 +137,25 @@
 
 # Sizes of items
 ;{}VType type_table = {
-	{1, 0, "int8", {}},
-	{2, 0, "int16", {}},
-	{4, 0, "int32", {}},
-	{8, 0, "int64", {}},
-	{8, 0, "int", {}},
-	{1, 0, "uint8", {}},
-	{2, 0, "uint16", {}},
-	{4, 0, "uint32", {}},
-	{8, 0, "uint64", {}},
-	{8, 0, "uint", {}},
-	{4, 0, "float32", {}},
-	{8, 0, "float64", {}},
-	{8, 0, "float", {}},
-	{1, 0, "bool", {}},
-	{8, 0, "void", {}}
+	{1, 0, "int8", {}, {}},
+	{2, 0, "int16", {}, {}},
+	{4, 0, "int32", {}, {}},
+	{8, 0, "int64", {}, {}},
+	{8, 0, "int", {}, {}},
+	{1, 0, "uint8", {}, {}},
+	{2, 0, "uint16", {}, {}},
+	{4, 0, "uint32", {}, {}},
+	{8, 0, "uint64", {}, {}},
+	{8, 0, "uint", {}, {}},
+	{4, 0, "float32", {}, {}},
+	{8, 0, "float64", {}, {}},
+	{8, 0, "float", {}, {}},
+	{1, 0, "bool", {}, {}},
+	{8, 0, "void", {}, {}}
 }
 
 # Null type
-;VType NT = {0, 0, "null", {}}
+;VType NT = {0, 0, "null", {}, {}}
 
 # Returns an index in the vtrack for a given variable name
 /; name_to_index ({}charp name, ~VTrack tab) [int]
@@ -231,6 +241,17 @@
 	;return out
 ;/
 
+# For use when constructing module labels
+/; construct_path_label({}{}charp path)
+	;{}charp out = "_."
+	/; loop (int i = 0; i < len path) [i++]
+		;add_strings(~out, ~(path{i}))
+		;out.append('.')
+	;/
+	;out{len out - 1} = ':'
+	;return out
+;/
+
 # Using the given offset (in bytes), return an asm value of form ".quad <offset>"
 /; construct_value (int size, int offset) [{}charp]
 	;{}charp out = ".byte "
@@ -263,7 +284,7 @@
 
 # Parse a struct and add it to the table
 /; def_struct (~int cur, ~{}Token data, ~{}charp dsec) [VType]
-	;VType out = {0, 0, "", {}}
+	;VType out = {0, 0, "", {}, {}}
 	;cur`++
 
 	;out.name = data`{cur`}.data`
@@ -290,26 +311,14 @@
 		/; if (token_is(cur, data, ",") || token_is(cur, data, "}"))
 			# Use ctype
 			;cur`--
-			;{}charp l = construct_offset_label(out.name, data`{cur`}.data`)
-			;l.append(':')
-			;l.append(' ')
-			;{}charp p = construct_value(8, out._size)
 
 			/; if (ctype.ptr > 0)
-				;p = construct_value(8, 8)
 				;out._size = out._size + 8
 			;; else
 				;out._size = out._size + ctype._size
 			;/
-
-			;out.sub_types.append(ctype.name)
-			;out.sub_types.append(data`{cur`}.data`)
-
-			;p.append('\n')
-			;add_strings(~l, ~p)
-			# add "_type.member: .qword #offset_value" to data section
-			
-			;add_strings(dsec, ~l)
+			;out.sub_types.append(ctype)
+			;out.sub_names.append(data`{cur`}.data`)
 			
 		;; else
 			# Get type
@@ -317,8 +326,9 @@
 			;ctype = get_vtype(cur, data)
 		;/
 	;/
-
+	;out.print()
 	;type_table.append(out)
+	
 	;return out
 ;/
 
@@ -559,15 +569,27 @@
 
 
 
-/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
+/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec, {}{}charp mod_path, Path rel)
 	;VTrack tab = { {}, {}, {} }
-	;VType out_type = NT
+	;VType out_type = tnslc.type_table{14}
 	;{}charp name = ""
 	;bool r = false
 
 	/; loop (cur`++; cur` < len data`) [cur`++]
+		/; if (token_is(cur, data, "module"))
+			;mod_path.append(data`{cur` + 1}.data`)
+			;cur` = cur` + 2
+			;break
+		;/
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
 			;name = data`{cur`}.data`
+			/; if (len mod_path > 0)
+				;{}charp frs = "_."
+				;{}charp jn = join(mod_path, '.')
+				;add_strings(~frs, ~jn)
+				;add_strings(csec, ~frs)
+				;csec`.append('.')
+			;/
 			;add_strings(csec, ~name)
 			;csec`.append(':')
 			;csec`.append('\n')
@@ -592,21 +614,26 @@
 
 	;bool ret = false
 	/; loop (cur` < len data` && !ret)
-		/; if (string_equate(data`{cur`}.data`, ";/"))
+		/; if (token_is(cur, data, ";/"))
 			/; if (!r)
 				;tail_guard(csec)
 			;/
 			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 			;break
-		;; else if (string_equate(data`{cur`}.data`, "/;"))
+		;; else if (token_is(cur, data, "/;"))
 			;bool ch = true
 			/; loop (ch)
-				;compile_block(cur, data, gsc, hsec, csec, dsec)
+				;compile_block(cur, data, gsc, hsec, csec, dsec, mod_path)
 				/; if (cur` !< len data`)
 					;break
 				;/
-				;ch = string_equate(data`{cur`}.data`, ";;")
-			;/			
+				;ch = token_is(cur, data, ";;")
+			;/
+		;; else if (string_equate(data`{cur`}.data`, ":"))
+			;cur` = cur` + 2
+			;Path inc = rel.rel_file(unquote_string(data`{cur`}.data`))
+			;compile_include(inc, gsc, hsec, csec, dsec, mod_path)
+			;cur`++
 		;; else if (string_equate(data`{cur`}.data`, ";"))
 			;ret = compile_statement(cur, data, ~tab, gsc, hsec, csec, dsec)
 		;; else
@@ -620,7 +647,7 @@
 	;csec`.append('\n')
 ;/
 
-/; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec)
+/; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec, {}{}charp mod_path)
 	# Autocomplete in the case of module syntax
 	;bool d = file_path.extension_is("tnsl")
 	/; if (!d)
@@ -641,22 +668,22 @@
 	;tnsl.io.print(len data`)
 	;tnsl.io.println(" tokens parsed.")
 	
-	;compile_file(file_path, data, global, hsec, csec, dsec)
+	;compile_file(file_path, data, global, hsec, csec, dsec, mod_path)
 ;/
 
-/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}charp hsec, csec, dsec)
+/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}charp hsec, csec, dsec, {}{}charp mod_path)
 	
 	;int j = len data`
 
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
-			;compile_block(~i, data, global, hsec, csec, dsec)
+			;compile_block(~i, data, global, hsec, csec, dsec, mod_path, rel)
 		;; else if (string_equate(data`{i}.data`, ";"))
 			;compile_global(~i, data, global, hsec, csec, dsec)
 		;; else if (string_equate(data`{i}.data`, ":"))
 			;i = i + 2
 			;Path inc = rel.rel_file(unquote_string(data`{i}.data`))
-			;compile_include(inc, global, hsec, csec, dsec)
+			;compile_include(inc, global, hsec, csec, dsec, mod_path)
 		;; else
 			;break
 		;/
@@ -671,7 +698,7 @@
 	
 	;VTrack global_scope = {{}, {}}
 
-	;tnslc.compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec)
+	;tnslc.compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec, {})
 
 	;tnsl.io.File out = tnsl.io.writeFile(file_out)
 	
