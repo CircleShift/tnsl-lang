@@ -446,14 +446,34 @@
 	;/
 ;/
 
+/; get_function_label(~int cur, ~{}Token data) [{}charp]
+	/; if (string_equate(data`{cur` + 1}.data`, "("))
+		;return data`{cur`}.data`
+	;/
+
+	;{}{}charp func_path = {}
+
+	/; loop (cur` < len data`) [cur`++]
+		/; if (token_is(cur, data, "("))
+			;break
+		;; else if (!token_is(cur, data, "."))
+			;func_path.append(data`{cur`}.data`)
+		;/
+	;/
+	;{}charp out = "_."
+	;{}charp jn_tmp = join(func_path, '.')
+	;add_strings(~out, ~jn_tmp)
+	;return out
+;/
+
 # Sets up a call and reports back where the return value is stored
 /; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
 	
 		# Store the name of the function we are calling
-	;{}charp to_call = data`{cur`}.data`
-
+	;{}charp to_call = get_function_label(cur, data)
+	;tnsl.io.println(to_call)
 		# Set read head to first parameter
-	;cur` = cur` + 2
+	;cur`++
 	;int reg = 0
 	/; loop (!token_is(cur, data, ")"))
 		/; if (token_is(cur, data, ","))
@@ -468,6 +488,7 @@
 			;/
 		;/
 	;/
+	;cur`++
 
 	;{}charp call_ist = call_asm(to_call)
 
@@ -506,6 +527,22 @@
 	;add_strings(csec, ~tmp)
 ;/
 
+/; is_call (~int cur, ~{}Token data) [bool]
+	;bool look_def = true
+	/; loop (int i = cur`; i < len data`) [i++]
+		/; if (look_def && data`{i}.token_type == TOKEN_TYPE.DEFWORD)
+			;look_def = false
+		;; else if (!look_def && token_is(~i, data, "."))
+			;look_def = true
+		;; else if (!look_def && token_is(~i, data, "("))
+			;return true
+		;; else
+			;break
+		;/
+	;/
+	;return false
+;/
+
 # Compile a statement in a function
 /; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [bool]
 	;cur`++
@@ -527,7 +564,7 @@
 			;tail_guard(csec)
 			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 			;return true
-		;; else if (string_equate(data`{cur`+1}.data`, "("))
+		;; else if (is_call(cur, data))
 			# Function call
 			;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
 		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
