@@ -18,7 +18,7 @@
     Utility functions that may be useful in many places.
 #/
 
-/; string_equate({}charp s1, s2) [bool]
+/; string_equate({}uint8 s1, s2) [bool]
     /; if (len s1 !== len s2)
         ;return false
     ;/
@@ -32,14 +32,14 @@
     ;return true
 ;/
 
-/; add_strings (~{}charp a, b)
+/; add_strings (~{}uint8 a, b)
     /; loop (int i = 0; i < len b`) [i++]
         ;a`.append(b`{i})
     ;/
 ;/
 
-/; reverse_string({}charp str) [{}charp]
-	;{}charp out = ""
+/; reverse_string({}uint8 str) [{}uint8]
+	;{}uint8 out = ""
 
 	/; loop (int i = len str; i > 0) [i = i - 1]
 		;out.append(str{i - 1})
@@ -48,27 +48,27 @@
 	;return out
 ;/
 
-/; is_whitespace (charp c) [bool]
+/; is_whitespace (uint8 c) [bool]
 	;return c == '\t' || c == '\n' || c == ' '
 ;/
 
-/; is_digit (charp c) [bool]
+/; is_digit (uint8 c) [bool]
 	;return c !< '0' && c !> '9'
 ;/
 
-/; is_alpha (charp c) [bool]
+/; is_alpha (uint8 c) [bool]
     ;bool low = c !< 'A' && c !> 'Z', high = c !< 'a' && c >! 'z'
     ;return low || high
 ;/
 
-/; digit_to_char(int i) [charp]
-    ;charp out = '0'
+/; digit_to_char(int i) [uint8]
+    ;uint8 out = '0'
     ;out = out + (i % 10)
     ;return out
 ;/
 
-/; string_from_int(int i) [{}charp]
-    ;{}charp c = ""
+/; string_from_int(int i) [{}uint8]
+    ;{}uint8 c = ""
 
     /; if (i < 0)
         ;c = "-"
@@ -85,7 +85,7 @@
     ;return reverse_string(c)
 ;/
 
-/; int_from_string ({}charp str) [int]
+/; int_from_string ({}uint8 str) [int]
 	;bool inv = str{0} == '-'
 	;int out = 0
 
@@ -100,7 +100,7 @@
 	;return out
 ;/
 
-/; get_escape_code (charp c) [charp]
+/; get_escape_code (uint8 c) [uint8]
     /; if (c == '\'')
         ;return '\''
     ;; else if (c == '"')
@@ -126,12 +126,12 @@
     ;return 0
 ;/
 
-/; parse_hex_code ({}charp c) [charp]
-    ;charp out = 0
+/; parse_hex_code ({}uint8 c) [uint8]
+    ;uint8 out = 0
 	
     /; loop (int i = 0; i < len c) [i++]
         ;out = out * 16
-        ;charp tmp = c{i}
+        ;uint8 tmp = c{i}
         /; if (tmp !< 'a')
             ;tmp = tmp - 'a' + 'A'
         ;/
@@ -148,10 +148,10 @@
     ;return out
 ;/
 
-/; unquote_char ({}charp c) [charp]
+/; unquote_char ({}uint8 c) [uint8]
     /; if (c{1} == '\\')
         /; if (c{2} == 'x')
-            ;{}charp d = {c{3}, c{4}}
+            ;{}uint8 d = {c{3}, c{4}}
             ;return parse_hex_code(d)
         ;/
         ;return get_escape_code(c{2})
@@ -160,9 +160,9 @@
     ;return c{1}
 ;/
 
-/; unquote_string ({}charp str) [{}charp]
-    ;{}charp out = ""
-    ;{}charp unc = "'"
+/; unquote_string ({}uint8 str) [{}uint8]
+    ;{}uint8 out = ""
+    ;{}uint8 unc = "'"
 
     /; loop (int i = 1; i < len str - 1) [i++]
         /; if (str{i} == '\\')

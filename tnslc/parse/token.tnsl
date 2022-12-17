@@ -19,7 +19,7 @@
 	helper funcs for checking their token types.
 #/
 
-;{}{}charp PREWORDS = {
+;{}{}uint8 PREWORDS = {
 	"include",
 	"define",
 	"extern",
@@ -32,7 +32,7 @@
 	"abi"
 }
 
-;{}{}charp KEYTYPES = {
+;{}{}uint8 KEYTYPES = {
 	"int8",
 	"int16",
 	"int32",
@@ -54,7 +54,7 @@
 	"type"
 }
 
-;{}{}charp KEYWORDS = {
+;{}{}uint8 KEYWORDS = {
 	"struct",
 	"interface",
 	"enum",
@@ -96,7 +96,7 @@
 	"export"
 }
 
-;{}{}charp LITERALS = {
+;{}{}uint8 LITERALS = {
 	"true",
 	"false",
 	
@@ -106,14 +106,14 @@
 	"super"
 }
 
-;{}charp RESERVED = "`~!#%^&*()-=+[]{}|;:,.<>/"
+;{}uint8 RESERVED = "`~!#%^&*()-=+[]{}|;:,.<>/"
 
-;{}charp DELIMITS = "()[]{}"
-;{}charp LINESEPS = ";:#"
-;{}charp INLNSEPS = ","
-;{}charp AUGMENTS = "~`.&|^><!+-*/%"
+;{}uint8 DELIMITS = "()[]{}"
+;{}uint8 LINESEPS = ";:#"
+;{}uint8 INLNSEPS = ","
+;{}uint8 AUGMENTS = "~`.&|^><!+-*/%"
 
-;{}{}charp MDELIMITS = {
+;{}{}uint8 MDELIMITS = {
 	# Code block
 	"/;",
 	";/",
@@ -135,7 +135,7 @@
 	"#:"
 }
 
-;{}{}charp MAUGMENTS = {
+;{}{}uint8 MAUGMENTS = {
 	# Boolean
 	"==",
 	"&&",
@@ -183,7 +183,7 @@
 /##
 	Checks if the character point p is in the string cmp
 
-#; is_in_string (~{}charp cmp, charp p) [bool]
+#; is_in_string (~{}uint8 cmp, uint8 p) [bool]
 
 	/; loop (int i = 0; i < len cmp`) [i++]
 		/; if (p == cmp`{i})
@@ -197,7 +197,7 @@
 /##
 	Checks if the string s is in the list cmp
 
-#; is_in_string_list (~{}{}charp cmp, ~{}charp s) [bool]
+#; is_in_string_list (~{}{}uint8 cmp, ~{}uint8 s) [bool]
 
 	/; loop (int i = 0; i < len cmp`) [i++]
 
@@ -218,7 +218,7 @@
 	;return false
 ;/
 
-/; is_numeric_literal(~{}charp dat) [bool]
+/; is_numeric_literal(~{}uint8 dat) [bool]
 	/; if (len dat` == 0)
 		;return false
 	;/
@@ -250,19 +250,19 @@
 	;return true
 ;/
 
-/; is_text_literal(~{}charp dat) [bool]
+/; is_text_literal(~{}uint8 dat) [bool]
 	/; if (len dat` < 1)
 		;return false
 	;/
 	;return dat`{0} == '"' || dat`{0} == '\''
 ;/
 
-/; string_closed ({}charp dat, charp c) [bool]
+/; string_closed ({}uint8 dat, uint8 c) [bool]
 	/; if (len dat < 2)
 		;return false
 	;/
 
-	;charp closing = dat{0}
+	;uint8 closing = dat{0}
 	;bool escaping = false
 
 	/; loop (int i = 1; i < len dat) [i++]
@@ -281,7 +281,7 @@
 /#
 	Get the token_type value for a given string of character points
 
-#; get_token_type (~{}charp s) [int]
+#; get_token_type (~{}uint8 s) [int]
 
 	/; if (len s` > 1)
 

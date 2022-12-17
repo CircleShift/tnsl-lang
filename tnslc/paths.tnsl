@@ -1,12 +1,12 @@
 # Requires util.tnsl
 ;struct Path {
-    {}{}charp dirs,
-    {}charp file
+    {}{}uint8 dirs,
+    {}uint8 file
 }
 
 /; method Path
-    /; rel_file ({}charp rpath) [Path]
-        ;{}{}charp spl = split(rpath, '/')
+    /; rel_file ({}uint8 rpath) [Path]
+        ;{}{}uint8 spl = split(rpath, '/')
         ;Path out = {{}, ""}
 
         /; loop (int i = 0; i < len (self.dirs)) [i++]
@@ -21,8 +21,8 @@
         ;return out
     ;/
 
-    /; full_path [{}charp]
-        ;{}charp out = join((self.dirs), '/')
+    /; full_path [{}uint8]
+        ;{}uint8 out = join((self.dirs), '/')
         /; if (len (self.dirs) > 0)
             ;out.append('/')
         ;/
@@ -38,8 +38,8 @@
         ;return tnsl.io.readFile(self.full_path())
     ;/
 
-    /; extension_is ({}charp chk) [bool]
-        ;{}charp ext = ""
+    /; extension_is ({}uint8 chk) [bool]
+        ;{}uint8 ext = ""
         ;int dot = -1
         /; loop (int i = len (self.file) - 1; i > 0) [i = i - 1]
             /; if (self.file{i} == '.')
@@ -60,14 +60,14 @@
 
 ;/
 
-/; split({}charp str, charp c) [{}{}charp]
-    ;{}{}charp out = {}
-    ;{}charp tmp = ""
+/; split({}uint8 str, uint8 c) [{}{}uint8]
+    ;{}{}uint8 out = {}
+    ;{}uint8 tmp = ""
 
     /; loop (int i = 0; i < len str) [i++]
         /; if (str{i} == c)
             ;out.append(tmp)
-            ;{}charp tmp = ""
+            ;{}uint8 tmp = ""
             ;true # work around for interpreter bug
         ;; else
             ;tmp.append(str{i})
@@ -78,8 +78,8 @@
     ;return out
 ;/
 
-/; join ({}{}charp s, charp jc) [{}charp]
-    ;{}charp out = ""
+/; join ({}{}uint8 s, uint8 jc) [{}uint8]
+    ;{}uint8 out = ""
     /; loop (int i = 0; i < len s) [i++]
         /; loop (int j = 0; j < len s{i}) [j++]
             ;out.append(s{i}{j})
@@ -92,8 +92,8 @@
     ;return out
 ;/
 
-/; path_from_str ({}charp f) [Path]
-    ;{}{}charp spl = split(f, '/')
+/; path_from_str ({}uint8 f) [Path]
+    ;{}{}uint8 spl = split(f, '/')
     ;Path out = {{}, ""}
     /; loop (int i = 0; i < len spl - 1) [i++]
         ;out.dirs.append(spl{i})

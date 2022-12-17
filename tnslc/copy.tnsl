@@ -7,7 +7,7 @@
     Seems to work.
 #/
 
-/; main ({}{}charp args) [int]
+/; main ({}{}uint8 args) [int]
     /; if (len args < 2)
         ;tnsl.io.println("Usage: copy [file to copy] [path to copy to]")
         ;return 1

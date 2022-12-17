@@ -21,15 +21,16 @@
 	:include "parse/parse.tnsl"
 	:include "compile/compile.tnsl"
 	:include "compile/isa_x86.tnsl"
+	:include "compile/value.tnsl"
 ;/
 
-/; main ({}{}charp args) [int]
+/; main ({}{}uint8 args) [int]
 	/; if (len args < 1)
 		;tnsl.io.println("Usage: tnslc [file in]")
 		;return 1
 	;/
 
-	;{}charp file = args{0}
+	;{}uint8 file = args{0}
 	
 	# ;tnslc.Node tree_node = tnslc.ast.make_tree(psrc, args{0})
 

@@ -19,7 +19,7 @@
 	:include "parse/tokenizer.tnsl"
 ;/
 
-/; create_panic ({}charp err)
+/; create_panic ({}uint8 err)
 	;tnsl.io.println("ABOUT TO INDUCE PANIC... STAND BY")
 	;tnsl.io.print("Error code given: ")
 	;tnsl.io.println(err)
@@ -47,7 +47,7 @@
 		line,
 		col,
 
-	~{}charp
+	~{}uint8
 		data
 }
 
@@ -69,7 +69,7 @@
 		;delete self.data
 	;/
 
-	/; add_char (~{}charp part)
+	/; add_char (~{}uint8 part)
 		# ;uint l = len self.data`
 		# ;realloc self.data, l + len part
 		/; loop (int i = 0; i < len part`) [i++]

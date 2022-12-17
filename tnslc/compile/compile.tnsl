@@ -15,7 +15,7 @@
 #/
 
 
-;{}{}charp COMMON_ASM = {
+;{}{}uint8 COMMON_ASM = {
 	"\tret\n"
 }
 
@@ -26,14 +26,14 @@
 	int
 		ptr,
 	
-	{}charp name,
+	{}uint8 name,
 
 	{}VType sub_types,
-	{}{}charp sub_names
+	{}{}uint8 sub_names
 }
 
 /; method VType
-	/; get_sub_type({}charp name) [VType]
+	/; get_sub_type({}uint8 name) [VType]
 		/; loop (int i = 0; i < len (self.sub_types)) [i++]
 			/; if (string_equate(~name, ~(self.sub_names{i})))
 				;return self.sub_types{i}
@@ -42,7 +42,7 @@
 		;return NT
 	;/
 
-	/; get_offset({}charp name) [int]
+	/; get_offset({}uint8 name) [int]
 		;int out = 0
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
 			/; if (string_equate(~name, ~(self.sub_types{i*2 + 1})))
@@ -67,7 +67,7 @@
 
 # Tracks defined variables in a block
 ;struct VTrack {
-	{}{}charp
+	{}{}uint8
 		sym_names,
 	
 	{}bool
@@ -79,7 +79,7 @@
 
 /; method VTrack
 	# returns true if the value is allocated to the stack
-	/; add_track({}charp name, VType _type) [int]
+	/; add_track({}uint8 name, VType _type) [int]
 		;bool to_stack = is_struct(_type)
 		;int count = 0
 
@@ -105,7 +105,7 @@
 	;/
 
 	# Returns true if the variable is being tracked
-	/; in_vtrack({}charp name) [bool]
+	/; in_vtrack({}uint8 name) [bool]
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
 			/; if (string_equate(~name, ~(self.sym_names{i})))
 				;return true
@@ -126,7 +126,7 @@
 	;/
 
 	# returns the type of the named variable
-	/; get_vtype ({}charp name) [VType]
+	/; get_vtype ({}uint8 name) [VType]
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
 			/; if (string_equate(name, self.sym_names{i}))
 				;return (self.sym_types{i})
@@ -158,44 +158,23 @@
 ;VType NT = {0, 0, "null", {}, {}}
 
 # Returns an index in the vtrack for a given variable name
-/; name_to_index ({}charp name, ~VTrack tab) [int]
+/; name_to_index ({}uint8 name, ~VTrack tab) [int]
 	/; loop (int i = 0; i < len (tab`.sym_names)) [i++]
 		/; if (string_equate(tab`.sym_names{i}, name))
 			;return i
 		;/
 	;/
-
+	
 	;tnsl.io.print("Failed to find vairable ")
 	;tnsl.io.println(name)
 
 	;return -1
 ;/
 
-# The commonly used registers in order
-/; reg_by_num(int r) [{}charp]
-	/; if (r == 0)
-		;return "ax"
-	;; if (r == 1)
-		;return "bx"
-	;; if (r == 2)
-		;return "cx"
-	;; if (r == 3)
-		;return "dx"
-	;; if (r == 4)
-		;return "si"
-	;; if (r == 5)
-		;return "di"
-	;; if (r == 6)
-		;return "bp"
-	;; if (r == 7)
-	;/
-	;return string_from_int(r)
-;/
-
 # Given an index in the vtrack, returns a string representation of the
 # register or memory where that variable is
-/; index_to_loc (int index, ~VTrack tab) [{}charp]
-	;{}charp out = ""
+/; index_to_loc (int index, ~VTrack tab) [{}uint8]
+	;{}uint8 out = ""
 	;int stack_bytes = 0
 	;int reg = 0
 	;int i = 0
@@ -232,29 +211,9 @@
 	;return true
 ;/
 
-# Using the type name and member name, create a label of form "_type.member"
-/; construct_offset_label ({}charp t, {}charp n) [{}charp]
-	;{}charp out = "_"
-	;add_strings(~out, ~t)
-	;out.append('.')
-	;add_strings(~out, ~n)
-	;return out
-;/
-
-# For use when constructing module labels
-/; construct_path_label({}{}charp path)
-	;{}charp out = "_."
-	/; loop (int i = 0; i < len path) [i++]
-		;add_strings(~out, ~(path{i}))
-		;out.append('.')
-	;/
-	;out{len out - 1} = ':'
-	;return out
-;/
-
 # Using the given offset (in bytes), return an asm value of form ".quad <offset>"
-/; construct_value (int size, int offset) [{}charp]
-	;{}charp out = ".byte "
+/; construct_value (int size, int offset) [{}uint8]
+	;{}uint8 out = ".byte "
 	/; if (size == 2)
 		;out = ".word "
 	;; if (size == 4)
@@ -262,28 +221,25 @@
 	;; if (size == 8)
 		;out = ".quad "
 	;/
-	;{}charp tmp = string_from_int(offset)
+	;{}uint8 tmp = string_from_int(offset)
 	;add_strings(~out, ~tmp)
 	;return out
 ;/
 
-/; construct_text_value ({}charp t) [{}charp]
-	;{}charp tmp = unquote_string(t)
-	;{}charp out = construct_value(1, len tmp)
-	;{}charp tmp = "\n\t.ascii "
-	;add_strings(~out, ~tmp)
-	;add_strings(~out, ~t)
-	;return out
+/; construct_text_value ({}uint8 t) [{}uint8]
+	;{}uint8 tmp = "\n\t.ascii "
+	;add_strings(~tmp, ~t)
+	;return tmp
 ;/
 
-/; construct_mov_literal({}charp value, reg) [{}charp]
-	;{}charp tmp = "$"
+/; construct_mov_literal({}uint8 value, reg) [{}uint8]
+	;{}uint8 tmp = "$"
 	;add_strings(~tmp, ~value)
 	;return mov_asm(tmp, reg)
 ;/
 
 # Parse a struct and add it to the table
-/; def_struct (~int cur, ~{}Token data, ~{}charp dsec) [VType]
+/; def_struct (~int cur, ~{}Token data, ~{}uint8 dsec) [VType]
 	;VType out = {0, 0, "", {}, {}}
 	;cur`++
 
@@ -333,7 +289,7 @@
 ;/
 
 # Checks if the current token's data member is equal to a given string
-/; token_is(~int cur, ~{}Token data, {}charp str) [bool]
+/; token_is(~int cur, ~{}Token data, {}uint8 str) [bool]
 	;return string_equate(data`{cur`}.data`, str)
 ;/
 
@@ -350,7 +306,7 @@
 ;/
 
 # Searches the type table for a type
-/; vtype_by_name ({}charp name) [VType]
+/; vtype_by_name ({}uint8 name) [VType]
 	/; loop (int i = 0; i < len type_table) [i++]
 		;VType tmp = tnslc.type_table{i}
 		/; if (string_equate(name, tmp.name))
@@ -408,7 +364,7 @@
 ;/
 
 # Mostly deals with structs and enums
-/; compile_global (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec)
+/; compile_global (~int cur, ~{}Token data, ~VTrack gsc, ~{}uint8 hsec, csec, dsec)
 	;cur`++
 	/; if (token_is(cur, data, "struct"))
 		;def_struct(cur, data, dsec)
@@ -416,7 +372,7 @@
 ;/
 
 # Evaluate a value and return it to the register pointed at by reg
-/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec, int reg)
+/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec, int reg)
 	/; if (token_is(cur, data, ";/"))
 		;return
 	;/
@@ -432,7 +388,7 @@
 				# Char literal
 			;; else
 				# int literal
-				;{}charp tmp = construct_mov_literal(data`{cur`}.data`, get_reg(8, reg_by_num(val_layer)))
+				;{}uint8 tmp = construct_mov_literal(data`{cur`}.data`, get_reg(8, reg_by_num(val_layer)))
 				;add_strings(csec, ~tmp)
 				;val_layer++
 				;cur`++
@@ -446,12 +402,12 @@
 	;/
 ;/
 
-/; get_function_label(~int cur, ~{}Token data) [{}charp]
+/; get_function_label(~int cur, ~{}Token data) [{}uint8]
 	/; if (string_equate(data`{cur` + 1}.data`, "("))
 		;return data`{cur`}.data`
 	;/
 
-	;{}{}charp func_path = {}
+	;{}{}uint8 func_path = {}
 
 	/; loop (cur` < len data`) [cur`++]
 		/; if (token_is(cur, data, "("))
@@ -460,17 +416,17 @@
 			;func_path.append(data`{cur`}.data`)
 		;/
 	;/
-	;{}charp out = "_."
-	;{}charp jn_tmp = join(func_path, '.')
+	;{}uint8 out = "_."
+	;{}uint8 jn_tmp = join(func_path, '.')
 	;add_strings(~out, ~jn_tmp)
 	;return out
 ;/
 
 # Sets up a call and reports back where the return value is stored
-/; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [{}charp]
+/; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [{}uint8]
 	
 		# Store the name of the function we are calling
-	;{}charp to_call = get_function_label(cur, data)
+	;{}uint8 to_call = get_function_label(cur, data)
 	;tnsl.io.println(to_call)
 		# Set read head to first parameter
 	;cur`++
@@ -490,29 +446,29 @@
 	;/
 	;cur`++
 
-	;{}charp call_ist = call_asm(to_call)
+	;{}uint8 call_ist = call_asm(to_call)
 
 	;add_strings(csec, ~call_ist)
 	;return "ax"
 ;/
 
-/; set_struct_value (~{}charp csec)
+/; set_struct_value (~{}uint8 csec)
 
 ;/
 
-/; copy_struct ({}charp from, to, VType t) [{}charp]
-	;{}charp out = ""
-	;{}charp init = ""
+/; copy_struct ({}uint8 from, to, VType t) [{}uint8]
+	;{}uint8 out = ""
+	;{}uint8 init = ""
 ;/
 
-/; set_value ({}charp from, to, int size, ~{}charp csec)
+/; set_value ({}uint8 from, to, int size, ~{}uint8 csec)
 	/; if (is_common_reg(from))
 		;from = get_reg(size, from)
 	;; if (is_common_reg(to))
 		;to = get_reg(size, to)
 	;/
 
-	;{}charp tmp = "\tmov"
+	;{}uint8 tmp = "\tmov"
 	/; if (size == 1)
 		;mov.append('b')
 	;; else if (size == 2)
@@ -544,13 +500,13 @@
 ;/
 
 # Compile a statement in a function
-/; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}charp hsec, csec, dsec) [bool]
+/; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [bool]
 	;cur`++
 	;bool r = false
 	/; if (cur` < len data`)
 		/; if (token_is(cur, data, "asm"))
 			;cur`++
-			;{}charp raw_asm = unquote_string(data`{cur`}.data`)
+			;{}uint8 raw_asm = unquote_string(data`{cur`}.data`)
 			;raw_asm.append('\n')
 			;csec`.append('\t')
 			;add_strings(csec, ~raw_asm)
@@ -570,7 +526,7 @@
 		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
 			# set value
 			;int i = name_to_index(data`{cur`}.data`, tab)
-			;{}charp tmp = index_to_loc(i)
+			;{}uint8 tmp = index_to_loc(i)
 			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
 			;tmp = mov_asm(get_reg(tab`.sym_types{i}._size, "ax"), tmp)
 			;add_strings(csec, ~tmp)
@@ -585,7 +541,7 @@
 				/; if (token_is(cur, data, ","))
 					;cur`++
 				;; else if (token_is(cur, data, "="))
-					;{}charp loc = index_to_loc(len tab`.sym_names - 1, tab)
+					;{}uint8 loc = index_to_loc(len tab`.sym_names - 1, tab)
 					;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
 					/; if (token_is(cur, data, ","))
 						;cur`++
@@ -606,10 +562,10 @@
 
 
 
-/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}charp hsec, csec, dsec, {}{}charp mod_path, Path rel)
+/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path, Path rel)
 	;VTrack tab = { {}, {}, {} }
 	;VType out_type = tnslc.type_table{14}
-	;{}charp name = ""
+	;{}uint8 name = ""
 	;bool r = false
 
 	/; loop (cur`++; cur` < len data`) [cur`++]
@@ -621,8 +577,8 @@
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD && len name == 0)
 			;name = data`{cur`}.data`
 			/; if (len mod_path > 0)
-				;{}charp frs = "_."
-				;{}charp jn = join(mod_path, '.')
+				;{}uint8 frs = "_."
+				;{}uint8 jn = join(mod_path, '.')
 				;add_strings(~frs, ~jn)
 				;add_strings(csec, ~frs)
 				;csec`.append('.')
@@ -684,13 +640,13 @@
 	;csec`.append('\n')
 ;/
 
-/; compile_include (Path file_path, ~VTrack global, ~{}charp hsec, csec, dsec, {}{}charp mod_path)
+/; compile_include (Path file_path, ~VTrack global, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
 	# Autocomplete in the case of module syntax
 	;bool d = file_path.extension_is("tnsl")
 	/; if (!d)
 		;file_path.dirs.append(file_path.file)
-		;{}charp ftmp = file_path.file
-		;{}charp tmp = ".tnsl"
+		;{}uint8 ftmp = file_path.file
+		;{}uint8 tmp = ".tnsl"
 		;add_strings(~ftmp, ~tmp)
 		;file_path.file = ftmp
 	;/
@@ -708,7 +664,7 @@
 	;compile_file(file_path, data, global, hsec, csec, dsec, mod_path)
 ;/
 
-/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}charp hsec, csec, dsec, {}{}charp mod_path)
+/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
 	
 	;int j = len data`
 
@@ -728,10 +684,10 @@
 
 ;/
 
-/; do_compile ({}charp file_out, Path rel)
-	;{}charp hsec = ".global main\n"
-	;{}charp csec = ".text\n"
-	;{}charp dsec = ".data\n"
+/; do_compile ({}uint8 file_out, Path rel)
+	;{}uint8 hsec = ".global main\n"
+	;{}uint8 csec = ".text\n"
+	;{}uint8 dsec = ".data\n"
 	
 	;VTrack global_scope = {{}, {}}
 

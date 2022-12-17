@@ -1,0 +1,148 @@
+;struct Value {
+    bool
+        on_stack,
+        temp,
+        literal,
+    
+    int
+        loc,
+        val,
+    
+    VType
+        _type
+}
+
+;Value NV = {false, false, false, 0, 0, 0, {0, 0, "null", {}, {}}}
+
+/; setup_stack_offset (int offset) [{}uint8]
+    ;{}uint8 out = "$"
+    ;{}uint8 tmp = string_from_int(offset)
+    ;add_strings(~out, ~tmp)
+    ;return mov_asm(out, "%rax")
+;/
+
+;{}charp general_stack_offset = "(%rsp, %rax, 1)"
+
+
+# The temp registers in order
+/; reg_by_num(int r) [{}uint8]
+	/; if (r == 0)
+		;return "ax"
+	;; if (r == 1)
+		;return "bx"
+	;; if (r == 2)
+		;return "cx"
+	;; if (r == 3)
+		;return "dx"
+	;; if (r == 4)
+		;return "si"
+	;; if (r == 5)
+		;return "di"
+	;; if (r == 6)
+		;return "bp"
+	;/
+	;return string_from_int(r)
+;/
+
+
+/; method Value
+
+    /; get_norm_loc [{}uint8]
+        /; if (self.on_stack)
+            ;return general_stack_offset
+        ;/
+
+        /; if (self.temp)
+            ;return get_reg(self._type._size, reg_by_num(self.loc))
+        ;; else
+            ;return get_reg(self._type._size, reg_by_num(self.loc + 8))
+        ;/
+
+        ;return ""
+    ;/
+
+    /; add_literal (int i) [{}uint8]
+        /; if (self.literal)
+            ;self.val = self.val + i
+            ;return ""
+        ;; else if (!self.on_stack)
+            ;{}uint8 reg = self.get_norm_loc()
+            ;{}uint8 out = "\tadd $"
+            ;{}uint8 tmp = string_from_int(i)
+            ;add_strings(~out, ~tmp)
+            ;out.append(',')
+            ;out.append(' ')
+            ;add_strings(~out, ~reg)
+            ;return out
+        ;/
+        
+    ;/
+
+    /; add_value (Value v) [{}uint8]
+        /; if (self.literal)
+            ;self.val = self.val + v.val
+            ;return ""
+        ;; else if (!self.on_stack)
+            ;{}uint8 tmp = self.get_norm_loc()
+            ;{}uint8 out = "\tadd "
+            ;add_strings(~out, ~tmp)
+            ;out.append(',')
+            ;out.append(' ')
+            ;tmp = v.get_norm_loc()
+            ;add_strings(~out, ~tmp)
+            ;return out
+        ;/
+    ;/
+
+    /; sub_value (Value v) [{}uint8]
+        /; if (self.literal)
+            ;self.val = self.val - v.val
+            ;return ""
+        ;/
+    ;/
+
+    /; mul_literal (int i) [{}uint8]
+        /; if (self.literal)
+            ;return ""
+        ;/
+    ;/
+
+    /; div_literal (int i) [{}uint8]
+
+    ;/
+
+    /; mul_value (Value v) [{}uint8]
+
+    ;/
+
+    /; div_value (int i) [{}uint8]
+
+    ;/
+
+    /; deref_value [Value]
+        /; if (self._type.ptr == 0)
+
+        ;/
+    ;/
+
+    /; arr_value (int i) [Value]
+        /; if (self._type.ptr == 0)
+
+        ;/
+    ;/
+
+    /; copy_from_value (Value v)
+
+    ;/
+
+    /; get_member_value ({}uint8 name) [Value]
+        ;Value out = self
+    ;/
+
+    /; update_loc(int offset)
+        /; if (self.on_stack)
+            ;self.loc = self.loc + offset
+        ;/
+    ;/
+
+;/

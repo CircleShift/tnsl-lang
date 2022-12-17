@@ -14,7 +14,7 @@
 	EXPRESS OR IMPLIED
 #/
 
-/; construct_statement({}charp base, {}{}charp args) [{}charp]
+/; construct_statement({}uint8 base, {}{}uint8 args) [{}uint8]
 	/; loop (int i = 0; i < len args) [i++]
 		;add_strings(~base, ~(args{i}))
 		/; if (i < len args - 1)
@@ -26,59 +26,59 @@
 	;return base
 ;/
 
-/; literal_num ({}charp num) [{}charp]
-	;{}charp out = "$"
+/; literal_num ({}uint8 num) [{}uint8]
+	;{}uint8 out = "$"
 	;add_strings(~out, ~num)
 	;return out
 ;/
 
-/; add_asm ({}charp from, to) [{}charp]
+/; add_asm ({}uint8 from, to) [{}uint8]
 	;return construct_statement("\tadd ", {from, to})
 ;/
 
-/; sub_asm({}charp from, to) [{}charp]
+/; sub_asm({}uint8 from, to) [{}uint8]
 	;return construct_statement("\tsub ", {from, to})
 ;/
 
-/; push_asm ({}charp reg) [{}charp]
+/; push_asm ({}uint8 reg) [{}uint8]
 	;return construct_statement("\tpush ", {reg})
 ;/
 
-/; pop_asm ({}charp reg) [{}charp]
+/; pop_asm ({}uint8 reg) [{}uint8]
 	;return construct_statement("\tpop ", {reg})
 ;/
 
-/; cmp_asm ({}charp a, b) [{}charp]
+/; cmp_asm ({}uint8 a, b) [{}uint8]
 	;return construct_statement("\tcmp ", {a, b})
 ;/
 
-/; mov_asm ({}charp a, b) [{}charp]
+/; mov_asm ({}uint8 a, b) [{}uint8]
 	;return construct_statement("\tmov ", {a, b})
 ;/
 
-/; jmp_asm ({}charp pos) [{}charp]
+/; jmp_asm ({}uint8 pos) [{}uint8]
 	;return construct_statement("\tjmp ", {pos})
 ;/
 
-/; call_asm ({}charp pos) [{}charp]
+/; call_asm ({}uint8 pos) [{}uint8]
 	;return construct_statement("\tcall ", {pos})
 ;/
 
-/; cjmp_asm ({}charp suffix, pos) [{}charp]
-	;{}charp p = "\tj"
+/; cjmp_asm ({}uint8 suffix, pos) [{}uint8]
+	;{}uint8 p = "\tj"
 	;add_strings(~p, ~suffix)
 	;p.append(' ')
 	;return construct_statement(p, {pos})
 ;/
 
-/; mem_offset ({}charp pos, offset, scale) [{}charp]
-	;{}charp tmp = construct_statement("(", {pos, offset, scale})
+/; mem_offset ({}uint8 pos, offset, scale) [{}uint8]
+	;{}uint8 tmp = construct_statement("(", {pos, offset, scale})
 	;tmp{len tmp - 1} = ')'
 	;return tmp
 ;/
 
-/; header_guard (~{}charp csec) [{}charp]
-	;{}charp out = "", tmp = ""
+/; header_guard (~{}uint8 csec) [{}uint8]
+	;{}uint8 out = "", tmp = ""
 	;tmp = push_asm("%r8")
 	;add_strings(~out, ~tmp)
 	;tmp = push_asm("%r9")
@@ -98,8 +98,8 @@
 	;add_strings(csec, ~out)
 ;/
 
-/; tail_guard (~{}charp csec) [{}charp]
-	;{}charp out = "", tmp = ""
+/; tail_guard (~{}uint8 csec) [{}uint8]
+	;{}uint8 out = "", tmp = ""
 	;tmp = pop_asm("%r15")
 	;add_strings(~out, ~tmp)
 	;tmp = pop_asm("%r14")
@@ -119,7 +119,7 @@
 	;add_strings(csec, ~out)
 ;/
 
-/; is_common_reg ({}charp n) [bool]
+/; is_common_reg ({}uint8 n) [bool]
 	;return string_equate(n, "ax") || string_equate(n, "bx") || string_equate(n, "cx") || string_equate(n, "dx")
 			|| string_equate(n, "sp")  || string_equate(n, "bp") ||  string_equate(n, "si")  || string_equate(n, "di")
 			|| string_equate(n, "8") || string_equate(n, "9") || string_equate(n, "10") || string_equate(n, "11")
@@ -137,8 +137,8 @@
 #    - di
 #    - 8-15
 #/
-/; get_reg (uint size, {}charp common) [{}charp]
-	;{}charp out = "%"
+/; get_reg (uint size, {}uint8 common) [{}uint8]
+	;{}uint8 out = "%"
 
 	/; if (string_equate(common, "ax") || string_equate(common, "bx") || string_equate(common, "cx") || string_equate(common, "dx"))
 
@@ -166,7 +166,7 @@
 
 	;; else
 
-		;{}charp out = "r"
+		;{}uint8 out = "r"
 		;add_strings(~out, ~common)
 		/; if (size == 1)
 			;out.append('b')
@@ -181,7 +181,7 @@
 	;return out
 ;/
 
-/; make_label ({}charp func_name, func_place, ~{}charp csec)
+/; make_label ({}uint8 func_name, func_place, ~{}uint8 csec)
 	;func_name.append("_")
 	;add_strings(~func_name, ~func_place)
 	;func_name.append(':')
