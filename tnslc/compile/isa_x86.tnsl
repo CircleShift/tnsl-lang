@@ -131,31 +131,23 @@
 #    - bx
 #    - cx
 #    - dx
-#    - sp
-#    - bp
 #    - si
 #    - di
+#    - bp
+#    - sp
 #    - 8-15
 #/
 /; get_reg (uint size, {}uint8 common) [{}uint8]
 	;{}uint8 out = "%"
 
-	/; if (string_equate(common, "ax") || string_equate(common, "bx") || string_equate(common, "cx") || string_equate(common, "dx"))
+	/; if (common{0} !< 'a')
 
 		/; if (size == 1)
-			;common{1} = 'l'
-		;; else if (size == 4)
-			;out.append('e')
-		;; else if (size == 8)
-			;out.append('r')
-		;/
-
-		;add_strings(~out, ~common)
-
-	;; else if (string_equate(common, "sp") || string_equate(common, "bp") || string_equate(common, "si") || string_equate(common, "di"))
-		
-		/; if (size == 1)
-			;common.append('l')
+			/; if(common{1} == 'x')
+				;common{1} = 'l'
+			;; else
+				;common.append('l')
+			;/
 		;; else if (size == 4)
 			;out.append('e')
 		;; else if (size == 8)

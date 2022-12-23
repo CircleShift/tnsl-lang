@@ -1,7 +1,6 @@
 ;struct Value {
     bool
         on_stack,
-        temp,
         literal,
     
     int
@@ -12,16 +11,15 @@
         _type
 }
 
-;Value NV = {false, false, false, 0, 0, 0, {0, 0, "null", {}, {}}}
+;Value NV = {false, false, 0, 0, 0, {0, 0, "null", {}, {}}}
 
-/; setup_stack_offset (int offset) [{}uint8]
-    ;{}uint8 out = "$"
-    ;{}uint8 tmp = string_from_int(offset)
-    ;add_strings(~out, ~tmp)
-    ;return mov_asm(out, "%rax")
+/; val_from_address (int offset, {}uint8 reg) [{}uint8]
+    ;{}uint8 out = string_from_int(offset)
+    ;out.append('(')
+    ;add_strings(~out, ~reg)
+    ;out.append(')')
+    ;return out
 ;/
-
-;{}charp general_stack_offset = "(%rsp, %rax, 1)"
 
 
 # The temp registers in order
@@ -49,33 +47,58 @@
 
     /; get_norm_loc [{}uint8]
         /; if (self.on_stack)
-            ;return general_stack_offset
+            ;return val_from_address(self.loc, "%rsp")
         ;/
 
-        /; if (self.temp)
-            ;return get_reg(self._type._size, reg_by_num(self.loc))
-        ;; else
-            ;return get_reg(self._type._size, reg_by_num(self.loc + 8))
+        /; if (self.literal)
+            ;{}uint8 out = "$"
+            ;{}uint8 num = string_from_int(self.val)
+            ;add_strings(~out, ~num)
+            ;return out
         ;/
 
-        ;return ""
+        ;int sz = self._type._size
+        /; if (self._type.ptr !== 0)
+            ;sz = 8
+        ;/
+
+        ;return get_reg(sz, reg_by_num(self.loc))
     ;/
 
-    /; add_literal (int i) [{}uint8]
-        /; if (self.literal)
-            ;self.val = self.val + i
-            ;return ""
-        ;; else if (!self.on_stack)
-            ;{}uint8 reg = self.get_norm_loc()
-            ;{}uint8 out = "\tadd $"
-            ;{}uint8 tmp = string_from_int(i)
+    /; init_val [{}uint8]
+        /; if (!self.on_stack)
+            ;{}uint8 out = "\tmov $0, "
+            ;{}uint8 reg = get_reg(8, reg_by_num(self.loc))
+            ;add_strings(~out, ~reg)
+            ;return out
+        ;; else if (!self.literal)
+            ;{}uint8 out = "\tsub $"
+            ;{}uint8 tmp = string_from_int(self._type._size)
             ;add_strings(~out, ~tmp)
             ;out.append(',')
             ;out.append(' ')
-            ;add_strings(~out, ~reg)
+            ;tmp = "%rsp\n"
+            ;add_strings(~out, ~tmp)
             ;return out
         ;/
-        
+        ;return ""
+    ;/
+
+    /; standard_op(Value other, {}uint8 op) [{}uint8]
+        ;int tsz = v._type._size
+        ;v._type._size = self._type._size
+        ;{}uint8 tmp = v.get_norm_loc()
+        ;v._type._size = tsz
+        ;{}uint8 out = "\t"
+        ;add_strings(~out, ~op)
+        ;out.append(' ')
+        ;add_strings(~out, ~tmp)
+        ;out.append(',')
+        ;out.append(' ')
+        ;tmp = self.get_norm_loc()
+        ;add_strings(~out, ~tmp)
+        ;out.append('\n')
+        ;return out
     ;/
 
     /; add_value (Value v) [{}uint8]
@@ -83,66 +106,166 @@
             ;self.val = self.val + v.val
             ;return ""
         ;; else if (!self.on_stack)
-            ;{}uint8 tmp = self.get_norm_loc()
-            ;{}uint8 out = "\tadd "
-            ;add_strings(~out, ~tmp)
-            ;out.append(',')
-            ;out.append(' ')
-            ;tmp = v.get_norm_loc()
-            ;add_strings(~out, ~tmp)
-            ;return out
+            ;return self.standard_op(v, "add")
         ;/
     ;/
 
     /; sub_value (Value v) [{}uint8]
         /; if (self.literal)
-            ;self.val = self.val - v.val
+            ;self.val = self.val + v.val
             ;return ""
+        ;; else if (!self.on_stack)
+            ;return self.standard_op(v, "sub")
         ;/
     ;/
 
-    /; mul_literal (int i) [{}uint8]
-        /; if (self.literal)
-            ;return ""
+    /; ax_compute(Value v, {}uint8 op, bool save_dx)
+        ;{}uint8 out = "\tpush %rax\n\tpush %rdx\n"
+
+        ;{}uint8 tmp = "\tmov "
+        ;{}uint8 t2 = v.get_norm_loc()
+        ;add_strings(~tmp, ~t2)
+        ;t2 = ", %rax\n"
+        ;add_strings(~tmp, ~t2)
+        ;add_strings(~out, ~tmp)
+        
+        ;tmp = "\txor %rdx, %rdx\n"
+        ;add_strings(~out, ~tmp)
+
+        ;tmp = "\t"
+        ;add_strings(~tmp, ~op)
+        ;tmp.append(' ')
+        ;{}uint8 t2 = self.get_norm_loc()
+        ;add_strings(~tmp, ~t2)
+        ;tmp.append('\n')
+        ;add_strings(~out, ~tmp)
+
+        /; if (save_dx)
+            ;tmp = "\tmov %rdx, "
+        ;; else
+            ;tmp = "\tmov %rax, "
         ;/
-    ;/
+        ;add_strings(~tmp, ~t2)
+        ;tmp.append('\n')
+        ;add_strings(~out, ~tmp)
 
-    /; div_literal (int i) [{}uint8]
-
+        ;tmp = "\tpop %rdx\n\tpop %rax"
+        ;add_strings(~out, ~tmp)
+        ;return out
     ;/
 
     /; mul_value (Value v) [{}uint8]
-
-    ;/
-
-    /; div_value (int i) [{}uint8]
-
-    ;/
-
-    /; deref_value [Value]
-        /; if (self._type.ptr == 0)
-
+        /; if (self.literal)
+            ;self.val = self.val + v.val
+            ;return ""
+        ;; else if (!self.on_stack)
+            /; if (self._type.name{0} !== 'u')
+                ;return self.standard_op(v, "imul")
+            ;/
+            
+            ;return self.ax_compute(v, "mul", false)
         ;/
     ;/
 
-    /; arr_value (int i) [Value]
-        /; if (self._type.ptr == 0)
-
+    /; div_value (Value v) [{}uint8]
+        /; if (self.literal)
+            ;self.val = self.val + v.val
+            ;return ""
+        ;; else if (!self.on_stack)
+            /; if (self._type.name{0} !== 'u')
+                ;return self.ax_compute(v, "idiv", false)
+            ;/
+            
+            ;return self.ax_compute(v, "div", false)
         ;/
     ;/
 
-    /; copy_from_value (Value v)
+    /; mod_value (Value v) [{}uint8]
+        /; if (self.literal)
+            ;self.val = self.val + v.val
+            ;return ""
+        ;; else if (!self.on_stack)
+            /; if (self._type.name{0} !== 'u')
+                ;return self.ax_compute(v, "idiv", true)
+            ;/
+            
+            ;return self.ax_compute(v, "div", true)
+        ;/
+    ;/
 
+    /; deref_value [{}uint8]
+        /; if (self._type.ptr == 0)
+            ;return ""
+        ;/
+
+        ;Value new = self
+        ;new._type.ptr = new._type.ptr - 1
+        ;{}uint8 out = "\tmov ("
+        ;{}uint8 tmp = self.get_norm_loc()
+        ;add_strings(~out, ~tmp)
+        ;out.append(')')
+        ;out.append(',')
+        ;out.append(' ')
+        ;tmp = new.get_norm_loc()
+        ;add_strings(~out, ~tmp)
+
+        ;self = new
+        ;return out
+    ;/
+
+    /; arr_value (Value index, Value store)
+        /; if (self._type.ptr == 0)
+            ;return
+        ;/
+    ;/
+
+    /; set_value (Value v) [{}uint8]
+        /; if (self.literal)
+            ;self.val = v.val
+            ;return ""
+        ;; else if (!self.on_stack)
+            ;return self.standard_op(v, "mov")
+        ;/
     ;/
 
     /; get_member_value ({}uint8 name) [Value]
         ;Value out = self
+        ;out.loc = out.loc + self._type.get_offset(name)
+        ;out._type = self._type.get_sub_type(name)
+        ;return out
     ;/
 
-    /; update_loc(int offset)
+    /; update_loc(int loc) [{}uint8]
         /; if (self.on_stack)
-            ;self.loc = self.loc + offset
+            ;self.loc = self.loc + loc
+        ;; else if (!self.literal)
+            ;{}uint8 out = "\tmov "
+            ;int tsz = self._type._size
+            ;self._type._size = 8
+
+            ;{}uint8 tmp = self.get_norm_loc()
+            ;add_strings(~out, ~tmp)
+            ;out.append(',')
+            ;out.append(' ')
+
+            ;self.loc = loc
+
+            ;{}uint8 tmp = self.get_norm_loc()
+            ;add_strings(~out, ~tmp)
+            ;out.append('\n')
+
+            ;self._type._size = tsz
+            ;return out
         ;/
+        ;return ""
     ;/
 
+;/
+
+/; literal_val (int l, VType t) [Value]
+    ;return {false, true, 0, l, t}
+;/
+
+/; track_val(VType ty, bool on_stack, int loc) [Value]
+    ;return {on_stack, false, loc, 0, ty}
 ;/

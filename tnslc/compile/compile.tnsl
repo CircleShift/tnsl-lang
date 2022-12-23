@@ -69,12 +69,9 @@
 ;struct VTrack {
 	{}{}uint8
 		sym_names,
-	
-	{}bool
-		on_stack,
 
-	{}VType
-		sym_types
+	{}Value
+		sym_vals
 }
 
 /; method VTrack
@@ -88,20 +85,13 @@
 				;count++
 			;/
 
-			/; if (count > 7)
+			/; if (count > 8)
 				;to_stack = true
 			;/
 		;/
 
 		;self.sym_names.append(name)
-		;self.sym_types.append(_type)
-		;self.on_stack.append(to_stack)
-
-		/; if (count > 7)
-			;return -1
-		;/
-
-		;return count
+		;self.sym_vals.append(_type)
 	;/
 
 	# Returns true if the variable is being tracked
@@ -194,6 +184,29 @@
 	;/
 	
 	;return out
+;/
+
+# Bool to j
+/; cmp_to_jxt ({}uint8 c) [{}uint8]
+	/; if (string_equate(c, "<"))
+		;return "l"
+	;;	else if (string_equate(c, ">"))
+		;return "g"
+	;;	else if (string_equate(c, "!<") || string_equate(c, ">=="))
+		;return "nl"
+	;;	else if (string_equate(c, "!>") || string_equate(c, "<=="))
+		;return "ng"
+	;;	else if (string_equate(c, "=="))
+		;return "e"
+	;;	else if (string_equate(c, "!=="))
+		;return "ne"
+	;; 
+	;/
+	;return "nz"
+;/
+
+/; compute_jmp ({}uint8 jxt, lab) [{}uint8]
+
 ;/
 
 # Is struct returns true if the type name given is a struct
@@ -701,14 +714,14 @@
 
 	;out.write('\n')
 
-	/; loop (int i = 0; i < len csec) [i++]
-		;out.write(csec{i})
+	/; loop (int i = 0; i < len dsec) [i++]
+		;out.write(dsec{i})
 	;/
 
 	;out.write('\n')
 
-	/; loop (int i = 0; i < len dsec) [i++]
-		;out.write(dsec{i})
+	/; loop (int i = 0; i < len csec) [i++]
+		;out.write(csec{i})
 	;/
 
 	;out.write('\n')
