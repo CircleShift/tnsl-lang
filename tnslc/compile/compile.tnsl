@@ -412,7 +412,7 @@
 			;int nloc = tab`.next_loc(last)
 			
 			;Value store = {false, false, nloc, 0, last}
-			/; if (store.loc !< 0)
+			/; if (store.loc !< 0 && tmp.loc !> 5)
 				;{}uint8 tstr = store.set_value(tmp)
 				;add_strings(csec, ~tstr)
 				;tmp.loc = tmp.loc + 1
@@ -436,9 +436,9 @@
 ;/
 
 # Evaluate a value and return it to the register pointed at by reg
-/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec, int reg)
+/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [Value]
 	/; if (token_is(cur, data, ";/"))
-		;return
+		;return NV
 	;/
 
 	;int val_layer = 0
@@ -494,16 +494,15 @@
 	;tnsl.io.println(to_call)
 		# Set read head to first parameter
 	;cur`++
-	;int reg = 0
 	/; loop (!token_is(cur, data, ")"))
 		/; if (token_is(cur, data, ","))
 			;cur`++
 		;; else
 			/; if (reg < 7)
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, reg)
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
 				;reg++
 			;; else
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, reg)
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
 				;push_asm(get_reg(8, "bp"))
 			;/
 		;/
@@ -567,61 +566,62 @@
 /; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [bool]
 	;cur`++
 	;bool r = false
-	/; if (cur` < len data`)
-		/; if (token_is(cur, data, "asm"))
+	/; if (cur` !< len data`)
+		;return false
+	;/
+
+	/; if (token_is(cur, data, "asm"))
+		;cur`++
+		;{}uint8 raw_asm = unquote_string(data`{cur`}.data`)
+		;raw_asm.append('\n')
+		;csec`.append('\t')
+		;add_strings(csec, ~raw_asm)
+		;cur`++
+	;; else if (token_is(cur, data, "raw"))
+		;cur`++
+		;r = true
+	;; else if (token_is(cur, data, "return"))
+		;cur`++
+		;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
+		;tail_guard(csec)
+		;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
+		;return true
+	;; else if (is_call(cur, data))
+		# Function call
+		;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
+	;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
+		# set value
+		;int i = name_to_index(data`{cur`}.data`, tab)
+		;{}uint8 tmp = index_to_loc(i)
+		;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
+		;tmp = mov_asm(get_reg(tab`.sym_types{i}._size, "ax"), tmp)
+		;add_strings(csec, ~tmp)
+	;; else
+		#Definition
+		;VType def_t = get_vtype(cur, data)
+		;cur`++
+		
+		/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
+			;{}uint8 init = tab`.add_track(data`{cur`}.data`, def_t)
+			;add_strings(~out, ~init)
 			;cur`++
-			;{}uint8 raw_asm = unquote_string(data`{cur`}.data`)
-			;raw_asm.append('\n')
-			;csec`.append('\t')
-			;add_strings(csec, ~raw_asm)
-			;cur`++
-		;; else if (token_is(cur, data, "raw"))
-			;cur`++
-			;r = true
-		;; else if (token_is(cur, data, "return"))
-			;cur`++
-			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
-			;tail_guard(csec)
-			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
-			;return true
-		;; else if (is_call(cur, data))
-			# Function call
-			;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
-		;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
-			# set value
-			;int i = name_to_index(data`{cur`}.data`, tab)
-			;{}uint8 tmp = index_to_loc(i)
-			;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
-			;tmp = mov_asm(get_reg(tab`.sym_types{i}._size, "ax"), tmp)
-			;add_strings(csec, ~tmp)
-		;; else
-			#Definition
-			;VType def_t = get_vtype(cur, data)
-			;cur`++
-			
-			/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
-				;{}uint8 init = tab`.add_track(data`{cur`}.data`, def_t)
-				;add_strings(~out, ~init)
+			/; if (token_is(cur, data, ","))
 				;cur`++
+			;; else if (token_is(cur, data, "="))
+				;{}uint8 set = index_to_loc(len tab`.sym_names - 1, tab)
+				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
 				/; if (token_is(cur, data, ","))
 					;cur`++
-				;; else if (token_is(cur, data, "="))
-					;{}uint8 set = index_to_loc(len tab`.sym_names - 1, tab)
-					;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
-					/; if (token_is(cur, data, ","))
-						;cur`++
-					;/
-				;; else
-					;break
 				;/
+			;; else
+				;break
 			;/
-			/; if (string_equate(data`{cur`+1}.data`, "="))
-
-			;/
-		;; if (token_is(cur, data, "return"))
-			;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
-			;return true
 		;/
+		/; if (string_equate(data`{cur`+1}.data`, "="))
+		;/
+	;; if (token_is(cur, data, "return"))
+		;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
+		;return true
 	;/
 
 	;return false

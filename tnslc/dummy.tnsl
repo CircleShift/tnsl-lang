@@ -6,7 +6,10 @@
     test a, b
 }
 
-/; main (uint argc, ~~uint8 argv, v, f, c, d) [int]
+/; main (uint argc, ~~uint8 argv) [int]
+    # Fix for main func
+    ;asm "mov %rdi, %r8"
+    ;asm "mov %rsi, %r9"
     # ;~void ptr = _alloc(10)
     # ;_delete(ptr)
     ;return 1
