@@ -36,14 +36,19 @@
 		;return "si"
 	;; if (r == 5)
 		;return "di"
-	;; if (r == 6)
-		;return "bp"
 	;/
-	;return string_from_int(r)
+	;return string_from_int(r + 2)
 ;/
 
 
 /; method Value
+
+    /; get_norm_sz [int]
+        /; if (self._type.ptr !== 0)
+            ;return 8
+        ;/
+        ;returnself._type._size
+    ;/
 
     /; get_norm_loc [{}uint8]
         /; if (self.on_stack)
@@ -85,10 +90,10 @@
     ;/
 
     /; standard_op(Value other, {}uint8 op) [{}uint8]
-        ;int tsz = v._type._size
-        ;v._type._size = self._type._size
-        ;{}uint8 tmp = v.get_norm_loc()
-        ;v._type._size = tsz
+        ;int tsz = other._type._size
+        ;other._type._size = self._type._size
+        ;{}uint8 tmp = other.get_norm_loc()
+        ;other._type._size = tsz
         ;{}uint8 out = "\t"
         ;add_strings(~out, ~op)
         ;out.append(' ')
@@ -193,6 +198,14 @@
         ;/
     ;/
 
+    /; ref_value (Value to_ref) [{}uint8]
+        /; if (!to_ref.on_stack)
+            ;return ""
+        ;/
+
+        ;return self.standard_op(to_ref, "lea")
+    ;/
+
     /; deref_value [{}uint8]
         /; if (self._type.ptr == 0)
             ;return ""
@@ -223,7 +236,7 @@
         /; if (self.literal)
             ;self.val = v.val
             ;return ""
-        ;; else if (!self.on_stack)
+        ;; else if (!(self.on_stack))
             ;return self.standard_op(v, "mov")
         ;/
     ;/

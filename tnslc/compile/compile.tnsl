@@ -75,23 +75,37 @@
 }
 
 /; method VTrack
-	# returns true if the value is allocated to the stack
-	/; add_track({}uint8 name, VType _type) [int]
-		;bool to_stack = is_struct(_type)
-		;int count = 0
 
-		/; loop (int i = 0; i < len (self.on_stack) && !to_stack) [i++]
-			/; if (!self.on_stack{i})
+	/; next_loc(VType vt) [int]
+		/; if (is_struct(vt))
+			;return -1
+		;/
+
+		;int count = 0
+		/; loop (int i = 0; i < len (self.sym_vals)) [i++]
+			/; if (!(self.sym_vals{i}.on_stack))
 				;count++
 			;/
 
-			/; if (count > 8)
-				;to_stack = true
+			/; if (count > 7)
+				;return -1
 			;/
 		;/
 
+		;return count + 6
+	;/
+
+	# returns with init commands
+	/; add_track({}uint8 name, VType _type) [{}uint8]
+		;Value v = track_val(_type, to_stack, self.next_loc(_type))
+		
+		/; if (v.loc < 0)
+			;v.loc = 0
+		;/
+
 		;self.sym_names.append(name)
-		;self.sym_vals.append(_type)
+		;self.sym_vals.append(v)
+		;return v.init_val()
 	;/
 
 	# Returns true if the variable is being tracked
@@ -109,19 +123,40 @@
 		;int out = 0
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
 			/; if (self.on_stack{i})
-				;out = out + (self.sym_types{i}._size)
+				;out = out + (self.sym_vals{i}._type._size)
 			;/
 		;/
 		;return out
 	;/
 
 	# returns the type of the named variable
-	/; get_vtype ({}uint8 name) [VType]
+	/; get_val ({}uint8 name) [Value]
 		/; loop (int i = 0; i < len (self.on_stack)) [i++]
 			/; if (string_equate(name, self.sym_names{i}))
-				;return (self.sym_types{i})
+				;return (self.sym_vals{i})
 			;/
 		;/
+	;/
+
+	# push stack updates loc for every value on the stack
+	/; push_stack (VType vt) [{}uint8]
+		;int tsz = vt._size
+		/; if (vt.ptr !== 0)
+			;tsz = 8
+		;/
+
+		/; loop (int i = 0; i < len (self.sym_vals)) [i++]
+			;self.sym_vals{i}.loc = self.sym_vals{i}.loc + tsz
+		;/
+
+		;{}uint8 out = "\tsub $"
+		;{}uint8 tmp = string_from_int(tsz)
+		;add_strings(~out, ~tmp)
+		;out.append(',')
+		;out.append(' ')
+		;tmp = "%rsp"
+		;add_strings(~out, ~tmp)
+		;return out
 	;/
 ;/
 
@@ -205,21 +240,21 @@
 	;return "nz"
 ;/
 
-/; compute_jmp ({}uint8 jxt, lab) [{}uint8]
-
-;/
-
 # Is struct returns true if the type name given is a struct
 /; is_struct (VType t) [bool]
-	/; if (t.ptr > 0)
+	/; if (t.ptr !== 0)
 		;return false
 	;/
 
+	;VType tmp = NT
 	/; loop (int i = 0; i < 15) [i++]
-		/; if (string_equate(type_table{i}.name, t.name))
+		;tmp = tnslc.type_table{i}
+		/; if (string_equate(tmp.name, t.name))
 			;return false
 		;/
 	;/
+
+	
 
 	;return true
 ;/
@@ -353,25 +388,41 @@
 
 # Assumes cur points to the beginning of the arguments list
 # Sets up the VTrack struct that is pointed to.
-/; setup_vtrack (~int cur, ~{}Token data, ~VTrack tab)
+/; setup_vtrack (~int cur, ~{}Token data, ~VTrack tab, ~{}uint8 csec)
 	;cur`++
 
 	;VType last = NT
+	;Value tmp = {false, false, 0, 0, last}
 
 	/; loop (cur` < len data`) [cur`++]
 		;int pre_skip = cur`
 		/; if (token_is(cur, data, ")"))
+			
 			;break
 		;; else if (!token_is(cur, data, ","))
+			
 			;skip_to_name(cur, data)
-			/; if (pre_skip == cur`)
-				;tab`.sym_types.append(last)
-				;tab`.sym_names.append(data`{cur`}.data`)
-			;; else
+			
+			/; if (pre_skip !== cur`)
 				;last = get_vtype(~pre_skip, data)
-				;tab`.sym_types.append(last)
-				;tab`.sym_names.append(data`{cur`}.data`)
+				;tmp._type = last
 			;/
+			
+			;tab`.sym_names.append(data`{cur`}.data`)
+			;int nloc = tab`.next_loc(last)
+			
+			;Value store = {false, false, nloc, 0, last}
+			/; if (store.loc !< 0)
+				;{}uint8 tstr = store.set_value(tmp)
+				;add_strings(csec, ~tstr)
+				;tmp.loc = tmp.loc + 1
+			;; else
+				;store.loc = 0
+				;store.on_stack = true
+				;tab`.push_stack(last)
+			;/
+
+			;tab`.sym_vals.append(store)
 		;/
 	;/
 ;/
@@ -549,16 +600,19 @@
 			;cur`++
 			
 			/; loop (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
-				;int stack = tab`.add_track()
-				
+				;{}uint8 init = tab`.add_track(data`{cur`}.data`, def_t)
+				;add_strings(~out, ~init)
+				;cur`++
 				/; if (token_is(cur, data, ","))
 					;cur`++
 				;; else if (token_is(cur, data, "="))
-					;{}uint8 loc = index_to_loc(len tab`.sym_names - 1, tab)
+					;{}uint8 set = index_to_loc(len tab`.sym_names - 1, tab)
 					;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
 					/; if (token_is(cur, data, ","))
 						;cur`++
 					;/
+				;; else
+					;break
 				;/
 			;/
 			/; if (string_equate(data`{cur`+1}.data`, "="))
@@ -576,7 +630,7 @@
 
 
 /; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path, Path rel)
-	;VTrack tab = { {}, {}, {} }
+	;VTrack tab = { {}, {} }
 	;VType out_type = tnslc.type_table{14}
 	;{}uint8 name = ""
 	;bool r = false
@@ -599,8 +653,11 @@
 			;add_strings(csec, ~name)
 			;csec`.append(':')
 			;csec`.append('\n')
+			/; if (!r)
+				;header_guard(csec)
+			;/
 		;; else if (token_is(cur, data, "("))
-			;setup_vtrack(cur, data, ~tab)
+			;setup_vtrack(cur, data, ~tab, csec)
 		;; else if (token_is(cur, data, "["))
 			;cur`++
 			;out_type = get_vtype(cur, data)
@@ -613,10 +670,6 @@
 	;/
 
 	;tnsl.io.println(out_type.name)
-
-	/; if (!r)
-		;header_guard(csec)
-	;/
 
 	;bool ret = false
 	/; loop (cur` < len data` && !ret)

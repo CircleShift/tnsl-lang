@@ -158,7 +158,7 @@
 
 	;; else
 
-		;{}uint8 out = "r"
+		;out.append('r')
 		;add_strings(~out, ~common)
 		/; if (size == 1)
 			;out.append('b')

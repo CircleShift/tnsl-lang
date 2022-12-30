@@ -6,7 +6,7 @@
     test a, b
 }
 
-/; main (uint argc, ~~uint8 argv) [int]
+/; main (uint argc, ~~uint8 argv, v, f, c, d) [int]
     # ;~void ptr = _alloc(10)
     # ;_delete(ptr)
     ;return 1
