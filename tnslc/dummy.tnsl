@@ -6,13 +6,17 @@
     test a, b
 }
 
+/; add (int a, b) [int]
+    ;return a + b - 9 - 30
+;/
+
 /; main (uint argc, ~~uint8 argv) [int]
     # Fix for main func
     ;asm "mov %rdi, %r8"
     ;asm "mov %rsi, %r9"
     # ;~void ptr = _alloc(10)
     # ;_delete(ptr)
-    ;return 1
+    # ;return add(argc, 2)
 ;/
 
 

@@ -36,8 +36,21 @@
 		;return "si"
 	;; if (r == 5)
 		;return "di"
+    ;; if (r == -1)
+        ;return "sp"
 	;/
 	;return string_from_int(r + 2)
+;/
+
+/; ext_by_size(int s) [uint8]
+    /; if (r == 1)
+		;return 'b'
+	;; if (r == 2)
+		;return 'w'
+	;; if (r == 4)
+		;return 'l'
+    ;/
+	;return 'q'
 ;/
 
 
@@ -53,6 +66,12 @@
     /; get_norm_loc [{}uint8]
         /; if (self.on_stack)
             ;return val_from_address(self.loc, "%rsp")
+        ;; if (!(self.on_stack) && self._type.ptr == 0 && is_struct(self._type))
+            ;{}uint8 out = "("
+            ;{}uint8 tmp = get_reg(8, reg_by_num(self.loc))
+            ;add_strings(~out, ~tmp)
+            ;out.append(')')
+            ;return out
         ;/
 
         /; if (self.literal)
@@ -71,25 +90,21 @@
     ;/
 
     /; init_val [{}uint8]
-        /; if (!self.on_stack)
-            ;{}uint8 out = "\tmov $0, "
-            ;{}uint8 reg = get_reg(8, reg_by_num(self.loc))
-            ;add_strings(~out, ~reg)
-            ;return out
-        ;; else if (!self.literal)
-            ;{}uint8 out = "\tsub $"
-            ;{}uint8 tmp = string_from_int(self._type._size)
-            ;add_strings(~out, ~tmp)
-            ;out.append(',')
-            ;out.append(' ')
-            ;tmp = "%rsp\n"
-            ;add_strings(~out, ~tmp)
-            ;return out
+        /; if (self.literal || !self.on_stack)
+            ;return ""
         ;/
-        ;return ""
+
+        ;{}uint8 out = "\tsub $"
+        ;{}uint8 tmp = string_from_int(self._type._size)
+        ;add_strings(~out, ~tmp)
+        ;tmp = ", %rsp\n"
+        ;add_strings(~out, ~tmp)
+        ;return out
     ;/
 
     /; standard_op(Value other, {}uint8 op) [{}uint8]
+        ;tnsl.io.print("Std op ")
+        ;tnsl.io.println(op)
         ;int tsz = other._type._size
         ;other._type._size = self._type._size
         ;{}uint8 tmp = other.get_norm_loc()
@@ -110,22 +125,28 @@
         /; if (self.literal)
             ;self.val = self.val + v.val
             ;return ""
-        ;; else if (!self.on_stack)
+        ;; else if (!(self.on_stack))
             ;return self.standard_op(v, "add")
         ;/
     ;/
 
     /; sub_value (Value v) [{}uint8]
         /; if (self.literal)
-            ;self.val = self.val + v.val
+            ;self.val = self.val - v.val
             ;return ""
-        ;; else if (!self.on_stack)
+        ;; else if (!(self.on_stack))
             ;return self.standard_op(v, "sub")
         ;/
     ;/
 
     /; ax_compute(Value v, {}uint8 op, bool save_dx)
         ;{}uint8 out = "\tpush %rax\n\tpush %rdx\n"
+        
+        /; if (v.on_stack)
+            ;v.loc = v.loc + 16
+        ;; if (self.on_stack)
+            ;self.loc = self.loc + 16
+        ;/
 
         ;{}uint8 tmp = "\tmov "
         ;{}uint8 t2 = v.get_norm_loc()
@@ -154,6 +175,12 @@
         ;tmp.append('\n')
         ;add_strings(~out, ~tmp)
 
+        /; if (v.on_stack)
+            ;v.loc = v.loc - 16
+        ;; if (self.on_stack)
+            ;self.loc = self.loc - 16
+        ;/
+
         ;tmp = "\tpop %rdx\n\tpop %rax"
         ;add_strings(~out, ~tmp)
         ;return out
@@ -161,9 +188,9 @@
 
     /; mul_value (Value v) [{}uint8]
         /; if (self.literal)
-            ;self.val = self.val + v.val
+            ;self.val = self.val * v.val
             ;return ""
-        ;; else if (!self.on_stack)
+        ;; else if (!(self.on_stack))
             /; if (self._type.name{0} !== 'u')
                 ;return self.standard_op(v, "imul")
             ;/
@@ -176,7 +203,7 @@
         /; if (self.literal)
             ;self.val = self.val + v.val
             ;return ""
-        ;; else if (!self.on_stack)
+        ;; else if (!(self.on_stack))
             /; if (self._type.name{0} !== 'u')
                 ;return self.ax_compute(v, "idiv", false)
             ;/
@@ -187,7 +214,7 @@
 
     /; mod_value (Value v) [{}uint8]
         /; if (self.literal)
-            ;self.val = self.val + v.val
+            ;self.val = self.val / v.val
             ;return ""
         ;; else if (!self.on_stack)
             /; if (self._type.name{0} !== 'u')
@@ -226,9 +253,9 @@
         ;return out
     ;/
 
-    /; arr_value (Value index, Value store)
+    /; get_index (Value index) [Value]
         /; if (self._type.ptr == 0)
-            ;return
+            ;return NV
         ;/
     ;/
 
@@ -237,21 +264,72 @@
             ;self.val = v.val
             ;return ""
         ;; else if (!(self.on_stack))
-            ;return self.standard_op(v, "mov")
+            /; if (!is_struct(self._type))
+                ;return self.standard_op(v, "mov")
+            ;/
+            # This is the case where we are storing an address to
+            # a struct in a register.
+            ;{}charp out = "\tpush %rcx\n\tmov "
+            ;{}charp tmp = self.get_norm_loc()
+            ;add_strings(~out, ~tmp)
+            ;tmp = ", %rcx\n"
+            ;add_strings(~out, ~tmp)
+            ;tmp = self.standard_op(v, "movsb")
+            ;add_strings(~out, ~tmp)
+            ;tmp = "\tpop %rcx"
+            ;add_strings(~out, ~tmp)
+            ;return out
         ;/
+
+        /; if (self._type._size !> 8)
+            /; if (!v.on_stack)
+                ;return self.standard_op(v, "mov")
+            ;/
+            ;{}charp out = "\tpush %rax\n\tmov "
+            ;{}charp tmp = v.get_norm_loc()
+            ;add_strings(~out, ~tmp)
+            ;tmp = ", %rax\n"
+            ;add_strings(~out, ~tmp)
+            ;tmp = self.standard_op(v, "mov")
+            ;add_strings(~out, ~tmp)
+            ;return out
+        ;/
+        
+    ;/
+
+    /; load_label_address ({}uint8 lab) [{}uint8]
+        ;{}uint8 out = "\tlea "
+        ;{}uint8 tmp = "(%rip), "
+        ;add_strings(~out, ~lab)
+        ;add_strings(~out, ~tmp)
+        ;tmp = self.get_norm_loc()
+        ;add_strings(~out, tmp)
+        ;out.append('\n')
+        ;return out
     ;/
 
     /; get_member_value ({}uint8 name) [Value]
         ;Value out = self
-        ;out.loc = out.loc + self._type.get_offset(name)
+        /; if (self.on_stack)
+            ;out.loc = out.loc + self._type.get_offset(name)
+        ;; else
+            ;out.val = out.val + self._type.get_offset(name)
+        ;/
         ;out._type = self._type.get_sub_type(name)
+        ;out._type.ptr = -1
         ;return out
+    ;/
+
+    /; mov_to_reg (int reg) [{}uint8]
+        /; if (!(self.on_stack))
+            ;return self.update_loc(0)
+        ;/
     ;/
 
     /; update_loc(int loc) [{}uint8]
         /; if (self.on_stack)
             ;self.loc = self.loc + loc
-        ;; else if (!self.literal)
+        ;; else if (!(self.literal))
             ;{}uint8 out = "\tmov "
             ;int tsz = self._type._size
             ;self._type._size = 8
@@ -263,7 +341,7 @@
 
             ;self.loc = loc
 
-            ;{}uint8 tmp = self.get_norm_loc()
+            ;tmp = self.get_norm_loc()
             ;add_strings(~out, ~tmp)
             ;out.append('\n')
 

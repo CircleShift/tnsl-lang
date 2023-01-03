@@ -69,9 +69,10 @@
 
 /; string_from_int(int i) [{}uint8]
     ;{}uint8 c = ""
+    ;bool n = false
 
     /; if (i < 0)
-        ;c = "-"
+        ;n = true
         ;i = -i
     ;/
 
@@ -82,17 +83,28 @@
         ;c.append(digit_to_char(i))
     ;/
 
+    /;if (n)
+        ;c.append('-')
+    ;/
+
     ;return reverse_string(c)
 ;/
 
 /; int_from_string ({}uint8 str) [int]
 	;bool inv = str{0} == '-'
 	;int out = 0
+    ;int fac = 10
+    ;int i = 0
 
-	/; loop ()
-
+    /; if (inv)
+        ;i++
+    ;/
+    
+	/; loop (i < len str) [i++]
+        ;out = out * fac
+        ;out = out + str{i} - '0'
 	;/
-	
+
 	/; if (inv)
 		;out = -out
 	;/

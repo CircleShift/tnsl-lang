@@ -77,7 +77,7 @@
 /; method VTrack
 
 	/; next_loc(VType vt) [int]
-		/; if (is_struct(vt))
+		/; if (is_struct(vt) && vt.ptr == 0)
 			;return -1
 		;/
 
@@ -110,8 +110,8 @@
 
 	# Returns true if the variable is being tracked
 	/; in_vtrack({}uint8 name) [bool]
-		/; loop (int i = 0; i < len (self.on_stack)) [i++]
-			/; if (string_equate(~name, ~(self.sym_names{i})))
+		/; loop (int i = 0; i < len (self.sym_names)) [i++]
+			/; if (string_equate(name, self.sym_names{i}))
 				;return true
 			;/
 		;/
@@ -131,7 +131,7 @@
 
 	# returns the type of the named variable
 	/; get_val ({}uint8 name) [Value]
-		/; loop (int i = 0; i < len (self.on_stack)) [i++]
+		/; loop (int i = 0; i < len (self.sym_names)) [i++]
 			/; if (string_equate(name, self.sym_names{i}))
 				;return (self.sym_vals{i})
 			;/
@@ -146,7 +146,9 @@
 		;/
 
 		/; loop (int i = 0; i < len (self.sym_vals)) [i++]
-			;self.sym_vals{i}.loc = self.sym_vals{i}.loc + tsz
+			/; if (self.sym_vals{i}.on_stack)
+				;self.sym_vals{i}.loc = self.sym_vals{i}.loc + tsz
+			;/
 		;/
 
 		;{}uint8 out = "\tsub $"
@@ -196,31 +198,6 @@
 	;return -1
 ;/
 
-# Given an index in the vtrack, returns a string representation of the
-# register or memory where that variable is
-/; index_to_loc (int index, ~VTrack tab) [{}uint8]
-	;{}uint8 out = ""
-	;int stack_bytes = 0
-	;int reg = 0
-	;int i = 0
-
-	/; loop (i < index) [i++]
-		/; if (tab`.sym_types{i}._size !> 8 && reg < 7)
-			;reg++
-		;; else
-			;stack_bytes = stack_bytes + tab`.sym_types{i}._size
-		;/
-	;/
-
-	/; if (is_struct(tab`.sym_types{index}))
-		;out = "(todo: structs)"
-	;; else
-		;out = reg_by_num(reg)
-	;/
-	
-	;return out
-;/
-
 # Bool to j
 /; cmp_to_jxt ({}uint8 c) [{}uint8]
 	/; if (string_equate(c, "<"))
@@ -235,17 +212,12 @@
 		;return "e"
 	;;	else if (string_equate(c, "!=="))
 		;return "ne"
-	;; 
 	;/
 	;return "nz"
 ;/
 
 # Is struct returns true if the type name given is a struct
 /; is_struct (VType t) [bool]
-	/; if (t.ptr !== 0)
-		;return false
-	;/
-
 	;VType tmp = NT
 	/; loop (int i = 0; i < 15) [i++]
 		;tmp = tnslc.type_table{i}
@@ -253,8 +225,6 @@
 			;return false
 		;/
 	;/
-
-	
 
 	;return true
 ;/
@@ -428,42 +398,88 @@
 ;/
 
 # Mostly deals with structs and enums
-/; compile_global (~int cur, ~{}Token data, ~VTrack gsc, ~{}uint8 hsec, csec, dsec)
+/; compile_global (~int cur, ~{}Token data, ~{}uint8 hsec, csec, dsec)
 	;cur`++
 	/; if (token_is(cur, data, "struct"))
 		;def_struct(cur, data, dsec)
 	;/
 ;/
 
-# Evaluate a value and return it to the register pointed at by reg
-/; eval_value (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [Value]
+# Evaluate a value
+/; eval_value (~int cur, ~{}Token data, ~VTrack tab, ~{}uint8 hsec, csec, dsec, int val_layer) [Value]
 	/; if (token_is(cur, data, ";/"))
 		;return NV
 	;/
 
-	;int val_layer = 0
+	;Value tmp = {false, false, val_layer % 5, 0, NT}
+
+	/; if (val_layer > 5)
+		;tmp.on_stack = true
+	;/
 
 	/; loop (cur` < len data`)
+		;tnsl.io.println("looping")
 		/; if (data`{cur`}.token_type == TOKEN_TYPE.LITERAL)
 			/; if (data`{cur`}.data`{0} == '"')
 				# String literal
-			
+				;tmp._type = type_table{5}
+				;tmp._type.ptr = 1
 			;; else if (data`{cur`}.data`{0} == '\'')
 				# Char literal
+				;int val = unquote_char(data`{cur`}.data`)
+				;Value lit = {false, true, 0, val, type_table{5}}
+				;{}uint8 tmp = out.set_value(lit)
+				;add_strings(csec, ~tmp)
 			;; else
 				# int literal
-				;{}uint8 tmp = construct_mov_literal(data`{cur`}.data`, get_reg(8, reg_by_num(val_layer)))
-				;add_strings(csec, ~tmp)
-				;val_layer++
+				;tnsl.io.print("int literal ")
+				;tnsl.io.println(data`{cur`}.data`)
+				;tmp.val = int_from_string(data`{cur`}.data`)
+				;tmp.literal = true
+				;tmp._type = tnslc.type_table{4}
 				;cur`++
+				;tnsl.io.print("next tok ")
+				;tnsl.io.println(data`{cur`}.data`)
 			;/
 		;; else if (data`{cur`}.token_type == TOKEN_TYPE.DEFWORD)
+			
+			/; if (is_call(cur, data))
+			;; else if (tab`.in_vtrack(data`{cur`}.data`))
+				;tmp = tab`.get_val(data`{cur`}.data`)
+				;cur`++
+				/; loop (token_is(cur, data, "."))
+					;cur`++
+					;tmp = tmp.get_member_value(data`{cur`}.data`)
+					;cur`++
+				;/
+			;/
+			
 		;; else if (token_is(cur, data, "~"))
 		;; else if (data`{cur`}.token_type == TOKEN_TYPE.AUGMENT)
+			
+			;int acr = cur`
+			;cur`++
+			;Value nxt = eval_value(cur, data, tab, hsec, csec, dsec, val_layer + 1)
+			;{}uint8 code = ""
+			/; if (token_is(~acr, data, "="))
+				;code = tmp.set_value(nxt)
+			;; if (token_is(~acr, data, "+"))
+				;code = tmp.add_value(nxt)
+			;; if (token_is(~acr, data, "-"))
+				;tnsl.io.println("here")
+				;code = tmp.sub_value(nxt)
+			;; if (token_is(~acr, data, "*"))
+				;code = tmp.mul_value(nxt)
+			;; if (token_is(~acr, data, "/"))
+				;code = tmp.div_value(nxt)
+			;/
+			;add_strings(csec, ~code)
+			;break
 		;; else
 			;break
 		;/
 	;/
+	;return tmp
 ;/
 
 /; get_function_label(~int cur, ~{}Token data) [{}uint8]
@@ -487,7 +503,7 @@
 ;/
 
 # Sets up a call and reports back where the return value is stored
-/; eval_call (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [{}uint8]
+/; eval_call (~int cur, ~{}Token data, ~VTrack tab, ~{}uint8 hsec, csec, dsec) [{}uint8]
 	
 		# Store the name of the function we are calling
 	;{}uint8 to_call = get_function_label(cur, data)
@@ -499,10 +515,10 @@
 			;cur`++
 		;; else
 			/; if (reg < 7)
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
+				;eval_value(cur, data, tab, hsec, csec, dsec)
 				;reg++
 			;; else
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
+				;eval_value(cur, data, tab, hsec, csec, dsec)
 				;push_asm(get_reg(8, "bp"))
 			;/
 		;/
@@ -513,37 +529,6 @@
 
 	;add_strings(csec, ~call_ist)
 	;return "ax"
-;/
-
-/; set_struct_value (~{}uint8 csec)
-
-;/
-
-/; copy_struct ({}uint8 from, to, VType t) [{}uint8]
-	;{}uint8 out = ""
-	;{}uint8 init = ""
-;/
-
-/; set_value ({}uint8 from, to, int size, ~{}uint8 csec)
-	/; if (is_common_reg(from))
-		;from = get_reg(size, from)
-	;; if (is_common_reg(to))
-		;to = get_reg(size, to)
-	;/
-
-	;{}uint8 tmp = "\tmov"
-	/; if (size == 1)
-		;mov.append('b')
-	;; else if (size == 2)
-		;mov.append('d')
-	;; else if (size == 4)
-		;mov.append('w')
-	;; else if (size == 8)
-		;mov.append('q')
-	;/
-
-	;tmp = construct_statement(tmp, {from, to})
-	;add_strings(csec, ~tmp)
 ;/
 
 /; is_call (~int cur, ~{}Token data) [bool]
@@ -563,7 +548,7 @@
 ;/
 
 # Compile a statement in a function
-/; compile_statement (~int cur, ~{}Token data, ~VTrack tab, gsc, ~{}uint8 hsec, csec, dsec) [bool]
+/; compile_statement (~int cur, ~{}Token data, ~VTrack tab, ~{}uint8 hsec, csec, dsec) [bool]
 	;cur`++
 	;bool r = false
 	/; if (cur` !< len data`)
@@ -582,18 +567,20 @@
 		;r = true
 	;; else if (token_is(cur, data, "return"))
 		;cur`++
-		;eval_value(cur, data, tab, gsc, hsec, csec, dsec, 0)
+		;Value out = eval_value(cur, data, tab, hsec, csec, dsec, 0)
+		;{}uint8 mv = out.mov_to_reg(0)
+		;add_strings(csec, ~mv)
 		;tail_guard(csec)
 		;add_strings(csec, ~(tnslc.COMMON_ASM{0}))
 		;return true
 	;; else if (is_call(cur, data))
 		# Function call
-		;eval_call(cur, data, tab, gsc, hsec, csec, dsec)
-	;; else if (name_to_index(data`{cur`}.data`, tab) !< 0)
+		;eval_call(cur, data, tab, hsec, csec, dsec)
+	;; else if (tab.in_vtrack(data`{cur`}.data`))
 		# set value
 		;int i = name_to_index(data`{cur`}.data`, tab)
 		;{}uint8 tmp = index_to_loc(i)
-		;eval_value(cur, data, tab, gsc, hsec, csec, dsec)
+		;eval_value(cur, data, tab, hsec, csec, dsec)
 		;tmp = mov_asm(get_reg(tab`.sym_types{i}._size, "ax"), tmp)
 		;add_strings(csec, ~tmp)
 	;; else
@@ -609,7 +596,7 @@
 				;cur`++
 			;; else if (token_is(cur, data, "="))
 				;{}uint8 set = index_to_loc(len tab`.sym_names - 1, tab)
-				;eval_value(cur, data, tab, gsc, hsec, csec, dsec, loc)
+				;eval_value(cur, data, tab, hsec, csec, dsec, loc)
 				/; if (token_is(cur, data, ","))
 					;cur`++
 				;/
@@ -629,7 +616,7 @@
 
 
 
-/; compile_block (~int cur, ~{}Token data, ~VTrack gsc, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path, Path rel)
+/; compile_block (~int cur, ~{}Token data, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path, Path rel)
 	;VTrack tab = { {}, {} }
 	;VType out_type = tnslc.type_table{14}
 	;{}uint8 name = ""
@@ -682,7 +669,7 @@
 		;; else if (token_is(cur, data, "/;"))
 			;bool ch = true
 			/; loop (ch)
-				;compile_block(cur, data, gsc, hsec, csec, dsec, mod_path)
+				;compile_block(cur, data, hsec, csec, dsec, mod_path)
 				/; if (cur` !< len data`)
 					;break
 				;/
@@ -691,10 +678,10 @@
 		;; else if (string_equate(data`{cur`}.data`, ":"))
 			;cur` = cur` + 2
 			;Path inc = rel.rel_file(unquote_string(data`{cur`}.data`))
-			;compile_include(inc, gsc, hsec, csec, dsec, mod_path)
+			;compile_include(inc, hsec, csec, dsec, mod_path)
 			;cur`++
 		;; else if (string_equate(data`{cur`}.data`, ";"))
-			;ret = compile_statement(cur, data, ~tab, gsc, hsec, csec, dsec)
+			;ret = compile_statement(cur, data, ~tab, hsec, csec, dsec)
 		;; else
 			;tnsl.io.print("Failed to compile token [compile_block]: ")
 			;data`{cur`}.print()
@@ -706,7 +693,7 @@
 	;csec`.append('\n')
 ;/
 
-/; compile_include (Path file_path, ~VTrack global, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
+/; compile_include (Path file_path, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
 	# Autocomplete in the case of module syntax
 	;bool d = file_path.extension_is("tnsl")
 	/; if (!d)
@@ -727,22 +714,22 @@
 	;tnsl.io.print(len data`)
 	;tnsl.io.println(" tokens parsed.")
 	
-	;compile_file(file_path, data, global, hsec, csec, dsec, mod_path)
+	;compile_file(file_path, data, hsec, csec, dsec, mod_path)
 ;/
 
-/; compile_file (Path rel, ~{}Token data, ~VTrack global, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
+/; compile_file (Path rel, ~{}Token data, ~{}uint8 hsec, csec, dsec, {}{}uint8 mod_path)
 	
 	;int j = len data`
 
 	/; loop (int i = 0; i < j) [i++]
 		/; if (string_equate(data`{i}.data`, "/;"))
-			;compile_block(~i, data, global, hsec, csec, dsec, mod_path, rel)
+			;compile_block(~i, data, hsec, csec, dsec, mod_path, rel)
 		;; else if (string_equate(data`{i}.data`, ";"))
-			;compile_global(~i, data, global, hsec, csec, dsec)
+			;compile_global(~i, data, hsec, csec, dsec)
 		;; else if (string_equate(data`{i}.data`, ":"))
 			;i = i + 2
 			;Path inc = rel.rel_file(unquote_string(data`{i}.data`))
-			;compile_include(inc, global, hsec, csec, dsec, mod_path)
+			;compile_include(inc, hsec, csec, dsec, mod_path)
 		;; else
 			;break
 		;/
@@ -754,10 +741,8 @@
 	;{}uint8 hsec = ".global main\n"
 	;{}uint8 csec = ".text\n"
 	;{}uint8 dsec = ".data\n"
-	
-	;VTrack global_scope = {{}, {}}
 
-	;tnslc.compile_include(rel, ~global_scope, ~hsec, ~csec, ~dsec, {})
+	;tnslc.compile_include(rel, ~hsec, ~csec, ~dsec, {})
 
 	;tnsl.io.File out = tnsl.io.writeFile(file_out)
 	
