@@ -1,0 +1,46 @@
+/; main [int]
+    /; if ()
+
+    ;/
+
+    /; if ()
+
+    ;; else
+
+    ;/
+
+    /; if ()
+
+    ;//; else
+
+    ;/
+
+    /; if ()
+
+    ;; else if ()
+
+    ;/
+
+    /; if () []
+    ;; else if () []
+    ;; else []
+    ;/
+
+    /; if () []
+    ;; if () []
+    ;; else []
+    ;/
+
+    /; if () []
+    ;; if () []
+    ;; else if () []
+    ;; else []
+    ;/
+
+    int i = 0
+
+    # Short if syntax for variable declaration
+    i = if (i < 1) [7] else [9]
+
+    ;return 0
+;/

@@ -1,0 +1,21 @@
+struct PTR_TEST {
+    int dat, in
+}
+
+struct ARRAY_TEST {
+    {}PTR_TEST dat
+}
+
+enum ENUM_TEST [{}int] {
+    A = {2, 3, 4, 5, 623459},
+    B = {1, 2}
+}
+
+enum EN_ARR [PTR_TEST] {
+    A = {1, 2},
+    B = {3, 4}
+}
+
+/; main [int]
+    return EN_ARR.A.dat
+;/

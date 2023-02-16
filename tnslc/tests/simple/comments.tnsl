@@ -1,0 +1,52 @@
+# These are tests for where comments may be located
+# as well as the type of comments that may be parsed.
+# A '#' denotes a single line comment, and will
+# ignore everything on the line.
+# '/#' denotes the start of a multi line comment
+# if you want to use '#/' (the end of a multiline comment)
+# inside of a multiline comment, use '#' at the start of the line
+# to escape the whole line.
+
+/#
+    This is an example
+    of a multiline comment.
+#/
+
+/#
+#  This is also a multiline comment
+#  however, you can use #/
+#  inside of it because we have '#' at
+#  the start of each line
+#/
+
+/##
+#    This is an example of a doc comment.
+#    It is a doc comment of a code block because it starts with '/##' instead of '/#'
+#    and ends with '# ;' which ends the comment and opens a block.
+#    This doc comment is on the main function
+#; main /# Comment inside function declaration #/ [int /# Comment inside this list of outputs #/ ]
+    return 0 # line comment inside a function
+    /# Block comment inside function #/
+;/
+
+/# Comment before block opens #/ /; interface /# Comment in interface block definition #/ ITest
+    # Comment in interface block
+    /; test_method [int] ;/
+/# Comment before block closes #/ ;/
+
+struct Test {
+    # comment inside a list of member variables
+    int /# Comment btwn type and variable name #/ i
+}
+
+/; method /# Comment in method block definition #/ Test
+    # Comment in method block
+    /; /# Comment before method name#/ test_method (/# Comment inside function params #/) [/# comment inside return type again#/ int]
+/# Comment at start of line before statement#/ return /# Comment btwn return and value #/ i
+    ;/
+
+    /; cf_comment [int]
+
+    ;/
+;/
+

@@ -1,0 +1,84 @@
+# Enums should be able to store structs as well
+struct EnumTester {
+    int i, j
+    ~EnumTester ptr
+}
+
+# Simple integer enum
+enum IntEnum [int] {
+    A = 0,
+    B = 1,
+    C = -2
+}
+
+# Simple float enum
+enum FloatEnum[float] {
+    A = 0.1,
+    B = 0.2,
+    C = 3.1415
+}
+
+# More complex struct enum
+enum TestEnum [EnumTester] {
+    A = {1, 2, null},
+    B = {2, 3, ~TestEnum.A},
+    C = {3, 3, null}
+}
+
+# Type enum
+enum TypeEnum [type] {
+    A = int,
+    B = float,
+    C = EnumTester
+}
+
+enum SurfaceType [int] {
+    LAND = 0,
+    WATER = 1,
+    AIR = 2,
+
+    SPACE = -1
+}
+
+/; interface Vehicle
+    /; fuel [float] ;/
+    /; max_speed [float] ;/
+    /; min_speed [float] ;/
+    /; can_travel (SurfaceType surface) [bool] ;/
+;/
+
+struct Car extends Vehicle {
+    int wheels
+}
+
+struct Boat extends Vehicle {
+    int propellers
+}
+
+struct Plane extends Vehicle {
+    bool biplane, passenger
+    int engines,
+}
+
+struct Rocket extends Vehicle {
+    int
+        engines,
+        stages
+}
+
+struct HoverCraft extends Vehicle {
+    {3}float
+        max_antigrav,
+    bool
+        space_ready
+}
+
+# Enums can also handle interfaces (and extended types)
+# but only if the given standard library has support for those things
+enum CommonVehicles [Vehicle] {
+    A = {4}[Car],
+    B = {1}[Boat],
+    C = {false, true, 2}[Plane],
+    D = {4, 5}[Rocket],
+    E = {{5, 14.8, 5}, false}[HoverCraft]
+}

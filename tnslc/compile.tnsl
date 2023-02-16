@@ -1,0 +1,1503 @@
+##
+## UTIL FUNCS
+##
+
+/; string_split ({}uint8 str, uint8 split) [{}{}uint8]
+    /; if (len str == 0)
+        ;return {}
+    ;/
+
+    ;{}{}uint8 out = {}
+    
+    ;{}uint8 run = ""
+    
+    /; loop (int i = 0; i < len str) [i++]
+        /; if (str{i} == split)
+            ;out.append(run)
+            ;run = ""
+        ;; else
+            ;run.append(str{i})
+        ;/
+    ;/
+
+    ;out.append(run)
+
+    ;return out
+;/
+
+/; string_join ({}{}uint8 strs, {}uint8 join) [{}uint8]
+    ;{}uint8 out = ""
+    /; loop (int i = 0; i < len strs) [i++]
+        ;out = string_add(out, strs{i})
+        /; if (i !== len strs - 1)
+            ;out = string_add(out, join)
+        ;/
+    ;/
+    ;return out
+;/
+
+/; string_add ({}uint8 base, add) [{}uint8]
+    /; loop (int i = 0; i < len add) [i++]
+        ;base.append(add{i})
+    ;/
+    ;return base
+;/
+
+/; string_equate ({}uint8 a, b) [bool]
+    /; if (len a !== len b)
+        ;return false
+    ;/
+    
+    /; loop (int i = 0; i < len a) [i++]
+        /; if (a{i} !== b{i})
+            ;return false
+        ;/
+    ;/
+
+    ;return true
+;/
+
+/; string_contains ({}uint8 str, uint8 chk) [bool]
+    /; loop (int i = 0; i < len str) [i++]
+        /; if (str{i} == chk)
+            ;return true
+        ;/
+    ;/
+    ;return false
+;/
+
+/; list_contains ({}{}uint8 list, {}uint8 str) [bool]
+    /; loop (int i = 0; i < len list) [i++]
+        /; if (string_equate(list{i}, str))
+            ;return true
+        ;/
+    ;/
+    ;return false
+;/
+
+/; unqote_char ({}uint8 str) [uint8]
+    /; if (len str < 3)
+        ;return 0
+    ;/
+
+    ;uint8 cmp = str{2}
+    /; if (cmp == '\\')
+        ;return '\\'
+    ;; else if (cmp == 'n')
+        ;return '\n'
+    ;; else if (cmp == 'r')
+        ;return '\r'
+    ;/
+
+;/
+
+/; unquote_str({}uint8 str) [{}uint8]
+    /; if (str{0} !== '\'' && str{0} !== '"')
+        ;return str
+    ;/
+    ;{}uint8 out = ""
+
+    /; loop (int i = 1; i < len str - 1) [i++]
+        /; if (str{i} == '\\')
+            ;{}uint8 unq = "'\\"
+            ;unq.append(str{i + 1})
+            ;out.append(unqote_char(unq))
+            ;i++
+        ;; else
+            ;out.append(str{i})
+        ;/
+    ;/
+    
+    ;return out
+;/
+
+/; int_to_string (int i) [{}uint8]
+    /; if (i == 0)
+        ;return "0"
+    ;/
+
+    ;{}uint8 out = ""
+    
+    /; if (i < 0)
+        ;out.append('-')
+        ;i = -i
+    ;/
+
+    /; loop [i = i / 10; i > 0]
+        ;out.append('0' + (i % 10))
+    ;/
+    
+    ;return out
+;/
+
+/; digit_from_base (uint8 ch, int base) [int]
+    /; if (ch == '-')
+        ;return 0
+    ;/
+
+    /; if (base !> 10)
+        ;return ch - '0'
+    ;; if (base == 16)
+        /; if (ch !< 'A' && ch < 'G')
+            ;return 11 + (ch - 'A')
+        ;; else if (ch !< 'a' && ch < 'g')
+            ;return 11 + (ch - 'a')
+        ;/
+        ;return ch - '0'
+    ;/
+    ;return 0
+;/
+
+/; string_to_int ({}uint8 str) [int]
+    /; if (len str < 1)
+        ;return 0
+    ;/
+    ;int i = 0
+    ;bool inv = str{0} == '-'
+    /; if (inv)
+        ;i = 1
+    ;/
+
+    ;int out = 0
+    ;int base = 10
+
+    /; if (len str !< 3 && str{i} == '0')
+        /; if (str{i + 1} == 'x')
+            ;base = 16
+            ;i = i + 2
+        ;; if (str{i + 1} == 'b')
+            ;base = 2
+            ;i = i + 2
+        ;; if (str{i + 1} == 'o')
+            ;base = 8
+            ;i = i + 2
+        ;/
+    ;/
+
+    /; loop (i < len str) [i++]
+        ;out = out * base
+        ;out = out + digit_from_base(str{i}, base)
+    ;/
+
+    /; if (inv)
+        ;out = -out
+    ;/
+    ;return out
+;/
+
+##
+## Structs
+##
+
+# The seperated string sections that make up an asm file
+;struct CompData {
+    {}uint8
+        hsec,
+        dsec,
+        csec
+}
+
+# Represents a relative file path
+;struct Path {
+    {}{}uint8 path,
+    {}uint8 name
+}
+
+/; method Path
+
+    /; relative ({}uint8 rel_path) [Path]
+        ;Path out = self
+        ;{}{}uint8 rel_split = string_split(rel_path, '/')
+        
+        /; loop (int i = 0; i < len rel_split - 1)
+            ;out.path.append(rel_split{i})
+        ;/
+
+        ;out.name = rel_split{len rel_split - 1}
+        
+        ;return out
+    ;/
+
+    /; full_path [{}uint8]
+        ;{}uint8 out = string_join(self.path, "/")
+        /; if (len out > 0)
+            ;out.append('/')
+        ;/
+        ;return string_add(out, self.name)
+    ;/
+
+    /; extension [{}uint8]
+        ;{}{}uint8 split_name = string_split(self.name, '.')
+
+        /; if (len split_name > 1)
+            ;return split_name{len split_name - 1}
+        ;/
+        
+        ;return ""
+    ;/
+
+    /; open_read [tnsl.io.File]
+        ;return tnsl.io.readFile(self.full_path())
+    ;/
+
+    /; write ({}uint8 bytes)
+        ;tnsl.io.File out = tnsl.io.writeFile(self.full_path())
+
+        /; loop (int i = 0; i < len bytes) [i++]
+            ;out.write(bytes{i})
+        ;/
+
+        ;out.close()
+    ;/
+;/
+
+# Represents the different classes of token
+;enum TOKEN [int] {
+    SEPARATOR = 0,
+    DELIMITER = 1,
+    AUGMENT = 2,
+    KEYTYPE = 3,
+    KEYWORD = 4,
+    LITERAL = 5,
+    DEFWORD = 6
+}
+
+# Represents a single token in a TNSL file
+;struct Token {
+    int
+        tokenType,
+        line,
+    
+    {}uint8 data
+}
+
+/; method Token
+
+    /; type_is (int a) [bool]
+        ;return self.tokenType == a
+    ;/
+
+    /; cmp ({}uint8 str) [bool]
+        ;return string_equate(self.data, str)
+    ;/
+
+    /; print
+        ;tnsl.io.print(self.data)
+        ;tnsl.io.print(": { type: ")
+        ;tnsl.io.print(self.tokenType)
+        ;tnsl.io.print(" line: ")
+        ;tnsl.io.print(self.line)
+        ;tnsl.io.print(" }")
+    ;/
+
+    /; sprint [{}uint8]
+        ;{}uint8 out = "{ "
+        ;out = string_add(out, self.data)
+        ;out.append(' ')
+        ;out = string_add(out, int_to_string(self.tokenType))
+        ;out.append(' ')
+        ;out.append('}')
+        ;return out
+    ;/
+;/
+
+# General defs:
+## Type defs
+## Function defs
+## Method defs
+## Module defs
+## Constant and variable defs
+
+# Module
+## General defs
+
+# Block
+## Variable defs
+## Control flow defs
+## Value defs
+
+;enum PTYPE [int] {
+    POINTER = 0,
+    REFERENCE = 1,
+    ARRAY = 2
+}
+
+# Represents a data type
+;struct Type {
+    int s,
+    {}uint8
+        name,
+        mod_name,
+    {}int
+        ptr_chain,
+    {}Variable
+        members
+}
+
+;{}{}uint8 PRIM_NAMES = {
+    "uint8", "uint16", "uint32", "uint64", "uint",
+    "int8", "int16", "int32", "int64", "int",
+    "float32", "float64", "float",
+    "bool", "void"
+}
+
+;{}int PRIM_SIZES = {
+    1, 2, 4, 8, 8,
+    1, 2, 4, 8, 8,
+    4, 8, 8,
+    1,
+    8
+}
+
+;Type NO_TYPE = {0, "", "", {}, {}}
+
+/; is_primitive ({}uint8 t) [int]
+    ;{}{}uint8 pn = PRIM_NAMES
+    ;{}int ps = PRIM_SIZES
+    /; loop (int i = 0; i < len pn) [i++]
+        /; if (string_equate(pn{i}, t))
+            ;return ps{i}
+        ;/
+    ;/
+    ;return -1
+;/
+
+# Represents the place in memory where a variable is
+;enum LOCATION [int] {
+    REGISTER = 0,
+    STACK = 1,
+    LABEL = 2,
+    LITERAL = 3
+}
+
+# Represents a variable 
+;struct Variable {
+    {}uint8
+        name,
+    Type
+        data_type,
+    int
+        location,
+        loc_type
+}
+
+# Get common register name by index
+/; reg_by_num(int r) [{}uint8]
+	/; if (r == 0)
+		;return "ax"
+	;; if (r == 1)
+		;return "bx"
+	;; if (r == 2)
+		;return "cx"
+	;; if (r == 3)
+		;return "dx"
+	;; if (r == 4)
+		;return "si"
+	;; if (r == 5)
+		;return "di"
+    ;; if (r == -1)
+        ;return "sp"
+    ;; if (r == -2)
+        ;return "bp"
+	;/
+	;return int_to_string(r + 2)
+;/
+
+# Get common register by common name and size
+/; reg_by_name_size ({}uint8 common, uint sz) [{}uint8]
+	;{}uint8 out = "%"
+
+	/; if (common{0} !< 'a')
+
+		/; if (sz == 1)
+			/; if(common{1} == 'x')
+				;common{1} = 'l'
+			;; else
+				;common.append('l')
+			;/
+		;; else if (sz == 4)
+			;out.append('e')
+		;; else if (sz == 8)
+			;out.append('r')
+		;/
+
+		;string_add(out, common)
+
+	;; else
+
+		;out.append('r')
+		;string_add(out, common)
+		/; if (sz == 1)
+			;out.append('b')
+		;; else if (sz == 2)
+			;out.append('w')
+		;; else if (sz == 4)
+			;out.append('d')
+		;/
+		;return out
+	;/
+
+	;return out
+;/
+
+/; get_reg (int r, sz) [{}uint8]
+    ;return reg_by_name_size(reg_by_num(r), sz)
+;/
+
+# Most methods make use of one or more temporary variables.
+# These are denoted by tr
+/; method Variable
+    
+    /; norm_loc (int sz) [{}uint8]
+        /; if (self.loc_type == LOCATION.LABEL)
+            ;return ""
+        ;; else if (self.loc_type == LOCATION.REGISTER)
+            ;return get_reg(self.location, sz)
+        ;; else if (self.loc_type == LOCATION.STACK)
+            ;return string_join( { "[ rsp + ", int_to_string(self.location), " ]" } , "")
+        ;/
+    ;/
+
+    /; norm_size [int]
+        /; if (len (self.data_type.ptr_chain) > 0)
+            ;return 8
+        ;; else
+            ;return self.data_type.s
+        ;/
+    ;/
+    
+    /; norm_op ({}uint8 op, {}{}uint8 args) [{}uint8]
+        ;return string_join(
+            {
+                "\t", op, " ",
+                string_join(args, ", "), "\n"
+            },
+            ""
+        )
+    ;/
+    
+    # functions that do work on this variable
+    /; add (Variable v, int tr) [{}uint8]
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;return v.add(self)
+            ;/
+            ;self.location = self.location + v.location
+            ;return ""
+        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;{}uint8 tmp = get_reg(tr, self.norm_size())
+            ;{}uint8 out = self.norm_op("mov", { tmp, v.norm_loc(self.norm_size()) })
+            ;return string_add(out, self.norm_op("add", { self.norm_loc(self.norm_size()), tmp }))
+        ;/
+        ;return self.norm_op("add", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
+    ;/
+
+    /; sub (Variable v)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;return v.add(self)
+            ;/
+            ;self.location = self.location - v.location
+            ;return ""
+        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;{}uint8 tmp = get_reg(tr, self.norm_size())
+            ;{}uint8 out = self.norm_op("mov", { tmp, v.norm_loc(self.norm_size()) })
+            ;return string_add(out, self.norm_op("sub", { self.norm_loc(self.norm_size()), tmp }))
+        ;/
+        ;return self.norm_op("sub", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
+    ;/
+
+    /; div (Variable v)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;return v.div(self)
+            ;/
+            ;self.location = self.location + v.location
+            ;return ""
+        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;{}uint8 out = ""
+            # TODO
+            ;return out
+        ;/
+        ;return self.norm_op("div", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
+    ;/
+
+    /; mul (Variable v)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;return v.mul(self)
+            ;/
+            ;self.location = self.location * v.location
+            ;return ""
+        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;{}uint8 out = ""
+            # TODO
+            ;return out
+        ;/
+        ;return self.norm_op("mul", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
+    ;/
+
+    /; set (Variable v)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;return v.set(self)
+            ;/
+            ;self.location = v.location
+            ;return ""
+        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;{}uint8 out = ""
+            # TODO
+            ;return out
+        ;/
+        ;return self.norm_op("mov", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
+    ;/
+
+    # functions that do work on another variable
+    /; ref (Variable out)
+    ;/
+
+    /; deref (Variable out)
+    ;/
+
+    /; member (Variable out, {}uint8 name)
+    ;/
+
+    /; index (Variable out, Variable i)
+        /;
+
+        ;/
+    ;/
+
+    /; call (Variable out, {}uint8 name)
+    ;/
+;/
+
+;struct Scope {
+    {}Variable vars
+}
+
+;struct Function {
+    {}uint8 name,
+    {}Type 
+        inputs,
+        outputs
+}
+
+;struct Module {
+    # Parent module
+    ~Module parent,
+    # Export functions or not
+    bool exp,
+    # Name of module
+    {}uint8 name,
+    # Types defined in this module
+    {}Type types,
+    # Variables defined in this module
+    {}Variable defs,
+    # Functions defined in this module
+    {}Function functions,
+    # Sub modules
+    {}Module sub
+}
+
+/; method Module
+    # Internal recursive function
+    /; _find_type ({}{}uint8 artifact, int r) [~Type]
+        /; if (len artifact !> r)
+            ;return ~NO_TYPE
+        ;/
+
+        /; if (len artifact - 1 > r)
+            /; loop (int i = 0; i < len (self.sub)) [i++]
+                /; if (string_equate(artifact{r}, self.sub{i}.name))
+                    ;return self._find_type(artifact, r + 1)
+                ;/
+            ;/
+        ;/
+
+        /; loop (int i = 0; i < len (self.types)) [i++]
+            /; if (string_equate(self.types{i}.name, artifact{r}))
+                ;return ~(self.types{i})
+            ;/
+        ;/
+        
+        ;Type nt = {0, artifact{len artifact - 1}, "", {}, {}}
+        ;return ~nt
+    ;/
+
+    # Consumer facing function
+    /; find_type ({}{}uint8 artifact) [~Type]
+        ;int p = is_primitive(artifact{0})
+        /; if (p !< 0)
+            ;Type out = {p, artifact{0}, {}, {}, {}}
+            ;return ~out
+        ;/
+
+        ;return self._find_type(artifact, 0)
+    ;/
+
+    /; _find_def ({}{}uint8 artifact, int r) [Variable]
+        /; if (len artifact !> r)
+            ;retirn {{}, "", 0, 0, 0}
+        ;/
+
+        /; if (len artifact - 1 > r)
+            /; loop (int i = 0; i < len (self.sub)) [i++]
+                /; if (string_equate(artifact{r}, self.sub{i}.name))
+                    ;return self._find_type(artifact, r + 1)
+                ;/
+            ;/
+        ;/
+
+        /; loop (int i = 0; i < len (self.defs)) [i++]
+            /; if (string_equate(self.defs{i}.name, artifact{r}))
+                ;return self.defs{i}
+            ;/
+        ;/
+        
+        ;return {{}, "", 0, 0, 0}
+    ;/
+
+    /; find_def ({}{}uint8 artifact) [Variable]
+        ;return _find_def(artifact, 0)
+    ;/
+
+    /; _find_function ({}{}uint8 artifact, int r) [Variable]
+        /; if (len artifact !> r)
+            ;retirn {{}, "", 0, 0, 0}
+        ;/
+
+        /; if (len artifact - 1 > r)
+            /; loop (int i = 0; i < len (self.sub)) [i++]
+                /; if (string_equate(artifact{r}, self.sub{i}.name))
+                    ;return self._find_type(artifact, r + 1)
+                ;/
+            ;/
+        ;/
+
+        /; loop (int i = 0; i < len (self.funcs)) [i++]
+            /; if (string_equate(self.funcs{i}.name, artifact{r}))
+                ;return self.funcs{i}
+            ;/
+        ;/
+        
+        ;return {{}, "", 0, 0, 0}
+    ;/
+
+    /; find_function ({}{}uint8 artifact) [Variable]
+        ;return _find_function(artifact, 0)
+    ;/
+
+    /; full_path [{}uint8]
+        /; if (string_equate(self.name, ""))
+            ;return ""
+        ;/
+        ;{}uint8 out = self.parent`.full_path()
+        /; if (len out > 0)
+            ;out = string_add(out, ".")
+        ;/
+        ;out = string_add(out, self.name)
+        ;return out
+    ;/
+;/
+
+##
+## Compiler funcs
+##
+
+/; get_artifact (~{}Token tok, ~int cur) [{}{}uint8]
+    ;{}{}uint8 out = {}
+
+    ;out.append(tok`{cur`}.data)
+    ;cur`++
+    
+    /; loop (cur` < len tok` && tok`{cur`}.cmp(".")) [cur`++]
+        /; if (tok`{cur` + 1}.type_is(TOKEN.DEFWORD))
+            ;out.append(tok`{cur` + 1}.data)
+            ;cur`++
+        ;/
+    ;/
+    ;return out
+;/
+
+/; get_type (~{}Token tok, ~int cur, ~Module current) [Type]
+    ;{}int ptr_chain = {}
+
+    /; loop (cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.cmp("{"))
+            ;ptr_chain.append(PTYPE.ARRAY)
+            ;cur`++
+        ;; else if (tok`{cur`}.cmp("~"))
+            ;ptr_chain.append(PTYPE.POINTER)
+        ;; else
+            ;break
+        ;/
+    ;/
+    
+    ;~Type pout = current`.find_type(get_artifact(tok, cur))
+    ;Type out = pout`
+    /; if (string_equate(out.name, ""))
+        ;return out
+    ;/
+
+    ;{}Type generics = {}
+    /; if (tok`{cur`}.cmp("("))
+        ;int max = find_closing(tok, cur)
+        ;cur`++
+        /; loop (cur` < max) [cur`++]
+            ;generics.append(get_type(tok, cur, current))
+        ;/
+    ;/
+
+    # TODO: References
+    
+    ;out.ptr_chain = ptr_chain
+    ;return out
+;/
+
+/; is_definition (~{}Token tok, ~int cur) [bool]
+    ;return false
+;/
+
+/; compile_file_def (~{}Token tok, ~int cur, Type t, ~Module current) [{}Variable]
+    ;return {}
+;/
+
+/; next_non_nl (~{}Token tok, int c) [int]
+    /; loop (tok`{c}.cmp("\n")) [c++] ;/
+    ;return c
+;/
+
+/; parse_param_list (~{}Token tok, ~int cur, ~Module current) [{}Variable]
+    ;{}Variable out = {}
+    ;int max = find_closing(tok, cur)
+    ;Type t = NO_TYPE
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
+        ;int nnl = next_non_nl(tok, cur` + 1)
+        /; if (tok`{nnl}.cmp(",") || nnl == max)
+            ;out.append({tok`{cur`}.data, t, 0, 0})
+            /; if (tok`{nnl}.cmp(","))
+                ;cur`++
+            ;/
+        ;; else
+            ;t = get_type(tok, cur, current)
+            ;cur` = cur` - 1
+        ;/
+    ;/
+    ;return out
+;/
+
+# Generates new type
+/; new_type (~{}Token tok, ~int cur, ~Module current)
+    ;cur`++
+    ;Type out = {0, tok`{cur`}.data, "", {}, {}}
+    ;out.mod_name = string_add(current`.full_path(), "_#")
+    ;out.mod_name = string_add(out.mod_name, out.name)
+    ;current`.sub.append({current, current`.exp, out.mod_name, {}, {}, {}, {}})
+
+    /; loop (cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.cmp("{"))
+            ;break
+        ;/
+    ;/
+
+    ;out.members = parse_param_list(tok, cur, current)
+    /; loop (int i = 0; i < len (out.members)) [i++]
+        ;tnsl.io.print(string_join({"[", out.members{i}.name, ":", out.members{i}.data_type.name, "]"}, ""))
+    ;/
+    
+    ;tnsl.io.print(string_add("Generated type ", string_add(out.name, string_add(":", out.mod_name))))
+    ;current`.types.append(out)
+;/
+
+/; decompose_empty (~Module current, Type t) [{}uint8]
+    ;return ""
+;/
+
+# Used to take an array literal and make it into a label
+/; decompose_array (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+    ;int max = find_closing(tok, cur)
+    ;{}uint8 arr = ""
+    ;int alen = 0
+
+    /; loop (cur`++; cur` < max) [cur`++]
+        ;alen++
+        
+        /; if (tok`{cur`}.cmp("{"))
+            /; if (ptr_chain{0} == PTYPE.ARRAY)
+                ;{}int ptr = {}
+                /; loop (int i = 1; i < len (t.ptr_chain)) [i++]
+                    ;ptr.append(t.ptr_chain{i})
+                ;/
+                ;t.ptr_chain = ptr
+                ;arr = string_add(arr, decompose_array(tok, cur, current, t))
+                ;cur`++
+            ;; else
+                ;decompose_struct(tok, cur, current, t)
+                ;cur`++
+            ;/
+        ;; else
+            ;arr = string_add(arr, decompose_data(tok, cur, current, t))
+            ;cur`++
+        ;/
+    ;/
+
+    ;{}uint out = string_join( { "\tdq ", int_to_string(alen), "\n", arr, "\n" }, "")
+
+    ;return out
+;/
+
+# Used to take a struct literal and make it into a label
+/; decompose_struct (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+    ;int max = find_closing(tok, cur)
+    ;{}uint8 out = ""
+    ;int m = 0
+    /; loop (cur`++; cur` < max) [cur`++]
+        /; if (tok`{cur`}.cmp("}"))
+            ;break
+        ;; else if (tok`{cur`}.cmp(","))
+            ;cur`++
+        ;/
+        ;out = string_add(out, decompose_data(tok, cur, current, t.members{m}.data_type))
+        ;m++
+    ;/
+
+    /; if (m < len (t.members) - 1)
+        /; loop (m < len (t.members)) [m++]
+            ;out = string_add(out, decompose_empty(current, t.members{m}))
+        ;/
+    ;/
+
+    ;return out
+;/
+
+/; declare_size(int sz) [{}uint8]
+    ;{}uint8 out = "\tdb "
+
+    /; if (sz == 2)
+        ;out{2} = 'w'
+    ;; if (sz == 4)
+        ;out{2} = 'd'
+    ;; if (sz == 8)
+        ;out{2} = 'q'
+    ;/
+
+    ;return out
+;/
+
+# Used to take data from a literal and make it into a label
+/; decompose_data (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+    /; if (tok`{cur`}.cmp("{"))
+        /; if (len (t.ptr_chain) > 0)
+            ;{}int ptr = {}
+            /; loop (int i = 1; i < len (t.ptr_chain)) [i++]
+                ;ptr.append(t.ptr_chain{i})
+            ;/
+            ;t.ptr_chain = ptr
+            ;return decompose_array(tok, cur, current, t)
+        ;; else
+            ;return decompose_struct(tok, cur, current, t)
+        ;/
+    ;; if (tok`{cur`}.type_is(TOKEN.LITERAL))
+        /; if (tok`{cur`}.data{0} == '"')
+            ;return string_join({
+                declare_size(8), int_to_string(len unquote_str(tok`{cur`}.data)), "\n",
+                declare_size(1), tok`{cur`}.data, "\n"}, "")
+        ;; else if (tok`{cur`}.data{0} == '\'')
+            ;return string_join({
+                declare_size(1), tok`{cur`}.data, "\n"}, "")
+        ;/
+        ;return string_add(string_add(declare_size(t.s), tok`{cur`}.data), "\n")
+    ;/
+
+    ;return decompose_empty(current, t)
+;/
+
+# Compiles new enum for the file
+/; compile_enum (~{}Token tok, ~int cur, ~Module current) [{}uint8]
+    ;cur`++
+    ;Type et = NO_TYPE
+    ;{}uint8 name = ""
+
+    /; if (tok`{cur`}.cmp("["))
+        ;cur`++
+        ;et = get_type(tok, cur, current)
+        ;cur`++
+    ;; if (!(tok`{cur`}.cmp("{")))
+        ;name = tok`{cur`}.data
+        ;cur`++
+        /; if (tok`{cur`}.cmp("["))
+            ;cur`++
+            ;et = get_type(tok, cur, current)
+            ;cur`++
+        ;/
+    ;/
+
+    /; if (string_equate(et.name, ""))
+        ;et = Primitives{3}
+    ;/
+
+    /; loop (!(tok`{cur`}.cmp("{"))) [cur`++] ;/
+    ;cur`++
+
+    ;Module enum_mod = {current, current`.exp, string_add("__#", name), {}, {}, {}, {}}
+    
+    ;{}uint8 out = ""
+
+    /; loop (cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.cmp("}"))
+                ;break
+        ;/
+
+        /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
+            ;{}uint8 l = string_add(enum_mod.full_path(), ".")
+            ;l = string_add(l, tok`{cur`}.data)
+            ;l.append(':')
+            ;l.append('\n')
+            ;cur` = cur` + 2
+            ;l = string_add(l, decompose_data(tok, cur, current, et))
+            ;out = string_add(out, l)
+        ;/
+    ;/
+
+    ;current`.sub.append(enum_mod)
+
+    ;return out
+;/
+
+# Generates opposite closing bracket
+/; closing_for (Token d) [{}uint8]
+    /; if (d.cmp("("))
+        ;return ")"
+    ;; else if (d.cmp("["))
+        ;return "]"
+    ;; else if (d.cmp("{"))
+        ;return "}"
+    ;/
+    ;tnsl.io.println(string_add("Error, unrecognized delim: ", d))
+;/
+
+# Finds closing bracket
+/; find_closing (~{}Token tok, ~int cur) [int]
+    ;int bl = 0, p = 0, br = 0, c = 0
+    ;{}uint8 cl = closing_for(tok`{cur`})
+
+    /; loop (int i = cur` + 1; i < len tok`) [i++]
+        /; if (bl == 0 && p == 0 && br == 0 && c == 0)
+            /; if ((tok`{i}.cmp(";;") || tok`{i}.cmp(";:")) && string_equate(cl, "/;"))
+                ;return i
+            ;; else if (tok`{i}.cmp(cl))
+                ;return i
+            ;/
+        ;/
+
+        /; if (tok`{i}.cmp("("))
+            ;p++
+        ;; else if (tok`{i}.cmp("["))
+            ;br++
+        ;; else if (tok`{i}.cmp("{"))
+            ;c++
+        ;; else if (tok`{i}.cmp("/;"))
+            ;bl++
+        ;/
+
+        /; if (tok`{i}.cmp(")"))
+            ;p = p - 1
+        ;; else if (tok`{i}.cmp("]"))
+            ;br = br - 1
+        ;; else if (tok`{i}.cmp("}"))
+            ;c = c - 1
+        ;; else if (tok`{i}.cmp(";/") || tok`{i}.cmp(";:"))
+            ;bl = bl - 1
+        ;/
+    ;/
+
+    ;return len tok` - 1
+;/
+
+# Skips cur to the end of a struct
+/; skip_struct (~{}Token tok, ~int cur)
+    ;{}uint8 name = tok`{cur` + 1}.data
+    /; loop (cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.cmp("{"))
+            ;cur` = find_closing(tok, cur)
+            ;break
+        ;/
+    ;/
+;/
+
+# TODO:
+/; compile_function (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope) [Function]
+
+;/
+
+# TODO:
+/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope) [Function]
+
+;/
+
+# First pass on a module
+# Generates structs, enums, and submodules
+/; module_pass_one (~{}Token tok, ~int cur, ~Module current)
+
+;/
+
+# Second pass on a module
+# Generates code and calls compile_file_second_pass if an include happens
+/; module_pass_two (~{}Token tok, ~int cur, ~Module current)
+
+;/
+
+# First compiler pass on a file
+# Only creates structs, enums, and moduless
+/; compile_file_pass_one (Path f, ~Module current)
+    ;{}Token tok = tokenize(f)
+
+    ;tnsl.io.print("Number of tokens generated: ")
+    ;tnsl.io.println(len tok)
+
+    /; loop (int i = 0; i < len tok) [i++]
+        ;tnsl.io.print(".")
+        /; if (tok{i}.cmp(":"))
+            ;tnsl.io.println("INCLUDE")
+            /; if (tok{i + 2}.type_is(TOKEN.LITERAL))
+                ;CompData tmp = compile_file_pass_one(f.relative(unquote_str(tok{i + 2}.data)), current)
+                ;i = i + 2
+            ;/
+            ;continue
+        ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
+            /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
+                ;module_pass_one(~tok, ~i, current)
+            ;/
+        ;; else if (tok{i}.cmp("struct"))
+            ;new_type(~tok, ~i, current)
+        ;/
+    ;/
+;/
+
+/; size_struct (~Type t, ~Module m)
+    ;int s = 0
+    /; loop (int i = 0; i < len (t`.members)) [i++]
+        ;int p = is_primitive(t`.members{i}.data_type.name)
+        /; if (len (t`.members{i}.data_type.ptr_chain) > 0)
+            ;s = s + 8
+        ;; else if (p >== 0)
+            ;s = s + p
+        ;; else
+            ;~Type tp = m`.find_type(t`.members{i}.data_type.name)
+            /; if (tp`.s == 0)
+                ;size_struct(tp, m)
+            ;/
+            ;t`.members{i}.data_type = tp`
+            ;s = s + tp`.s
+        ;/
+    ;/
+    ;tnsl.io.println(string_add("Sized type ", t`.name))
+    ;t`.s = s
+;/
+
+# Regenerates struct sizes (with support for cyclical struct definitions)
+/; flush_structs (~Module m)
+    
+    /; loop (int i = 0; i < len (m`.types)) [i++]
+        ;size_struct(~(m`.types{i}), m)
+    ;/
+
+    /; loop (int i = 0; i < len (m`.sub)) [i++]
+        ;flush_structs(~(m`.sub{i}))
+    ;/
+;/
+
+# Second pass of compiler
+# Does code generation, ignores structs and enums
+/; compile_file_pass_two (Path f, ~Module current) [CompData]
+    ;CompData out = {"", "", ""}
+    ;{}Token tok = tokenize(f)
+
+    /; loop (int i = 0; i < len tok) [i++]
+        ;tnsl.io.print(".")
+        /; if (tok{i}.cmp(":"))
+            ;tnsl.io.println("INCLUDE")
+            /; if (tok{i + 2}.type_is(TOKEN.LITERAL))
+                ;CompData tmp = compile_file_pass_two(f.relative(unquote_str(tok{i + 2}.data)), current)
+                ;out.hsec = string_add(out.hsec, tmp.hsec)
+                ;out.dsec = string_add(out.dsec, tmp.dsec)
+                ;out.csec = string_add(out.csec, tmp.csec)
+                ;i = i + 2
+            ;/
+            ;continue
+        ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
+            ;tnsl.io.print("block")
+            /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
+                ;module_pass_two(~tok, ~i, current)
+            ;/
+        ;; else if (tok{i}.cmp("struct"))
+            ;tnsl.io.print("struct")
+            ;skip_struct(~tok, ~i)
+        ;; else if (tok{i}.cmp("enum"))
+            ;tnsl.io.print("enum")
+            ;out.dsec = string_add(out.dsec, compile_enum(~tok, ~i, current))
+        ;; else if (is_definition(~tok, ~i))
+            ;tnsl.io.print("def")
+            ;Type t = get_type(~tok, ~i, current)
+            ;out.dsec = string_add(out.dsec, compile_file_def(~tok, ~i, t, current))
+        ;; else if (!(tok{i}.cmp("\n")))
+            ;tnsl.io.println("Failed to recognize file-level statement")
+            ;tok{i}.print()
+            ;break
+        ;/
+    ;/
+
+    ;tnsl.io.print("Generated code length: ")
+    ;tnsl.io.println(len (out.hsec) + len (out.dsec) + len (out.csec))
+
+    ;return out
+;/
+
+# Starts the compiler on a given path
+/; compile_start (Path f) [{}uint8]
+    ;{}uint8 out = ""
+
+    ;Module root = {0, true, {}, {}, {}, {}, {}}
+    ;compile_file_pass_one(f, ~root)
+    ;flush_structs(~root)
+    ;tnsl.io.println("First pass DONE")
+
+    ;CompData data = compile_file_pass_two(f, ~root)
+    ;tnsl.io.println("Second pass DONE")
+
+    ;out = string_join({
+        data.hsec,
+        "section .data\n",
+        data.dsec,
+        "section .text\n",
+        data.csec}, "")
+
+    ;return out
+;/
+
+##
+## Tokenizer funcs
+##
+
+
+/; is_whitespace (uint8 c) [bool]
+    ;return (c == '\n' || c == '\t' || c == ' ')
+;/
+
+;{}uint8 MULTI_PARENS = "/;:#"
+;{}uint8 PARENS = "()[]{}"
+;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,"
+;{}uint8 AUGMENTS = "=~!<>&|^+-*/`."
+
+;{}{}uint8 MULTI_AUGMENTS = {
+    "~=", "`=", "%=", "^=", "&=", "*=",
+    "!=", "|=", "/=",
+
+    "==", "!==", "&&", "||", "^^", "<==", ">==", "!>", "!<",
+
+    "<<", ">>", "!&", "!|", "!^"
+}
+
+
+;{}{}uint8 KEYWORDS = {
+    "len",
+    "is",
+
+    "if",
+    "else",
+    "loop",
+    "continue",
+    "break",
+
+    "return",
+
+    "method",
+    "struct",
+    "enum",
+    "interface",
+
+    "export",
+    "module",
+
+    "const",
+    "static",
+    "volatile",
+
+    "extends",
+    "override"
+}
+
+;{}{}uint8 KEYTYPES = {
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uint",
+
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "int",
+
+    "float32",
+    "float64",
+    "float",
+
+    "comp32",
+    "comp64",
+    "comp",
+
+    "vect",
+    "bool",
+
+    "type",
+    "void"
+}
+
+/; is_delimiter ({}uint8 str) [bool]
+    /; if (len str > 2 || len str < 1)
+        ;return false
+    ;/
+
+    /; if (len str == 2)
+        ;return string_contains(MULTI_PARENS, str{0}) && string_contains(MULTI_PARENS, str{1})
+    ;/
+
+    ;return string_contains(PARENS, str{0})
+;/
+
+/; is_reserved ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;/
+    ;return string_contains(RESERVED, str{0})
+;/
+
+/; is_augment ({}uint8 str) [bool]
+    /; if (len str == 1)
+        ;return string_contains(AUGMENTS, str{0})
+    ;/
+
+    ;return list_contains(MULTI_AUGMENTS, str)
+;/
+
+/; is_str_literal ({}uint8 str) [bool]
+    /; if (string_equate(str, "\"") || string_equate(str, "'"))
+        ;return true
+    ;/
+
+    /; if (len str < 2)
+        ;return false
+    ;; else if (str{0} !== '\'' && str{0} !== '"')
+        ;return false
+    ;/
+
+    /; loop (int i = 1; i < len str) [i++]
+        /; if (str{i} == '\\')
+            ;i++
+        ;; else if (str{i} == str{0})
+            ;return i == len str - 1
+        ;/
+    ;/
+    ;return true
+;/
+
+/; is_num_literal ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;/
+
+    ;bool dec = false
+    /; loop (int i = 0; i < len str) [i++]
+        /; if (str{i} == '.')
+            /; if (!dec)
+                ;dec = true
+            ;; else
+                ;return false
+            ;/
+        ;; else if (str{i} < '0' || str{i} > '9')
+            ;return false
+        ;/
+    ;/
+    ;return true
+;/
+
+/; is_literal({}uint8 str) [bool]
+    ;return is_str_literal(str) || is_num_literal(str)
+;/
+
+/; gen_type (Token t) [int]
+    /; if (t.cmp("\n") || t.cmp(","))
+        ;return TOKEN.SEPARATOR
+    ;/
+
+    /; if (is_literal(t.data))
+        ;return TOKEN.LITERAL
+    ;/
+
+    /; if (is_reserved(t.data))
+        /; if (is_delimiter(t.data))
+            ;return TOKEN.DELIMITER
+        ;; else if (is_augment(t.data))
+            ;return TOKEN.AUGMENT
+        ;/
+    ;; else if (list_contains(KEYWORDS, t.data))
+        ;return TOKEN.KEYWORD
+    ;; else if (list_contains(KEYTYPES, t.data))
+        ;return TOKEN.KEYTYPE
+    ;/
+
+    ;return TOKEN.DEFWORD
+;/
+
+/; break_token (Token current, uint8 to_append) [bool]
+    /; if (is_literal(current.data))
+        ;current.data.append(to_append)
+        ;return !(is_literal(current.data))
+    ;/
+
+    /; if (is_whitespace(to_append) || current.cmp("\n"))
+        ;return true
+    ;/
+
+    /; if (is_reserved(current.data))
+        /; if (is_reserved({to_append}))
+            ;current.data.append(to_append)
+            ;return gen_type(current) == TOKEN.DEFWORD
+        ;/
+        ;return true
+    ;; else if (is_reserved({to_append}))
+        ;return true
+    ;/
+
+    ;return false
+;/
+
+/; handle_comment (tnsl.io.File fd, ~Token current, ~int line) [bool]
+    ;bool block = false
+    /; if (current`.cmp("/"))
+        ;block = true
+    ;/
+
+    /; loop (int i = fd.read(); i !== -1) [i = fd.read()]
+        /; if (i == '\n')
+            ;line`++
+            /; if (!block)
+                ;return true
+            ;/
+        ;; else if (block && i == '#')
+            ;i = fd.read()
+            /; if (i == '/')
+                ;current` = {0, line, ""}
+                ;return false
+            ;; else if (i == ';' || i == ':')
+                ;current`.data.append(i)
+                ;return false
+            ;/
+
+            /; loop (i !== '\n' && i !== -1) [i = fd.read()] ;/
+
+            ;line`++
+        ;/
+    ;/
+;/
+
+/; tokenize (Path f) [{}Token]
+    ;{}Token out = {}
+
+    ;tnsl.io.File fd = f.open_read()
+    
+    ;Token current = {0, 0, ""}
+    ;int line = 1
+    /; loop (int i = fd.read(); i > -1) [i = fd.read()]
+
+        /; if (i == '#' && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
+            ;bool ln = handle_comment(fd, ~current, ~line)
+            /; if (ln)
+                ;current.tokenType = gen_type(current)
+                /; if (!(current.cmp("")))
+                    ;out.append(current)
+                ;/
+                ;out.append({TOKEN.SEPARATOR, line - 1, "\n"})
+            ;/
+            ;continue
+        ;/
+
+        /; if (i == '\n')
+            ;tnsl.io.print(".")
+            /; if (!(current.cmp("\n")))
+                ;current.tokenType = gen_type(current)
+                /; if (!(current.cmp("")))
+                    ;out.append(current)
+                ;/
+                ;current = {TOKEN.SEPARATOR, line, ""}
+                ;current.data.append(i)
+            ;/
+            ;line++
+        ;; else if (break_token(current, i))
+            ;current.tokenType = gen_type(current)
+            /; if (!(current.cmp("")))
+                ;out.append(current)
+            ;/
+            ;current = {0, line, ""}
+            /; if (!(is_whitespace(i)))
+                ;current.data.append(i)
+            ;/
+        ;; else
+            ;current.data.append(i)
+        ;/
+    ;/
+    ;tnsl.io.println("OK")
+
+    /; if (!(current.cmp("")) && !(current.cmp("\n")))
+        ;current.tokenType = gen_type(current)
+        ;out.append(current)
+    ;/
+
+    ;fd.close()
+
+    ;return out
+;/
+
+##
+## Main
+##
+
+/; main ({}{}uint8 args) [int]
+    /; if (len args < 1)
+        ;tnsl.io.println("Give me something to compile!")
+        ;return 1
+    ;/
+
+    ;bool tokenize_only = len args > 1
+
+    ;{}{}uint8 fsplit = string_split(args{0}, '/')
+    ;Path p = {{}, fsplit{len fsplit - 1}}
+
+    /; loop (int i = 0; i < len fsplit - 1) [i++]
+        ;p.path.append(fsplit{i})
+    ;/
+
+    ;tnsl.io.print("Path: ")
+    ;tnsl.io.println(p.full_path())
+
+    ;{}uint8 code = ""
+    /; if (!tokenize_only)
+        ;code = compile_start(p)
+    ;; else
+        ;{}Token tok = tokenize(p)
+        /; loop(int i = 0; i < len tok) [i++]
+            ;tnsl.io.print(".")
+            ;code = string_add(code, tok{i}.sprint())
+        ;/
+        ;tnsl.io.println("OK")
+    ;/
+
+    ;p.name = string_add(p.name, ".asm")
+
+    ;p.write(code)
+
+    ;return 0
+;/

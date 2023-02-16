@@ -1,0 +1,35 @@
+struct ListNode (type T) {
+    T element,
+    ~ListNode(T) next
+}
+
+/; method ListNode
+    /; get_el [T]
+        return self.element
+    ;/
+
+    /; get_next [ListNode(T)]
+        return self.next`
+    ;/
+;/
+
+struct ReferenceNode (type T) extends ListNode(T`) {
+    super
+}
+
+/; method ReferenceNode
+    /; change_ref (~T new_ref)
+        ~self.element = new_ref
+    ;/
+;/
+
+struct List(type T) {
+
+}
+
+# Generic (type T)
+# Unknown generic (?)
+# Ref to a type (type T) -> T`
+#  Ref types can be used interchangably with their referenced type while pointer types can not
+#  Variables typed by reference have the additional trait that you can
+#  set the address of that variable
