@@ -1084,7 +1084,9 @@
         ;; else if (p >== 0)
             ;s = s + p
         ;; else
-            ;~Type tp = m`.find_type(t`.members{i}.data_type.name)
+            ;tnsl.io.println("STRUCT!!!!!!")
+            ;{}{}uint8 artifact = { t`.members{i}.data_type.name }
+            ;~Type tp = m`.find_type(artifact)
             /; if (tp`.s == 0)
                 ;size_struct(tp, m)
             ;/

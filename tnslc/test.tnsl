@@ -6,14 +6,22 @@ struct ARRAY_TEST {
     {}PTR_TEST dat
 }
 
-enum ENUM_TEST [{}int] {
-    A = {2, 3, 4, 5, 623459},
+enum ENUM_TEST [{}uint8] {
+    A = "nizsdd",
     B = {1, 2}
 }
 
 enum EN_ARR [PTR_TEST] {
     A = {1, 2},
     B = {3, 4}
+}
+
+struct A {
+    B nxta
+}
+
+struct B {
+    ~A dat
 }
 
 /; main [int]
