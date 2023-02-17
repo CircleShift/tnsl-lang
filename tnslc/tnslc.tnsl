@@ -688,6 +688,18 @@
         ;return _find_function(artifact, 0)
     ;/
 
+    /; find_sub ({}uint8 s_mod) [~Module]
+        ;{}uint8 v1 = string_add("_#", s_mod)
+        ;{}uint8 v2 = string_add("__#", s_mod)
+        /; loop (int i = 0; i < len (self.sub)) [i++]
+            /; if (string_equate(self.sub{i}.name, s_mod) || string_equate(self.sub{i}.name, v1) || string_equate(self.sub{i}.name, v2))
+                ;return ~(self.sub{i})
+            ;/
+        ;/
+
+        ;return ~self
+    ;/
+
     /; full_path [{}uint8]
         /; if (string_equate(self.name, ""))
             ;return ""
@@ -1018,18 +1030,19 @@
         ;return "]"
     ;; else if (d.cmp("{"))
         ;return "}"
+    ;; else if (d.cmp("/;"))
+        ;return ";/"
     ;/
-    ;tnsl.io.println(string_add("Error, unrecognized delim: ", d))
+    ;tnsl.io.println(string_add("Error, unrecognized delim: ", d.data))
 ;/
 
 # Finds closing bracket
 /; find_closing (~{}Token tok, ~int cur) [int]
     ;int bl = 0, p = 0, br = 0, c = 0
     ;{}uint8 cl = closing_for(tok`{cur`})
-
     /; loop (int i = cur` + 1; i < len tok`) [i++]
         /; if (bl == 0 && p == 0 && br == 0 && c == 0)
-            /; if ((tok`{i}.cmp(";;") || tok`{i}.cmp(";:")) && string_equate(cl, "/;"))
+            /; if ((tok`{i}.cmp(";;") || tok`{i}.cmp(";:")) && string_equate(cl, ";/"))
                 ;return i
             ;; else if (tok`{i}.cmp(cl))
                 ;return i
@@ -1072,25 +1085,102 @@
 ;/
 
 # TODO:
-/; compile_function (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope) [Function]
+/; compile_function (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
 
 ;/
 
 # TODO:
-/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope) [Function]
+/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+
+;/
+
+/; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
 
 ;/
 
 # First pass on a module
 # Generates structs, enums, and submodules
 /; module_pass_one (~{}Token tok, ~int cur, ~Module current)
+    ;int max = find_closing(tok, cur)
+    ;Module new = {current, false, "", {}, {}, {}, {}}
+    /; loop (cur`++; cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
+            ;new.name = tok`{cur`}.data
+        ;; else if (tok`{cur`}.cmp("export"))
+            ;new.exp = true
+        ;; else if (!(tok`{cur`}.cmp("module")))
+            ;break
+        ;/
+    ;/
 
+    ;tnsl.io.println("boop")
+    /; loop (cur` < max) [cur`++]
+        ;tnsl.io.print(".")
+        /; if (tok`{cur`}.cmp(":"))
+            ;tnsl.io.println("INCLUDE")
+            /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
+                ;CompData tmp = compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), ~new)
+                ;cur` = cur` + 2
+            ;/
+            ;continue
+        ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+            /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
+                ;module_pass_one(tok, cur, ~new)
+            ;/
+        ;; else if (tok`{cur`}.cmp("struct"))
+            ;new_type(tok, cur, ~new)
+        ;/
+    ;/
+    ;current`.sub.append(new)
 ;/
 
 # Second pass on a module
 # Generates code and calls compile_file_second_pass if an include happens
-/; module_pass_two (~{}Token tok, ~int cur, ~Module current)
-
+/; module_pass_two (~{}Token tok, ~int cur, ~Module current, ~CompData out)
+    ;int max = find_closing(tok, cur)
+    
+    /; loop (cur`++; cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
+            ;current = current`.find_sub(tok`{cur`}.data)
+            ;cur`++
+            ;break
+        ;/
+    ;/
+    
+    /; loop (cur` < max) [cur`++]
+        ;tnsl.io.print(".")
+        /; if (tok`{cur`}.cmp(":"))
+            ;tnsl.io.println("INCLUDE")
+            /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
+                ;CompData tmp = compile_file_pass_two(f.relative(unquote_str(tok`{cur` + 2}.data)), current)
+                ;out.hsec = string_add(out.hsec, tmp.hsec)
+                ;out.dsec = string_add(out.dsec, tmp.dsec)
+                ;out.csec = string_add(out.csec, tmp.csec)
+                ;cur` = cur` + 2
+            ;/
+            ;continue
+        ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+            ;tnsl.io.print("block")
+            /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
+                ;module_pass_two(tok, cur, current, out)
+            ;; else
+                ;compile_block(tok, cur, current, out)
+            ;/
+        ;; else if (tok`{cur`}.cmp("struct"))
+            ;tnsl.io.print("struct")
+            ;skip_struct(tok, cur)
+        ;; else if (tok`{cur`}.cmp("enum"))
+            ;tnsl.io.print("enum")
+            ;compile_enum(tok, cur, current, ~out)
+        ;; else if (is_definition(tok, cur, current))
+            ;tnsl.io.print("def")
+            ;compile_file_def(tok, cur, current, ~out)
+        ;; else if (!(tok`{cur`}.cmp("\n")))
+            ;tnsl.io.println("Failed to recognize file-level statement")
+            ;tok`{cur`}.print()
+            ;break
+        ;/
+    ;/
 ;/
 
 # First compiler pass on a file
@@ -1177,9 +1267,10 @@
         ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
             ;tnsl.io.print("block")
             /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
-                ;module_pass_two(~tok, ~i, current)
+                ;module_pass_two(~tok, ~i, current, ~out)
+            ;; else
+                ;compile_block(~tok, ~i, current, ~out)
             ;/
-            ;compile_function
         ;; else if (tok{i}.cmp("struct"))
             ;tnsl.io.print("struct")
             ;skip_struct(~tok, ~i)

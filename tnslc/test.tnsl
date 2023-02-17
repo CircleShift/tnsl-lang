@@ -30,13 +30,15 @@ enum EN_ARR [PTR_TEST] {
 
 uint WAMM = 31, WAM2 = 34
 
-struct A {
-    B nxta
-}
+/; module Alpha
+    struct A {
+        B nxta
+    }
 
-struct B {
-    ~A dat
-}
+    struct B {
+        ~A dat
+    }
+;/
 
 /; main [int]
     return EN_ARR.A.dat
