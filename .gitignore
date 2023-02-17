@@ -1,3 +1,5 @@
 tint
 *.S
+*.asm
+*.o
 *.out

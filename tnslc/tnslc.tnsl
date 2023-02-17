@@ -755,12 +755,46 @@
     ;return out
 ;/
 
-/; is_definition (~{}Token tok, ~int cur) [bool]
-    ;return false
+/; is_definition (~{}Token tok, ~int cur, ~Module current) [bool]
+    ;int i = cur`
+    ;Type t = get_type(tok, ~i, current)
+    ;return tok`{i}.type_is(TOKEN.DEFWORD)
 ;/
 
-/; compile_file_def (~{}Token tok, ~int cur, Type t, ~Module current) [{}Variable]
-    ;return {}
+/; compile_file_def (~{}Token tok, ~int cur, ~Module current, ~CompData out)
+    ;Type t = get_type(tok, cur, current)
+    ;{}uint8 base = current`.full_path()
+    
+    /; if (len base > 0)
+        ;base.append('.')
+    ;/
+
+    /; loop (!(tok`{cur`}.cmp("\n")))
+        /; loop (tok`{cur`}.cmp(","))
+                    ;cur`++
+        ;/
+
+        ;{}uint8 l = string_add(base, tok`{cur`}.data)
+        
+        /; if (current`.exp)
+            ;out`.hsec = string_add(out`.hsec, "global ")
+            ;out`.hsec = string_add(out`.hsec, l)
+            ;out`.hsec.append('\n')
+        ;/
+
+        ;l.append(':')
+        ;l.append('\n')
+        ;out`.dsec = string_add(out`.dsec, l)
+
+        ;cur`++
+        /; if (tok`{cur`}.cmp("="))
+            ;cur`++
+            ;out`.dsec = string_add(out`.dsec, decompose_data(tok, cur, current, t))
+            ;cur`++
+        ;; else
+            ;out`.dsec = string_add(out`.dsec, decompose_empty(current, t))
+        ;/
+    ;/
 ;/
 
 /; next_non_nl (~{}Token tok, int c) [int]
@@ -811,7 +845,15 @@
 ;/
 
 /; decompose_empty (~Module current, Type t) [{}uint8]
-    ;return ""
+    /; if (len t.ptr_chain > 0)
+        ;return "\tdq 0\n"
+    ;/
+    ;{}uint8 out = "\tdb 0"
+    /; loop (int i = 1; i < t.s) [i++]
+        ;out = string_add(out, ", 0")
+    ;/
+    ;out.append('\n')
+    ;return out
 ;/
 
 # Used to take an array literal and make it into a label
@@ -914,7 +956,7 @@
 ;/
 
 # Compiles new enum for the file
-/; compile_enum (~{}Token tok, ~int cur, ~Module current) [{}uint8]
+/; compile_enum (~{}Token tok, ~int cur, ~Module current, ~CompData out)
     ;cur`++
     ;Type et = NO_TYPE
     ;{}uint8 name = ""
@@ -941,8 +983,6 @@
     ;cur`++
 
     ;Module enum_mod = {current, current`.exp, string_add("__#", name), {}, {}, {}, {}}
-    
-    ;{}uint8 out = ""
 
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("}"))
@@ -952,17 +992,22 @@
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;{}uint8 l = string_add(enum_mod.full_path(), ".")
             ;l = string_add(l, tok`{cur`}.data)
+
+            /; if (current`.exp)
+                ;out`.hsec = string_add(out`.hsec, "global ")
+                ;out`.hsec = string_add(out`.hsec, l)
+                ;out`.hsec.append('\n')
+            ;/
+            
             ;l.append(':')
             ;l.append('\n')
             ;cur` = cur` + 2
             ;l = string_add(l, decompose_data(tok, cur, current, et))
-            ;out = string_add(out, l)
+            ;out`.dsec = string_add(out`.dsec, l)
         ;/
     ;/
 
     ;current`.sub.append(enum_mod)
-
-    ;return out
 ;/
 
 # Generates opposite closing bracket
@@ -1077,6 +1122,7 @@
 
 /; size_struct (~Type t, ~Module m)
     ;int s = 0
+
     /; loop (int i = 0; i < len (t`.members)) [i++]
         ;int p = is_primitive(t`.members{i}.data_type.name)
         /; if (len (t`.members{i}.data_type.ptr_chain) > 0)
@@ -1133,16 +1179,16 @@
             /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
                 ;module_pass_two(~tok, ~i, current)
             ;/
+            ;compile_function
         ;; else if (tok{i}.cmp("struct"))
             ;tnsl.io.print("struct")
             ;skip_struct(~tok, ~i)
         ;; else if (tok{i}.cmp("enum"))
             ;tnsl.io.print("enum")
-            ;out.dsec = string_add(out.dsec, compile_enum(~tok, ~i, current))
-        ;; else if (is_definition(~tok, ~i))
+            ;compile_enum(~tok, ~i, current, ~out)
+        ;; else if (is_definition(~tok, ~i, current))
             ;tnsl.io.print("def")
-            ;Type t = get_type(~tok, ~i, current)
-            ;out.dsec = string_add(out.dsec, compile_file_def(~tok, ~i, t, current))
+            ;compile_file_def(~tok, ~i, current, ~out)
         ;; else if (!(tok{i}.cmp("\n")))
             ;tnsl.io.println("Failed to recognize file-level statement")
             ;tok{i}.print()

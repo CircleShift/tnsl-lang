@@ -1,5 +1,17 @@
+struct Token {
+    ~uint8 data,
+    int
+        tokenType,
+        line,
+        col
+}
+
+enum TOKENS [Token] {
+    A = {"asdf", 1, 2, 3}
+}
+
 struct PTR_TEST {
-    int dat, in
+    int8 dat, in
 }
 
 struct ARRAY_TEST {
@@ -12,9 +24,11 @@ enum ENUM_TEST [{}uint8] {
 }
 
 enum EN_ARR [PTR_TEST] {
-    A = {1, 2},
+    A = {3, 2},
     B = {3, 4}
 }
+
+uint WAMM = 31, WAM2 = 34
 
 struct A {
     B nxta
