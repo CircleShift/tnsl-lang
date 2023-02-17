@@ -23,11 +23,6 @@ enum ENUM_TEST [{}uint8] {
     B = {1, 2}
 }
 
-enum EN_ARR [PTR_TEST] {
-    A = {3, 2},
-    B = {3, 4}
-}
-
 uint WAMM = 31, WAM2 = 34
 
 /; module Alpha
@@ -37,6 +32,11 @@ uint WAMM = 31, WAM2 = 34
 
     struct B {
         ~A dat
+    }
+
+    enum EN_ARR [PTR_TEST] {
+        A = {3, 2},
+        B = {3, 4}
     }
 ;/
 

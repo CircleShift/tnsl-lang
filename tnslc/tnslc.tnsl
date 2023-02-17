@@ -610,19 +610,27 @@
         /; if (len artifact - 1 > r)
             /; loop (int i = 0; i < len (self.sub)) [i++]
                 /; if (string_equate(artifact{r}, self.sub{i}.name))
-                    ;return self._find_type(artifact, r + 1)
+                    ;return self.sub{i}._find_type(artifact, r + 1)
+                ;/
+            ;/
+        ;; else if (len artifact - 1 == r)
+            /; loop (int i = 0; i < len (self.types)) [i++]
+                /; if (string_equate(self.types{i}.name, artifact{r}))
+                    ;return ~(self.types{i})
                 ;/
             ;/
         ;/
-
-        /; loop (int i = 0; i < len (self.types)) [i++]
-            /; if (string_equate(self.types{i}.name, artifact{r}))
-                ;return ~(self.types{i})
-            ;/
-        ;/
         
-        ;Type nt = {0, artifact{len artifact - 1}, "", {}, {}}
-        ;return ~nt
+        /; if (string_equate(self.name, ""))
+            ;Type nt = {0, artifact{len artifact - 1}, "", {}, {}}
+            ;return ~nt
+        ;/
+
+        ;~Module m = self.parent
+        /; loop (r > 0) [r = r - 1]
+            ;m = m.parent
+        ;/
+        ;return m`._find_type(artifact, 0)
     ;/
 
     # Consumer facing function
@@ -644,7 +652,13 @@
         /; if (len artifact - 1 > r)
             /; loop (int i = 0; i < len (self.sub)) [i++]
                 /; if (string_equate(artifact{r}, self.sub{i}.name))
-                    ;return self._find_type(artifact, r + 1)
+                    ;return self.sub{i}._find_type(artifact, r + 1)
+                ;/
+            ;/
+        ;; else if (len artifact - 1 == r)
+            /; loop (int i = 0; i < len (self.defs)) [i++]
+                /; if (string_equate(self.defs{i}.name, artifact{r}))
+                    ;return self.defs{i}
                 ;/
             ;/
         ;/
@@ -654,8 +668,16 @@
                 ;return self.defs{i}
             ;/
         ;/
+
+        /; if (string_equate(self.name, ""))
+            ;return {{}, "", 0, 0, 0}
+        ;/
         
-        ;return {{}, "", 0, 0, 0}
+        ;~Module m = self.parent
+        /; loop (r > 0) [r = r - 1]
+            ;m = m.parent
+        ;/
+        ;return m`._find_def(artifact, 0)
     ;/
 
     /; find_def ({}{}uint8 artifact) [Variable]
@@ -972,7 +994,7 @@
     ;cur`++
     ;Type et = NO_TYPE
     ;{}uint8 name = ""
-
+    
     /; if (tok`{cur`}.cmp("["))
         ;cur`++
         ;et = get_type(tok, cur, current)
@@ -995,7 +1017,6 @@
     ;cur`++
 
     ;Module enum_mod = {current, current`.exp, string_add("__#", name), {}, {}, {}, {}}
-
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("}"))
                 ;break
@@ -1171,10 +1192,10 @@
             ;skip_struct(tok, cur)
         ;; else if (tok`{cur`}.cmp("enum"))
             ;tnsl.io.print("enum")
-            ;compile_enum(tok, cur, current, ~out)
+            ;compile_enum(tok, cur, current, out)
         ;; else if (is_definition(tok, cur, current))
             ;tnsl.io.print("def")
-            ;compile_file_def(tok, cur, current, ~out)
+            ;compile_file_def(tok, cur, current, out)
         ;; else if (!(tok`{cur`}.cmp("\n")))
             ;tnsl.io.println("Failed to recognize file-level statement")
             ;tok`{cur`}.print()
