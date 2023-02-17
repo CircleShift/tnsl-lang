@@ -657,15 +657,10 @@
             ;/
         ;; else if (len artifact - 1 == r)
             /; loop (int i = 0; i < len (self.defs)) [i++]
-                /; if (string_equate(self.defs{i}.name, artifact{r}))
+                ;{}uint8 true_name = string_add(self.full_path(), artifact{r})
+                /; if (string_equate(self.defs{i}.name, true_name))
                     ;return self.defs{i}
                 ;/
-            ;/
-        ;/
-
-        /; loop (int i = 0; i < len (self.defs)) [i++]
-            /; if (string_equate(self.defs{i}.name, artifact{r}))
-                ;return self.defs{i}
             ;/
         ;/
 
@@ -809,6 +804,8 @@
         ;/
 
         ;{}uint8 l = string_add(base, tok`{cur`}.data)
+        ;Variable v = {l, t, 0, LOCATION.LABEL}
+        ;current`.defs.append(v)
         
         /; if (current`.exp)
             ;out`.hsec = string_add(out`.hsec, "global ")
@@ -1031,6 +1028,9 @@
                 ;out`.hsec = string_add(out`.hsec, l)
                 ;out`.hsec.append('\n')
             ;/
+
+            ;Variable v = {l, et, 0, LOCATION.LABEL}
+            ;enum_mod.defs.append(v)
             
             ;l.append(':')
             ;l.append('\n')
