@@ -1,0 +1,3 @@
+struct Try {
+    int a, b, c
+}

@@ -87,6 +87,10 @@
         ;return '\n'
     ;; else if (cmp == 'r')
         ;return '\r'
+    ;; else if (cmp == 't')
+        ;return '\t'
+    ;; else if (cmp == '0')
+        ;return '\0'
     ;/
 
 ;/
@@ -444,6 +448,34 @@
     ;return reg_by_name_size(reg_by_num(r), sz)
 ;/
 
+/; mov_by_size(int sz)[{}uint8]
+    /; if (sz == 1)
+        ;return "byte"
+    ;; else if (sz == 2)
+        ;return "word"
+    ;; else if (sz == 4)
+        ;return "dword"
+    ;; else if (sz == 8)
+        ;return "qword"
+    ;/
+    ;return ""
+;/
+
+/; label_to_loc({}uint8 l, int sz, offset) [{}uint8]
+    ;{}uint8 off = ""
+    /; if (off !== 0)
+        ;off = string_add(" + ", int_to_string(offset))
+    ;/
+    ;{}uint8 out = string_join({
+        "\tmov ",
+        mov_by_size(sz),
+        " [rel ",
+        l, off,
+        "]"
+    }, "")
+    ;return out
+;/
+
 # Most methods make use of one or more temporary variables.
 # These are denoted by tr
 /; method Variable
@@ -568,13 +600,111 @@
         ;/
     ;/
 
-    /; call (Variable out, {}uint8 name)
+    /; call ({}uint8 name)
     ;/
 ;/
 
 ;struct Scope {
+    ~Scope parent,
+    {}uint8 name,
     {}Variable vars
 }
+
+/; method Scope
+    /; is_cf [bool]
+        ;{}{}uint8 split = string_split(self.name, '_')
+        /; if (len split == 0)
+            ;return false
+        ;/
+        /; if (string_equate(split{0}, "if") ||
+                string_equate(split{0}, "else") ||
+                string_equate(split{0}, "loop") || 
+                string_equate(split{0}, "match") ||
+                string_equate(split{0}, "case"))
+            /; loop (int i = 1; i < len split; i++)
+                /; if (len split{i} > 0)
+                    /; if (split{i}{0} < '0' || split{i}{0} > '9')
+                        ;return false
+                    ;/
+                ;; else
+                    ;return false
+                ;/
+            ;/
+            ;return true
+        ;/
+        ;return false
+    ;/
+
+    /; full_label [{}uint8]
+        ;{}uint8 out = ""
+        /; if (self.is_cf())
+            ;out = self.parent`.full_label()
+            ;out.append('_')
+        ;/
+        ;out = string_add(out, self.name)
+        ;return out
+    ;/
+
+    /; get_size [int]
+        ;int out = 0
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            ;out = out + self.vars{i}.s
+        ;/
+        ;return out
+    ;/
+
+    /; next_register [int]
+        ;int out = 8
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            /; if (is_primitive(self.vars{i}))
+                ;out++
+            ;/
+        ;/
+
+        /; if (out > 15)
+            ;out = -1
+        ;/
+        
+        ;return out
+    ;/
+
+    /; get_stack [int]
+        ;int out = 0
+
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            /; if (is_primitive(self.vars{i}))
+                ;continue
+            ;/
+            ;out = out + self.vars{i}.s
+        ;/
+
+        ;return out
+    ;/
+
+    /; next_loc (Type t) [int]
+        /; if (is_primitive(t))
+            ;return self.next_register()
+        ;/
+        ;return -1
+    ;/
+
+    /; initialize ({}Variable v)
+        ;self.vars = v
+    ;/
+
+    /; begin_scope (~CompData out)
+        ;int reg = 8
+
+        ;{}uint8 intro = "\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
+        ;out`.csec = string_add(out`.csec, intro)
+        
+    ;/
+    
+    /; end_scope (~CompData out)
+        ;{}uint8 outro = "\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n"
+        ;out`.csec = string_add(out`.csec, outro)
+    ;/
+;/
 
 ;struct Function {
     {}uint8 name,
@@ -787,7 +917,7 @@
 /; is_definition (~{}Token tok, ~int cur, ~Module current) [bool]
     ;int i = cur`
     ;Type t = get_type(tok, ~i, current)
-    ;return tok`{i}.type_is(TOKEN.DEFWORD)
+    ;return tok`{i}.type_is(TOKEN.DEFWORD) 
 ;/
 
 /; compile_file_def (~{}Token tok, ~int cur, ~Module current, ~CompData out)
@@ -829,6 +959,9 @@
 ;/
 
 /; next_non_nl (~{}Token tok, int c) [int]
+    /; if (len tok` !> c)
+        ;return c
+    ;/
     /; loop (tok`{c}.cmp("\n")) [c++] ;/
     ;return c
 ;/
@@ -1096,7 +1229,6 @@
 
 # Skips cur to the end of a struct
 /; skip_struct (~{}Token tok, ~int cur)
-    ;{}uint8 name = tok`{cur` + 1}.data
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("{"))
             ;cur` = find_closing(tok, cur)
@@ -1105,23 +1237,134 @@
     ;/
 ;/
 
+/; _eval_value(~{}Token tok, int start, int max, ~CompData out, ~Module current, ~Scope scope)
+    ;int first = -1, priority = 9999
+    /; loop (int i = start; i < max) [i++]
+        /; if (tok`{i}.type_is(TOKEN.AUGMENT))
+
+        ;/
+    ;/
+;/
+
+/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+    ;int end = cur`
+    /; loop (end < len tok`) [end++]
+        /; if (tok`{end}.cmp(",") || tok`{end}.cmp("\n") || tok`{end}.cmp(";") || tok`{end}.cmp(";/"))
+            ;break
+        ;; else if (tok`{end}.type_is(TOKEN.DELIMITER))
+            ;end = find_closing(tok, ~end)
+        ;/
+    ;/
+    ;_eval_value(tok, cur`, end, out, current, scope)
+    ;cur` = end
+;/
+
+/; eval_def (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+;/
+
 # TODO:
 /; compile_function (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
 
 ;/
 
 # TODO:
-/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope parent)
 
 ;/
 
-/; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
+/; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, ~Scope parent)
+    ;int max = find_closing(tok, cur)
+    /; loop ()
 
+    ;/
+
+    /; loop (cur`++; cur` < max) [cur`++]
+    ;/
+;/
+
+/; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
+    ;Scope root = {0, "", {}}
+    ;int max = find_closing(tok, cur)
+    ;bool r = false, m = false
+    /; loop (cur`++; cur` < max && !m) [cur`++]
+        /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
+            ;root.name = tok`{cur`}.data
+        ;; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
+            /; if (tok`{cur`}.cmp("raw"))
+                ;r = true
+            ;; if (tok`{cur`}.cmp("method"))
+                ;m = true
+                ;current = current`.find_sub(tok`{cur` + 1}.data)
+            ;/
+        ;; if (tok`{cur`}.cmp("("))
+            ;{}Variable init = parse_param_list(tok, cur, current)
+            ;root.initialize(init)
+        ;; if (tok`{cur`}.cmp("["))
+            ;cur` = find_closing(tok, cur)
+        ;; if (tok`{cur`}.cmp("\n"))
+            ;break
+        ;/
+    ;/
+    ;{}uint8 l = ""
+    /; if (!string_equate(current`.name, ""))
+        ;l = string_add(l, current`.full_path())
+        ;l.append('.')
+    ;/
+    ;l = string_add(l, root.name)
+
+    /; if (current`.exp)
+        ;out`.hsec = string_add(out`.hsec, "global ")
+        ;out`.hsec = string_add(out`.hsec, l)
+        ;out`.hsec.append('\n')
+    ;/
+    ;out`.csec = string_add(out`.csec, l)
+    ;out`.csec = string_add(out`.csec, ":\n")
+
+    /; if (!r)
+        ;root.begin_scope(out)
+    ;/
+
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
+        /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+            /; if (m)
+                ;compile_block(tok, cur, current, out)
+            ;; else
+                ;_compile_block(tok, cur, current, out, ~root)
+            ;/
+
+            /; if (tok`{cur`}.cmp(";;"))
+                ;cur` = cur` - 1
+            ;/
+        ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
+            ;tnsl.io.println(tok`{cur`}.data)
+            /; if (tok`{cur`}.cmp("return"))
+                ;cur`++
+                ;eval_value(tok, cur, out, current, ~root)
+            ;; else if (tok`{cur`}.cmp("asm"))
+                ;cur`++
+                ;out`.csec.append('\t')
+                ;out`.csec = string_add(out`.csec, unquote_str(tok`{cur`}.data))
+                ;out`.csec.append('\n')
+            ;; else
+                ;tnsl.io.print("Keyword not impl: ")
+                ;tnsl.io.println(tok`{cur`}.data)
+            ;/
+        ;; else if (is_definition(tok, cur, current))
+            ;eval_def(tok, cur, out, current, ~root)
+        ;; else
+            ;eval_value(tok, cur, out, current, ~root)
+        ;/
+    ;/
+    
+    /; if (!r)
+        ;root.end_scope(out)
+    ;/
+    ;out`.csec = string_add(out`.csec, "\tret\n")
 ;/
 
 # First pass on a module
 # Generates structs, enums, and submodules
-/; module_pass_one (~{}Token tok, ~int cur, ~Module current)
+/; module_pass_one (~{}Token tok, ~int cur, ~Module current, Path f)
     ;int max = find_closing(tok, cur)
     ;Module new = {current, false, "", {}, {}, {}, {}}
     /; loop (cur`++; cur` < len tok`) [cur`++]
@@ -1134,19 +1377,18 @@
         ;/
     ;/
 
-    ;tnsl.io.println("boop")
     /; loop (cur` < max) [cur`++]
         ;tnsl.io.print(".")
         /; if (tok`{cur`}.cmp(":"))
             ;tnsl.io.println("INCLUDE")
             /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
-                ;CompData tmp = compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), ~new)
+                ;compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), ~new)
                 ;cur` = cur` + 2
             ;/
             ;continue
         ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
             /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
-                ;module_pass_one(tok, cur, ~new)
+                ;module_pass_one(tok, cur, ~new, f)
             ;/
         ;; else if (tok`{cur`}.cmp("struct"))
             ;new_type(tok, cur, ~new)
@@ -1157,33 +1399,32 @@
 
 # Second pass on a module
 # Generates code and calls compile_file_second_pass if an include happens
-/; module_pass_two (~{}Token tok, ~int cur, ~Module current, ~CompData out)
+/; module_pass_two (~{}Token tok, ~int cur, ~Module current, ~CompData out, Path f)
     ;int max = find_closing(tok, cur)
-    
     /; loop (cur`++; cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;current = current`.find_sub(tok`{cur`}.data)
-            ;cur`++
+        ;; else if (!(tok`{cur`}.cmp("module")) && !(tok`{cur`}.cmp("export")))
             ;break
         ;/
     ;/
-    
-    /; loop (cur` < max) [cur`++]
+
+    /; loop (cur` = next_non_nl(tok, cur`); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
         ;tnsl.io.print(".")
         /; if (tok`{cur`}.cmp(":"))
             ;tnsl.io.println("INCLUDE")
             /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
                 ;CompData tmp = compile_file_pass_two(f.relative(unquote_str(tok`{cur` + 2}.data)), current)
-                ;out.hsec = string_add(out.hsec, tmp.hsec)
-                ;out.dsec = string_add(out.dsec, tmp.dsec)
-                ;out.csec = string_add(out.csec, tmp.csec)
+                ;out`.hsec = string_add(out`.hsec, tmp.hsec)
+                ;out`.dsec = string_add(out`.dsec, tmp.dsec)
+                ;out`.csec = string_add(out`.csec, tmp.csec)
                 ;cur` = cur` + 2
             ;/
             ;continue
         ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
             ;tnsl.io.print("block")
             /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
-                ;module_pass_two(tok, cur, current, out)
+                ;module_pass_two(tok, cur, current, out, f)
             ;; else
                 ;compile_block(tok, cur, current, out)
             ;/
@@ -1223,7 +1464,7 @@
             ;continue
         ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
             /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
-                ;module_pass_one(~tok, ~i, current)
+                ;module_pass_one(~tok, ~i, current, f)
             ;/
         ;; else if (tok{i}.cmp("struct"))
             ;new_type(~tok, ~i, current)
@@ -1273,7 +1514,7 @@
     ;CompData out = {"", "", ""}
     ;{}Token tok = tokenize(f)
 
-    /; loop (int i = 0; i < len tok) [i++]
+    /; loop (int i = next_non_nl(~tok, 0); i < len tok) [i = next_non_nl(~tok, i+1)]
         ;tnsl.io.print(".")
         /; if (tok{i}.cmp(":"))
             ;tnsl.io.println("INCLUDE")
@@ -1288,7 +1529,7 @@
         ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
             ;tnsl.io.print("block")
             /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
-                ;module_pass_two(~tok, ~i, current, ~out)
+                ;module_pass_two(~tok, ~i, current, ~out, f)
             ;; else
                 ;compile_block(~tok, ~i, current, ~out)
             ;/
@@ -1367,9 +1608,9 @@
     "if",
     "else",
     "loop",
+
     "continue",
     "break",
-
     "return",
 
     "method",
@@ -1383,9 +1624,12 @@
     "const",
     "static",
     "volatile",
+    "raw",
 
     "extends",
-    "override"
+    "override",
+
+    "asm"
 }
 
 ;{}{}uint8 KEYTYPES = {

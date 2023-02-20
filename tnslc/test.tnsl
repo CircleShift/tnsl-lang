@@ -1,45 +1,15 @@
-struct Token {
-    ~uint8 data,
-    int
-        tokenType,
-        line,
-        col
-}
+/; module tnslc
+    :include "test2.tnsl"
 
-enum TOKENS [Token] {
-    A = {"asdf", 1, 2, 3}
-}
-
-struct PTR_TEST {
-    int8 dat, in
-}
-
-struct ARRAY_TEST {
-    {}PTR_TEST dat
-}
-
-enum ENUM_TEST [{}uint8] {
-    A = "nizsdd",
-    B = {1, 2}
-}
-
-uint WAMM = 31, WAM2 = 34
-
-/; module Alpha
-    struct A {
-        B nxta
-    }
-
-    struct B {
-        ~A dat
-    }
-
-    enum EN_ARR [PTR_TEST] {
-        A = {3, 2},
-        B = {3, 4}
-    }
+    /; run (uint argc, ~~uint8 argv) [int]
+        return 0
+    ;/
 ;/
 
-/; main [int]
-    return EN_ARR.A.dat
+tnslc.Try A = {1, 2, 3}
+
+/; raw main (uint argc, ~~uint8 argv) [int]
+    asm "mov r8, rdi"
+    asm "mov r9, rsi"
+    return tnslc.run(argc, argv)
 ;/
