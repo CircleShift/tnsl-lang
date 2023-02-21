@@ -502,37 +502,43 @@
     ;/
     
     # functions that do work on this variable
-    /; add (Variable v, int tr) [{}uint8]
+    /; add (Variable v, ~CompData dat)
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
-                ;return v.add(self)
+                ;v.add(self, dat)
+            ;; else
+                ;self.location = self.location + v.location
             ;/
-            ;self.location = self.location + v.location
-            ;return ""
-        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 tmp = get_reg(tr, self.norm_size())
-            ;{}uint8 out = self.norm_op("mov", { tmp, v.norm_loc(self.norm_size()) })
-            ;return string_add(out, self.norm_op("add", { self.norm_loc(self.norm_size()), tmp }))
+        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
+                "\tadd ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
+            }, "")
+        ;;
+            ;dat`.csec = string_add(dat`.csec, self.norm_op("add", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) }))
         ;/
-        ;return self.norm_op("add", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
     ;/
 
-    /; sub (Variable v) [{}uint8]
+    /; sub (Variable v, ~CompData dat)
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
-                ;return v.add(self)
+                ;v.add(self, dat)
+            ;; else
+                ;self.location = self.location - v.location
             ;/
-            ;self.location = self.location - v.location
-            ;return ""
-        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 tmp = get_reg(tr, self.norm_size())
-            ;{}uint8 out = self.norm_op("mov", { tmp, v.norm_loc(self.norm_size()) })
-            ;return string_add(out, self.norm_op("sub", { self.norm_loc(self.norm_size()), tmp }))
+        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
+                "\tsub ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
+            }, "")
+        ;; else
+            ;dat`.csec = string_add(dat`.csec, self.norm_op("sub", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) }))
         ;/
-        ;return self.norm_op("sub", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
     ;/
 
-    /; div (Variable v) [{}uint8]
+    /; div (Variable v, ~CompData dat)
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.div(self)
@@ -547,7 +553,7 @@
         ;return self.norm_op("div", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
     ;/
 
-    /; mul (Variable v) [{}uint8]
+    /; mul (Variable v, ~CompData dat)
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.mul(self)
@@ -559,7 +565,7 @@
             # TODO
             ;return out
         ;/
-        ;return self.norm_op("mul", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
+        ;return self.norm_op("mul", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) })
     ;/
 
     /; set (Variable v, ~CompData dat)
@@ -568,13 +574,17 @@
                 ;return v.set(self)
             ;/
             ;self.location = v.location
-            ;return ""
-        ;; if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 out = ""
-            # TODO
-            ;return out
+        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tlea rdi, ", self.norm_loc(0), "\n",
+                "\tlea rsi, ", v.norm_loc(0), "\n",
+                "\tmov rcx, ", int_to_string(self.norm_size()), "\n",
+                "\trep movsb\n"
+            }, "")
+        ;; else
+            ;dat`.csec = string_add(dat`.csec, self.norm_op("mov", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) }))
         ;/
-        ;return self.norm_op("mov", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
     ;/
 
     # functions that do work on another variable
@@ -1460,6 +1470,14 @@
 # Need to impliment in place solving
 # Need to impliment auto typing
 /; _eval_value(~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
+    /; if (start == max - 1)
+        /; if (tok`{start}.type_is(TOKEN.LITERAL))
+            /; if (tok`{start}.data{0} == '"')
+
+            ;; else if (tok`{start}.data{0} == '"')
+        ;/
+    ;/
+
     ;int first = -1, pr = -1, pa = -1
     /; loop (int i = start; i < max) [i++]
         /; if (tok`{i}.type_is(TOKEN.AUGMENT) && priority(tok`{i}) !< pr)
@@ -1505,6 +1523,7 @@
         ;/
     ;/
     ;_eval_value(tok, cur`, end, out, current, scope, t)
+    ;Variable set = {"#tmp", }
     ;cur` = end
 ;/
 

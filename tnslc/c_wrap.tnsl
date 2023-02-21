@@ -8,7 +8,7 @@
     asm "mov r8, 0"
     asm "mov r9, 0"
     asm "mov r10, 0"
-    asm "call malloc"
+    asm "call malloc wrt ..got"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially, and we have a uint in r8)
     asm "mov r9, rax"
@@ -26,7 +26,7 @@
     asm "mov r9, 0"
     asm "mov r10, 0"
     # Do call
-    asm "call realloc"
+    asm "call realloc wrt ..got"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
     asm "mov r10, rax"
@@ -43,7 +43,7 @@
     asm "mov r9, 0"
     asm "mov r10, 0"
     # do call
-    asm "call free"
+    asm "call free wrt ..got"
     # there's no more to do 'cause free returns nothing 
 ;/
 
