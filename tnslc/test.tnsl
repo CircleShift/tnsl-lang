@@ -1,3 +1,7 @@
+/; module util
+    :include "c_wrap.tnsl"
+;/
+
 /; module tnslc
     :include "test2.tnsl"
 
@@ -11,5 +15,5 @@ tnslc.Try A = {1, 2, 3}
 /; raw main (uint argc, ~~uint8 argv) [int]
     asm "mov r8, rdi"
     asm "mov r9, rsi"
-    return tnslc.run(argc, argv)
+    raw return tnslc.run(argc, argv)
 ;/

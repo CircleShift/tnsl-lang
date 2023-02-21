@@ -466,14 +466,7 @@
     /; if (off !== 0)
         ;off = string_add(" + ", int_to_string(offset))
     ;/
-    ;{}uint8 out = string_join({
-        "\tmov ",
-        mov_by_size(sz),
-        " [rel ",
-        l, off,
-        "]"
-    }, "")
-    ;return out
+    ;return string_join( { "[rel ", l, off, "]" }, "")
 ;/
 
 # Most methods make use of one or more temporary variables.
@@ -482,11 +475,11 @@
     
     /; norm_loc (int sz) [{}uint8]
         /; if (self.loc_type == LOCATION.LABEL)
-            ;return ""
+            ;return label_to_loc(self.name, sz, 0)
         ;; else if (self.loc_type == LOCATION.REGISTER)
             ;return get_reg(self.location, sz)
         ;; else if (self.loc_type == LOCATION.STACK)
-            ;return string_join( { "[ rsp + ", int_to_string(self.location), " ]" } , "")
+            ;return string_join( { "[ rbp - ", int_to_string(self.location), " ]" }, "")
         ;/
     ;/
 
@@ -524,7 +517,7 @@
         ;return self.norm_op("add", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
     ;/
 
-    /; sub (Variable v)
+    /; sub (Variable v) [{}uint8]
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.add(self)
@@ -539,7 +532,7 @@
         ;return self.norm_op("sub", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) })
     ;/
 
-    /; div (Variable v)
+    /; div (Variable v) [{}uint8]
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.div(self)
@@ -554,7 +547,7 @@
         ;return self.norm_op("div", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
     ;/
 
-    /; mul (Variable v)
+    /; mul (Variable v) [{}uint8]
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.mul(self)
@@ -569,7 +562,7 @@
         ;return self.norm_op("mul", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size) })
     ;/
 
-    /; set (Variable v)
+    /; set (Variable v, ~CompData dat)
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;return v.set(self)
@@ -585,26 +578,26 @@
     ;/
 
     # functions that do work on another variable
-    /; ref (Variable out)
+    /; ref (~Variable out, ~CompData dat)
     ;/
 
-    /; deref (Variable out)
+    /; deref (~Variable out, ~CompData dat)
     ;/
 
-    /; member (Variable out, {}uint8 name)
+    /; member (~Variable out, ~CompData dat, {}uint8 name)
     ;/
 
-    /; index (Variable out, Variable i)
-        /;
+    /; index (~Variable out, ~CompData dat, Variable i)
 
-        ;/
     ;/
 
-    /; call ({}uint8 name)
+    /; call ({}uint8 name, ~CompData dat)
     ;/
 ;/
 
 ;struct Scope {
+    {}int level,
+    int num,
     ~Scope parent,
     {}uint8 name,
     {}Variable vars
@@ -616,11 +609,7 @@
         /; if (len split == 0)
             ;return false
         ;/
-        /; if (string_equate(split{0}, "if") ||
-                string_equate(split{0}, "else") ||
-                string_equate(split{0}, "loop") || 
-                string_equate(split{0}, "match") ||
-                string_equate(split{0}, "case"))
+        /; if (split{0}{0} == '#')
             /; loop (int i = 1; i < len split; i++)
                 /; if (len split{i} > 0)
                     /; if (split{i}{0} < '0' || split{i}{0} > '9')
@@ -633,6 +622,11 @@
             ;return true
         ;/
         ;return false
+    ;/
+
+    /; cf_type ({}uint8 cf) [bool]
+        ;{}{}uint8 split = string_split(self.name, '_')
+        ;return string_equate(split{0}, string_add("#", cf))
     ;/
 
     /; full_label [{}uint8]
@@ -655,8 +649,13 @@
 
     /; next_register [int]
         ;int out = 8
-        /; loop (int i = 0; i < len (self.vars)) [i++]
-            /; if (is_primitive(self.vars{i}))
+
+        /; if (self.is_cf())
+            ;out = self.parent`.next_register()
+        ;/
+
+        /; loop (int i = 0; i < len (self.vars) && out < 16) [i++]
+            /; if (is_primitive(self.vars{i}.data_type.name) !< 0 || len (self.vars{i}.data_type.ptr_chain) > 0)
                 ;out++
             ;/
         ;/
@@ -672,24 +671,34 @@
         ;int out = 0
 
         /; loop (int i = 0; i < len (self.vars)) [i++]
-            /; if (is_primitive(self.vars{i}))
-                ;continue
+            /; if (self.vars{i}.loc_type == LOCATION.STACK)
+                ;out = out + self.vars{i}.s
             ;/
-            ;out = out + self.vars{i}.s
+        ;/
+
+        ;return out
+    ;/
+
+    /; get_full_stack [int]
+        ;int out = 0
+        /; if (self.is_cf())
+            ;out = self.parent`.get_stack()
+        ;/
+
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            /; if (self.vars{i}.loc_type == LOCATION.STACK)
+                ;out = out + self.vars{i}.s
+            ;/
         ;/
 
         ;return out
     ;/
 
     /; next_loc (Type t) [int]
-        /; if (is_primitive(t))
+        /; if (is_primitive(t.name) || len (t.ptr_chain) > 0)
             ;return self.next_register()
         ;/
         ;return -1
-    ;/
-
-    /; initialize ({}Variable v)
-        ;self.vars = v
     ;/
 
     /; begin_scope (~CompData out)
@@ -702,7 +711,101 @@
     
     /; end_scope (~CompData out)
         ;{}uint8 outro = "\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n"
+
         ;out`.csec = string_add(out`.csec, outro)
+    ;/
+
+    /; scope_cleanup (~CompData out)
+        ;uint sz_to_clean = 0
+        
+        /; loop (int i = 0; i < len (self.vars))
+            /; if (self.vars{i}.loc_type == LOCATION.STACK)
+                ;sz_to_clean = sz_to_clean + self.vars{i}.s
+            ;/
+        ;/
+
+        /; if (sz_to_clean > 0)
+            ;out`.csec = string_add(out`.csec, string_add("\tadd rsp, ", int_to_string(sz_to_clean)))
+        ;/
+    ;/
+
+    /; scope_start_label [{}uint8]
+        ;return string_add(self.full_label(), "_start")
+    ;/
+
+    /; scope_rep_label [{}uint8]
+        ;return string_add(self.full_label(), "_rep")
+    ;/
+
+    /; scope_end_label [{}uint8]
+        ;return string_add(self.full_label(), "_end")
+    ;/
+
+    /; new_sub_cf ({}uint8 cf) [Scope]
+        ;cf = string_add("#", cf)
+        ;{}int s = self.level
+        ;s.append(self.num)
+        ;self.num++
+
+        /; loop (int i = 0; i < len (s)) [i++]
+            ;cf.append('_')
+            ;cf = string_add(cf, int_to_string(s{i}))
+        ;/
+
+        ;return {s, 0, ~self, cf, {}}
+    ;/
+
+    /; get_continue (uint i) [{}uint8]
+        ;~Scope top = ~self
+        /; loop (i > 0 || top`.cf_type(""))
+            ;top = top`.parent
+            /; if (!(top`.cf_type("")))
+                ;i = i - 1
+            ;/
+        ;/
+    ;/
+
+    /; get_break (uint i) [{}uint8]
+        ;~Scope top = ~self
+        /; loop (i > 0 || top`.cf_type(""))
+            ;top = top`.parent
+            /; if (!(top`.cf_type("")))
+                ;i = i - 1
+            ;/
+        ;/
+    ;/
+
+    /; new_var (Type t, {}uint8 name, ~CompData out)
+        ;Variable new = {name, t, 0, 0}
+        /; if (self.next_loc(t) !< 0)
+            ;new.loc_type = LOCATION.REGISTER
+            ;new.location = self.next_loc(t)
+        ;; else
+            ;new.loc_type = LOCATION.STACK
+            ;new.location = self.get_full_stack()
+            ;new.location = new.location + t.s
+            ;out`.csec = string_add(out`.csec, "\tsub rsp, ")
+            ;out`.csec = string_add(out`.csec, int_to_string(t.s))
+            ;out`.csec.append('\n')
+        ;/
+        ;self.vars.append(new)
+    ;/
+
+    /; find_var ({}{}uint8 artifact, ~Module current) [Variable]
+        /; if (len artifact > 1)
+            ;return current`.find_def(artifact)
+        ;/
+
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            /; if (string_equate(self.vars{i}.name, artifact{0}))
+                ;return self.vars{i}
+            ;/
+        ;/
+
+        /; if (!self.is_cf())
+            ;return current`.find_def(artifact)
+        ;/
+        ;return self.parent`.find_var(artifact, current)
     ;/
 ;/
 
@@ -835,6 +938,41 @@
         ;return _find_function(artifact, 0)
     ;/
 
+    /; _find_mod ({}{}uint8 artifact, int r) [~Module]
+        /; if (len artifact !> r)
+            ;return ~self
+        ;/
+
+        /; if (len artifact - 1 > r)
+            /; loop (int i = 0; i < len (self.sub)) [i++]
+                /; if (string_equate(artifact{r}, self.sub{i}.name))
+                    ;return self.sub{i}._find_mod(artifact, r + 1)
+                ;/
+            ;/
+        ;; else if (len artifact - 1 == r)
+            ;{}uint8 v1 = string_add("_#", artifact{r}), v2 = string_add("__#", artifact{r})
+            /; loop (int i = 0; i < len (self.defs)) [i++]
+                /; if (string_equate(self.sub{i}.name, artifact{r}) ||string_equate(self.sub{i}.name, v1) || string_equate(self.sub{i}.name, v2))
+                    ;return ~(self.sub{i})
+                ;/
+            ;/
+        ;/
+
+        /; if (string_equate(self.name, ""))
+            ;return ~self
+        ;/
+        
+        ;~Module m = self.parent
+        /; loop (r > 0) [r = r - 1]
+            ;m = m.parent
+        ;/
+        ;return m`._find_mod(artifact, 0)
+    ;/
+
+    /; find_mod({}{}uint8 artifact) [~Module]
+        ;return self._find_mod(artifact, 0)
+    ;/
+
     /; find_sub ({}uint8 s_mod) [~Module]
         ;{}uint8 v1 = string_add("_#", s_mod)
         ;{}uint8 v2 = string_add("__#", s_mod)
@@ -879,6 +1017,12 @@
     ;return out
 ;/
 
+/; is_call(~{}Token tok, ~int cur) [bool]
+    ;int i = cur`
+    ;get_artifact(tok, cur)
+    ;return tok`{cur`}.cmp("(")
+;/
+
 /; get_type (~{}Token tok, ~int cur, ~Module current) [Type]
     ;{}int ptr_chain = {}
 
@@ -917,7 +1061,7 @@
 /; is_definition (~{}Token tok, ~int cur, ~Module current) [bool]
     ;int i = cur`
     ;Type t = get_type(tok, ~i, current)
-    ;return tok`{i}.type_is(TOKEN.DEFWORD) 
+    ;return tok`{i}.type_is(TOKEN.DEFWORD) && !string_equate(t.name, "")
 ;/
 
 /; compile_file_def (~{}Token tok, ~int cur, ~Module current, ~CompData out)
@@ -989,9 +1133,15 @@
 /; new_type (~{}Token tok, ~int cur, ~Module current)
     ;cur`++
     ;Type out = {0, tok`{cur`}.data, "", {}, {}}
-    ;out.mod_name = string_add(current`.full_path(), "_#")
+
+    ;out.mod_name = current`.full_path()
+    /; if (len (out.mod_name) > 0)
+        ;out.mod_name.append('.')
+    ;/
+    ;out.mod_name = string_add(out.mod_name, "_#")
     ;out.mod_name = string_add(out.mod_name, out.name)
-    ;current`.sub.append({current, current`.exp, out.mod_name, {}, {}, {}, {}})
+
+    ;current`.sub.append({current, current`.exp, string_add("_#", out.name), {}, {}, {}, {}})
 
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("{"))
@@ -1237,16 +1387,115 @@
     ;/
 ;/
 
-/; _eval_value(~{}Token tok, int start, int max, ~CompData out, ~Module current, ~Scope scope)
-    ;int first = -1, priority = 9999
-    /; loop (int i = start; i < max) [i++]
-        /; if (tok`{i}.type_is(TOKEN.AUGMENT))
+# Priority
+# 0 - deref
+# 1 - get
+# 2 - ref
+# 3 - mul/div/mod
+# 4 - add/sub
+# 5 - bitwise
+# 6 - boolean
+# 7 - assignment
+/; priority (Token tok) [int]
+    /; if (!(tok.type_is(TOKEN.AUGMENT)))
+        ;return 999
+    ;/
 
+    /; if (tok.cmp("."))
+        ;return 1
+    ;; else if (len (tok.data) == 1)
+        /; if (tok.cmp("`"))
+            ;return 0
+        ;; else if (tok.cmp("~"))
+            ;return 2
+        ;; else if (tok.cmp("*") || tok.cmp("/") || tok.cmp("%"))
+            ;return 3
+        ;; else if (tok.cmp("-") || tok.cmp("+"))
+            ;return 4
+        ;; else if (tok.cmp("&") || tok.cmp("|") || tok.cmp("^") || tok.cmp("!"))
+            ;return 5
+        ;; else if (tok.cmp("<") || tok.cmp(">"))
+            ;return 6
+        ;; else if (tok.cmp("="))
+            ;return 7
+        ;/
+    ;; else if (len (tok.data) == 2)
+        /; if (tok.data{0} == tok.data{1})
+            /; if (tok.data{0} == '<' || tok.data{0} == '>')
+                ;return 5
+            ;/
+            ;return 6
+        ;; else if (tok.data{1} == '=')
+            ;return 7
+        ;; else if (tok.data{1} == '<' || tok.data{1} == '>')
+            ;return 6
+        ;/
+        ;return 5
+    ;; else if (len (tok.data) == 3)
+        ;return 6
+    ;/
+
+    ;return 999
+;/
+
+/; _eval_dot (~{}Token tok, int start, ~CompData out, ~Module current, ~Scope scope, Type t, int loc) [Variable]
+    ;Variable wk = scope.find_var(get_artifact(tok, ~start), current)
+    ;Variable refer = {"#tmp", wk.data_type, loc, LOCATION.REGISTER}
+
+    /; loop (start < len tok`) [start++]
+        /; if (tok`{start}.cmp("`"))
+            ;wk.deref(out)
+        ;; else if (tok`{start}.cmp(".") && tok`{start + 1}.type_is(TOKEN.DEFWORD))
+            ;wk = wk.get()
+            ;start++
         ;/
     ;/
 ;/
 
-/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+/; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
+    
+;/
+
+# FIXME:
+# Need to impliment in place solving
+# Need to impliment auto typing
+/; _eval_value(~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
+    ;int first = -1, pr = -1, pa = -1
+    /; loop (int i = start; i < max) [i++]
+        /; if (tok`{i}.type_is(TOKEN.AUGMENT) && priority(tok`{i}) !< pr)
+            ;first = i
+            ;pr = priority(tok`{i})
+        ;; else if (tok`{i}.cmp("("))
+            ;pa = i
+            ;i = find_closing(tok, ~i)
+        ;/
+    ;/
+
+    ;return {"", NO_TYPE, 0, 0}
+
+    # This is all kinda garbage, to fix.
+    /; if (pr == 0 || pr == 1)
+        /; if (pa > 0 && tok`{max - 1}.cmp(")"))
+            ;return _eval_call(tok, start, max, out, current, scope, t, loc)
+        ;/
+        ;return _eval_dot(tok, start, out, current, scope, t, loc)
+    ;/
+
+    ;loc = loc % 8
+
+    ;Type s1, s2
+    /; if (first == start)
+        ;s1 = _eval_value(tok, first + 1, max, out, current, scope, NO_TYPE, loc)
+    ;; else if (first == max - 1)
+        ;s1 = _eval_value(tok, start, first, out, current, scope, NO_TYPE, loc)
+    ;; else
+        ;s1 = _eval_value(tok, start, first, out, current, scope, NO_TYPE, loc)
+        ;s1 = _eval_value(tok, first + 1, max, out, current, scope, NO_TYPE, loc + 1)
+    ;/
+;/
+
+# ALWAYS put the value in rax
+/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t)
     ;int end = cur`
     /; loop (end < len tok`) [end++]
         /; if (tok`{end}.cmp(",") || tok`{end}.cmp("\n") || tok`{end}.cmp(";") || tok`{end}.cmp(";/"))
@@ -1255,27 +1504,45 @@
             ;end = find_closing(tok, ~end)
         ;/
     ;/
-    ;_eval_value(tok, cur`, end, out, current, scope)
+    ;_eval_value(tok, cur`, end, out, current, scope, t)
     ;cur` = end
 ;/
 
+# FIXME:
+# Need to find type of definition, then add all definitions to the current scope, while evaluating the
+# Value (if any) to store in them
 /; eval_def (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+    ;Type t = get_type(tok, cur, current)
+    /; loop (tok`{cur`}.type_is(TOKEN.DEFWORD))
+        ;scope`.new_var(t, tok`{cur`}.data, out)
+        ;eval_value(tok, cur, out, current, scope, t)
+        /; if (tok`{cur`}.cmp(","))
+            ;cur` = next_non_nl(tok, cur` + 1)
+        ;/
+    ;/
 ;/
 
-# TODO:
-/; compile_function (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, ~Scope parent)
 
 ;/
 
-# TODO:
-/; compile_method (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope parent)
-
-;/
-
+# FIXME:
+# Need to impl:
+# cf block scoping and contextual keywords such as
+# continue, break, and return
 /; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, ~Scope parent)
     ;int max = find_closing(tok, cur)
-    /; loop ()
-
+    ;Scope cf = parent`
+    /; loop (cur`++; cur` < max) [cur`++]
+        /; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
+            ;cf = parent`.new_sub_cf(tok`{cur`}.data)
+        ;; else if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
+            ;int psl = find_closing(tok, cur)
+            ;statement_list(tok, cur`, psl, current, out, ~cf)
+            ;cur` = psl
+        ;; else
+            ;break
+        ;/
     ;/
 
     /; loop (cur`++; cur` < max) [cur`++]
@@ -1283,48 +1550,59 @@
 ;/
 
 /; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
-    ;Scope root = {0, "", {}}
+    ;Scope root = {{}, 0, 0, "", {}}
     ;int max = find_closing(tok, cur)
-    ;bool r = false, m = false
+    ;bool r = false, m = false, returned = false
+    ;Type ret = NO_TYPE
     /; loop (cur`++; cur` < max && !m) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;root.name = tok`{cur`}.data
         ;; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("raw"))
                 ;r = true
-            ;; if (tok`{cur`}.cmp("method"))
+            ;; else if (tok`{cur`}.cmp("method"))
                 ;m = true
+                ;tnsl.io.println(tok`{cur` + 1}.data)
+                ;tnsl.io.println(current`.sub{0}.name)
                 ;current = current`.find_sub(tok`{cur` + 1}.data)
+            ;; else
+                ;tnsl.io.print("Keyword ")
+                ;tnsl.io.print(tok`{cur`}.data)
+                ;tnsl.io.println(" not impl on mod level blocks")
+                ;tok`{e}.cmp()
             ;/
         ;; if (tok`{cur`}.cmp("("))
-            ;{}Variable init = parse_param_list(tok, cur, current)
-            ;root.initialize(init)
+            ;root.vars = parse_param_list(tok, cur, current)
         ;; if (tok`{cur`}.cmp("["))
-            ;cur` = find_closing(tok, cur)
+            ;ret = get_type(tok, cur, current)
         ;; if (tok`{cur`}.cmp("\n"))
             ;break
         ;/
     ;/
-    ;{}uint8 l = ""
-    /; if (!string_equate(current`.name, ""))
-        ;l = string_add(l, current`.full_path())
-        ;l.append('.')
-    ;/
-    ;l = string_add(l, root.name)
 
-    /; if (current`.exp)
-        ;out`.hsec = string_add(out`.hsec, "global ")
-        ;out`.hsec = string_add(out`.hsec, l)
-        ;out`.hsec.append('\n')
-    ;/
-    ;out`.csec = string_add(out`.csec, l)
-    ;out`.csec = string_add(out`.csec, ":\n")
+    /; if (!m)
+        ;{}uint8 l = ""
+        /; if (!string_equate(current`.name, ""))
+            ;l = string_add(l, current`.full_path())
+            ;l.append('.')
+        ;/
+        ;l = string_add(l, root.name)
+        ;root.name = l
 
-    /; if (!r)
-        ;root.begin_scope(out)
+        /; if (current`.exp)
+            ;out`.hsec = string_add(out`.hsec, "global ")
+            ;out`.hsec = string_add(out`.hsec, l)
+            ;out`.hsec.append('\n')
+        ;/
+        ;out`.csec = string_add(out`.csec, l)
+        ;out`.csec = string_add(out`.csec, ":\n")
+
+        /; if (!r)
+            ;root.begin_scope(out)
+        ;/
     ;/
 
-    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
             /; if (m)
                 ;compile_block(tok, cur, current, out)
@@ -1336,10 +1614,21 @@
                 ;cur` = cur` - 1
             ;/
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
-            ;tnsl.io.println(tok`{cur`}.data)
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, current, ~root)
+                ;eval_value(tok, cur, out, current, ~root, ret)
+                ;root.end_scope(out)
+                ;out`.csec = string_add(out`.csec, "\tret\n")
+                ;returned = true
+            ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
+                /; if (!r)
+                    ;tnsl.io.println("Unable to perform a raw return from a non-raw block.")
+                    ;tok`{e}.cmp()
+                ;/
+                ;cur` = cur` + 2
+                ;eval_value(tok, cur, out, current, ~root, ret)
+                ;out`.csec = string_add(out`.csec, "\tret\n")
+                ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
                 ;cur`++
                 ;out`.csec.append('\t')
@@ -1352,14 +1641,23 @@
         ;; else if (is_definition(tok, cur, current))
             ;eval_def(tok, cur, out, current, ~root)
         ;; else
-            ;eval_value(tok, cur, out, current, ~root)
+            ;eval_value(tok, cur, out, current, ~root, NO_TYPE)
         ;/
     ;/
     
-    /; if (!r)
-        ;root.end_scope(out)
+    ;cur` = max
+
+    /; if (!returned && !string_equate(ret.name, ""))
+        ;tnsl.io.println("Block must return a value.")
+        ;tok`{e}.cmp()
     ;/
-    ;out`.csec = string_add(out`.csec, "\tret\n")
+
+    /; if (!m && !returned)
+        /; if (!r)
+            ;root.end_scope(out)
+        ;/
+        ;out`.csec = string_add(out`.csec, "\tret\n")
+    ;/
 ;/
 
 # First pass on a module
