@@ -6,6 +6,7 @@
     :include "test2.tnsl"
 
     /; run (uint argc, ~~uint8 argv) [int]
+        {}uint8 c = "asdf"
         return 0
     ;/
 ;/
