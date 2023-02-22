@@ -1,6 +1,6 @@
 uint a = 2, b = 4
+{}uint8 str = "Hello"
 
-/; raw main [int]
-    int c = a + b
-    raw return c + a - b
+/; main [int]
+    return 273
 ;/

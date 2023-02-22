@@ -562,51 +562,148 @@
         ;/
     ;/
 
+    /; ax_compute
+        ;{}uint8 s_ext = "", op = "idiv"
+        /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
+            ;s_ext = mov_by_size(sz)
+        ;; if (self.data_type.name{0} == 'u')
+            ;op{0} = ' '
+        ;/
+        
+        ;dat`.csec = string_join( {
+            dat`.csec,
+            "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
+        }, "")
+
+        /; if (v.loc_type == LOCATION.LITERAL)
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
+                "\t", op, " ", s_ext, get_reg(3, sz), "\n",
+                "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
+            }, "")
+        ;; else
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
+                "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
+            }, "")
+        ;/
+
+    ;/
+
     /; div (Variable v, ~CompData dat)
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.div(self)
-            ;; else
-                ;self.location = self.location / v.location
-            ;/
-        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 out = ""
-            # TODO
-            ;return out
-        ;; else
-            ;return self.norm_op("div", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) })
-        ;/
-    ;/
-
-    /; mod (Variable v, ~CompData dat)
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.div(self)
-            ;; else
-                ;self.location = self.location % v.location
-            ;/
-        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 out = ""
-            # TODO
-            ;return out
-        ;; else
-            ;return self.norm_op("div", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) })
-        ;/
-    ;/
-
-    /; mul (Variable v, ~CompData dat)
+        ;int sz = self.norm_size()
         /; if (self.loc_type == LOCATION.LITERAL)
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;v.mul(self)
             ;; else
                 ;self.location = self.location * v.location
             ;/
-        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;{}uint8 out = ""
-            # TODO
-            ;return out
+        ;; else
+            ;{}uint8 s_ext = "", op = "idiv"
+            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
+                ;s_ext = mov_by_size(sz)
+            ;; if (self.data_type.name{0} == 'u')
+                ;op{0} = ' '
+            ;/
+            
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
+            }, "")
+
+            /; if (v.loc_type == LOCATION.LITERAL)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                }, "")
+            ;/
         ;/
-        ;return self.norm_op("mul", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) })
+    ;/
+
+    /; mod (Variable v, ~CompData dat)
+        ;int sz = self.norm_size()
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;v.mul(self)
+            ;; else
+                ;self.location = self.location * v.location
+            ;/
+        ;; else
+            ;{}uint8 s_ext = "", op = "idiv"
+            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
+                ;s_ext = mov_by_size(sz)
+            ;; if (self.data_type.name{0} == 'u')
+                ;op{0} = ' '
+            ;/
+            
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
+            }, "")
+
+            /; if (v.loc_type == LOCATION.LITERAL)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
+                }, "")
+            ;/
+        ;/
+    ;/
+
+    /; mul (Variable v, ~CompData dat)
+        ;int sz = self.norm_size()
+        /; if (self.loc_type == LOCATION.LITERAL)
+            /; if (v.loc_type !== LOCATION.LITERAL)
+                ;v.mul(self)
+            ;; else
+                ;self.location = self.location * v.location
+            ;/
+        ;; else
+            ;{}uint8 s_ext = "", op = "imul"
+            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
+                ;s_ext = mov_by_size(sz)
+            ;; if (self.data_type.name{0} == 'u')
+                ;op{0} = ' '
+            ;/
+            
+            ;dat`.csec = string_join( {
+                dat`.csec,
+                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
+            }, "")
+
+            /; if (v.loc_type == LOCATION.LITERAL)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                }, "")
+            ;/
+        ;/
     ;/
 
     /; set (Variable v, ~CompData dat)
@@ -1608,6 +1705,9 @@
         ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
     ;; else
         ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
+        /; if (tok`{first}.cmp("="))
+            ;t = s1.data_type
+        ;/
         ;s2 = _eval_value(tok, first + 1, max, out, current, scope, t, !alt)
         ;tnsl.io.print("Calculated s2 as ")
         ;tnsl.io.println(s2.name)
