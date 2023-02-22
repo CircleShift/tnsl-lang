@@ -1,5 +1,6 @@
-int a = 2
+uint a = 2, b = 4
 
 /; raw main [int]
-    raw return a
+    int c = a + b
+    raw return c + a - b
 ;/

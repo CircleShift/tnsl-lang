@@ -115,6 +115,14 @@
     ;return out
 ;/
 
+/; string_reverse ({}uint8 str) [{}uint8]
+    ;{}uint8 out = ""
+    /; loop (int i = len str - 1; i !< 0) [i = i - 1]
+        ;out.append(str{i})
+    ;/
+    ;return out
+;/
+
 /; int_to_string (int i) [{}uint8]
     /; if (i == 0)
         ;return "0"
@@ -131,7 +139,7 @@
         ;out.append('0' + (i % 10))
     ;/
     
-    ;return out
+    ;return string_reverse(out)
 ;/
 
 /; digit_from_base (uint8 ch, int base) [int]
@@ -404,7 +412,7 @@
     ;; if (r == -2)
         ;return "bp"
 	;/
-	;return int_to_string(r + 2)
+	;return int_to_string(r)
 ;/
 
 # Get common register by common name and size
@@ -448,23 +456,25 @@
 
 /; mov_by_size(int sz)[{}uint8]
     /; if (sz == 1)
-        ;return "byte"
+        ;return "byte "
     ;; else if (sz == 2)
-        ;return "word"
+        ;return "word "
     ;; else if (sz == 4)
-        ;return "dword"
+        ;return "dword "
     ;; else if (sz == 8)
-        ;return "qword"
+        ;return "qword "
     ;/
     ;return ""
 ;/
 
 /; label_to_loc({}uint8 l, int sz, offset) [{}uint8]
-    ;{}uint8 off = ""
+    ;{}uint8 off = "", pre = ""
     /; if (offset !== 0)
         ;off = string_add(" + ", int_to_string(offset))
+    ;; if (sz > 0)
+        ;pre = mov_by_size(sz)
     ;/
-    ;return string_join( { "[rel ", l, off, "]" }, "")
+    ;return string_join( {pre, "[rel ", l, off, "]" }, "")
 ;/
 
 # Most methods make use of one or more temporary variables.
@@ -509,14 +519,21 @@
             ;; else
                 ;self.location = self.location + v.location
             ;/
-        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
-                "\tadd ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
-            }, "")
+        ;; else if (self.loc_type == LOCATION.REGISTER)
+            ;dat`.csec = string_add(dat`.csec, self.norm_op("add", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) }))
         ;; else
-            ;dat`.csec = string_add(dat`.csec, self.norm_op("add", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) }))
+            /; if (v.location == LOCATION.REGISTER)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tadd ", self.norm_loc(self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
+                    "\tadd ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
+                }, "")
+            ;/
         ;/
     ;/
 
@@ -525,16 +542,23 @@
             /; if (v.loc_type !== LOCATION.LITERAL)
                 ;v.add(self, dat)
             ;; else
-                ;self.location = self.location - v.location
+                ;self.location = self.location + v.location
             ;/
-        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
-                "\tsub ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
-            }, "")
+        ;; else if (self.loc_type == LOCATION.REGISTER)
+            ;dat`.csec = string_add(dat`.csec, self.norm_op("sub", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) }))
         ;; else
-            ;dat`.csec = string_add(dat`.csec, self.norm_op("sub", { self.norm_loc(self.norm_size()), get_reg(tr, self.norm_size()) }))
+            /; if (v.location == LOCATION.REGISTER)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tsub ", self.norm_loc(self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
+                    "\tsub ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
+                }, "")
+            ;/
         ;/
     ;/
 
@@ -606,10 +630,10 @@
     ;/
 
     # functions that do work on another variable
-    /; ref (~Variable out, ~CompData dat)
+    /; ref (Variable to_ref, ~CompData dat)
     ;/
 
-    /; deref (~Variable out, ~CompData dat)
+    /; deref (Variable to_deref, ~CompData dat)
     ;/
 
     /; member (~Variable out, ~CompData dat, {}uint8 name)
@@ -723,7 +747,7 @@
     ;/
 
     /; next_loc (Type t) [int]
-        /; if (is_primitive(t.name) || len (t.ptr_chain) > 0)
+        /; if (is_primitive(t.name) !< 0 || len (t.ptr_chain) > 0)
             ;return self.next_register()
         ;/
         ;return -1
@@ -1575,40 +1599,60 @@
     ;; else if (pr == 0 || pr == 1)
         ;return _eval_dot(tok, start, out, current, scope, t, loc)
     ;/
+    
 
     ;Variable s1, s2
     /; if (first == start)
-        ;s1 = _eval_value(tok, first + 1, max, out, current, scope, NO_TYPE, alt)
+        ;s1 = _eval_value(tok, first + 1, max, out, current, scope, t, alt)
     ;; else if (first == max - 1)
-        ;s1 = _eval_value(tok, start, first, out, current, scope, NO_TYPE, alt)
+        ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
     ;; else
-        ;s1 = _eval_value(tok, start, first, out, current, scope, NO_TYPE, !alt)
-        ;s2 = _eval_value(tok, first + 1, max, out, current, scope, NO_TYPE, alt)
+        ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
+        ;s2 = _eval_value(tok, first + 1, max, out, current, scope, t, !alt)
+        ;tnsl.io.print("Calculated s2 as ")
+        ;tnsl.io.println(s2.name)
     ;/
+
+    ;tnsl.io.print("Calculated s1 as ")
+    ;tnsl.io.println(s1.name)
 
     /; if (tok`{first}.cmp("="))
         ;s1.set(s2, out)
-    ;; else if (tok`{first}.cmp("+"))
-        ;s1.add(s2, out)
-    ;; else if (tok`{first}.cmp("-"))
-        ;s1.sub(s2, out)
-    ;; else if (tok`{first}.cmp("*"))
-        ;s1.mul(s2, out)
-    ;; else if (tok`{first}.cmp("/"))
-        ;s1.div(s2, out)
-    ;; else if (tok`{first}.cmp("%"))
-        ;s1.mod(s2, out)
-    ;; else if (tok`{first}.cmp("`"))
-        ;s1.deref(out)
-    ;; else if (tok`{first}.cmp("~"))
-        ;s1.ref(out)
+        ;return s1
+    ;/
+    ;tnsl.io.println(t.name)
+    ;tnsl.io.println(t.s)
+    ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
+    /; if (alt)
+        ;wk.location = 2
     ;/
 
-    ;return s1
+    /; if (tok`{first}.cmp("+"))
+        ;wk.set(s1, out)
+        ;wk.add(s2, out)
+    ;; else if (tok`{first}.cmp("-"))
+        ;wk.set(s1, out)
+        ;wk.sub(s2, out)
+    ;; else if (tok`{first}.cmp("*"))
+        ;wk.set(s1, out)
+        ;wk.mul(s2, out)
+    ;; else if (tok`{first}.cmp("/"))
+        ;wk.set(s1, out)
+        ;wk.div(s2, out)
+    ;; else if (tok`{first}.cmp("%"))
+        ;wk.set(s1, out)
+        ;wk.mod(s2, out)
+    ;; else if (tok`{first}.cmp("`"))
+        ;wk.deref(s1, out)
+    ;; else if (tok`{first}.cmp("~"))
+        ;wk.ref(s1, out)
+    ;/
+
+    ;return wk
 ;/
 
 # ALWAYS put the value in rax
-/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t)
+/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t, bool save)
     ;int end = cur`
     /; loop (end < len tok`) [end++]
         /; if (tok`{end}.cmp(",") || tok`{end}.cmp("\n") || tok`{end}.cmp(";") || tok`{end}.cmp(";/"))
@@ -1618,8 +1662,10 @@
         ;/
     ;/
     ;Variable val = _eval_value(tok, cur`, end, out, current, scope, t, false)
-    ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
-    ;set.set(val, out)
+    /; if (save)
+        ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
+        ;set.set(val, out)
+    ;/
     ;cur` = end
 ;/
 
@@ -1630,7 +1676,7 @@
     ;Type t = get_type(tok, cur, current)
     /; loop (tok`{cur`}.type_is(TOKEN.DEFWORD))
         ;scope`.new_var(t, tok`{cur`}.data, out)
-        ;eval_value(tok, cur, out, current, scope, t)
+        ;eval_value(tok, cur, out, current, scope, t, false)
         /; if (tok`{cur`}.cmp(","))
             ;cur` = next_non_nl(tok, cur` + 1)
         ;/
@@ -1732,7 +1778,7 @@
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, current, ~root, ret)
+                ;eval_value(tok, cur, out, current, ~root, ret, true)
                 ;root.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
@@ -1742,7 +1788,7 @@
                     ;tok`{e}.cmp()
                 ;/
                 ;cur` = cur` + 2
-                ;eval_value(tok, cur, out, current, ~root, ret)
+                ;eval_value(tok, cur, out, current, ~root, ret, true)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
@@ -1757,7 +1803,7 @@
         ;; else if (is_definition(tok, cur, current))
             ;eval_def(tok, cur, out, current, ~root)
         ;; else
-            ;eval_value(tok, cur, out, current, ~root, NO_TYPE)
+            ;eval_value(tok, cur, out, current, ~root, NO_TYPE, false)
         ;/
     ;/
     
