@@ -500,209 +500,133 @@
             ;return self.data_type.s
         ;/
     ;/
+
+    # TODO: Match a type to another type if possible
+    # this is the type inference engine
+    /; match_types (Variable to_match, ~CompData data) [Variable]
+        ;return to_match
+    ;/
     
-    /; norm_op ({}uint8 op, {}{}uint8 args) [{}uint8]
-        ;return string_join(
-            {
-                "\t", op, " ",
-                string_join(args, ", "), "\n"
-            },
-            ""
-        )
+    /; norm_op ({}uint8 op, int sz, Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            ;v.norm_op(op, sz, self, data)
+        ;; else
+            ;v = match_types(v, data)
+            /; if (self.loc_type == LOCATION.REGISTER || v.loc_type == LOCATION.REGISTER)
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\t", op, " ", self.norm_loc(sz), v.norm_loc(sz), "\n"
+                }, "")
+            ;; else
+                ;dat`.csec = string_join( {
+                    dat`.csec,
+                    "\tmov ", get_reg(0, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                }, "")
+            ;/
+        ;/
     ;/
     
     # functions that do work on this variable
-    /; add (Variable v, ~CompData dat)
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.add(self, dat)
-            ;; else
-                ;self.location = self.location + v.location
-            ;/
-        ;; else if (self.loc_type == LOCATION.REGISTER)
-            ;dat`.csec = string_add(dat`.csec, self.norm_op("add", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) }))
+    /; add (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location + v.location
         ;; else
-            /; if (v.location == LOCATION.REGISTER)
+            ;self.norm_op("add", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; sub (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location - v.location
+        ;; else
+            ;self.norm_op("sub", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; or (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location | v.location
+        ;; else
+            ;self.norm_op("or", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; and (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location & v.location
+        ;; else
+            ;self.norm_op("and", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; xor (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location ^ v.location
+        ;; else
+            ;self.norm_op("xor", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; cmp (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            /; if (self.location == v.location)
+                ;self.location = 1
+            ;; else
+                ;self.location = 0
+            ;/
+        ;; else
+            ;self.norm_op("add", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; ax_compute ({}uint8 op, int sz, Variable v, ~CompData data, int keep)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            ;v.ax_compute(op, sz, self, data)
+        ;; else
+            ;v = match_types(v, data)
+
+            /; if (self.data_type.name{0} == 'i')
+                ;op = string_add("i", op)
+            ;/
+
+            /; if (self.loc_type !== LOCATION.REGISTER && v.loc_type !== LOCATION.REGISTER)
                 ;dat`.csec = string_join( {
                     dat`.csec,
-                    "\tadd ", self.norm_loc(self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n"
+                    "\t", op, " ", self.norm_loc(sz), v.norm_loc(sz), "\n"
                 }, "")
             ;; else
                 ;dat`.csec = string_join( {
                     dat`.csec,
-                    "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
-                    "\tadd ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
+                    "\tmov ", get_reg(0, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", mov_by_size(sz), self.norm_loc(sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(keep, sz), "\n",
                 }, "")
             ;/
         ;/
     ;/
 
-    /; sub (Variable v, ~CompData dat)
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.add(self, dat)
-            ;; else
-                ;self.location = self.location + v.location
-            ;/
-        ;; else if (self.loc_type == LOCATION.REGISTER)
-            ;dat`.csec = string_add(dat`.csec, self.norm_op("sub", { self.norm_loc(self.norm_size()), v.norm_loc(self.norm_size()) }))
+    /; div (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location / v.location
         ;; else
-            /; if (v.location == LOCATION.REGISTER)
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\tsub ", self.norm_loc(self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n"
-                }, "")
-            ;; else
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\tmov ", get_reg(0, self.norm_size()), ", ", v.norm_loc(self.norm_size()), "\n",
-                    "\tsub ", self.norm_loc(self.norm_size()), ", ", get_reg(0, self.norm_size()), "\n"
-                }, "")
-            ;/
+            ;self.ax_compute("div", self.norm_size(), v, data, 0)
         ;/
     ;/
 
-    /; ax_compute
-        ;{}uint8 s_ext = "", op = "idiv"
-        /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
-            ;s_ext = mov_by_size(sz)
-        ;; if (self.data_type.name{0} == 'u')
-            ;op{0} = ' '
-        ;/
-        
-        ;dat`.csec = string_join( {
-            dat`.csec,
-            "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
-        }, "")
-
-        /; if (v.loc_type == LOCATION.LITERAL)
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
-                "\t", op, " ", s_ext, get_reg(3, sz), "\n",
-                "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
-            }, "")
+    /; mod (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location % v.location
         ;; else
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
-                "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
-            }, "")
-        ;/
-
-    ;/
-
-    /; div (Variable v, ~CompData dat)
-        ;int sz = self.norm_size()
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.mul(self)
-            ;; else
-                ;self.location = self.location * v.location
-            ;/
-        ;; else
-            ;{}uint8 s_ext = "", op = "idiv"
-            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
-                ;s_ext = mov_by_size(sz)
-            ;; if (self.data_type.name{0} == 'u')
-                ;op{0} = ' '
-            ;/
-            
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
-            }, "")
-
-            /; if (v.loc_type == LOCATION.LITERAL)
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
-                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
-                }, "")
-            ;; else
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
-                }, "")
-            ;/
+            ;self.ax_compute("div", self.norm_size(), v, data, 3)
         ;/
     ;/
 
-    /; mod (Variable v, ~CompData dat)
-        ;int sz = self.norm_size()
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.mul(self)
-            ;; else
-                ;self.location = self.location * v.location
-            ;/
+    /; mul (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = self.location * v.location
         ;; else
-            ;{}uint8 s_ext = "", op = "idiv"
-            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
-                ;s_ext = mov_by_size(sz)
-            ;; if (self.data_type.name{0} == 'u')
-                ;op{0} = ' '
-            ;/
-            
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
-            }, "")
-
-            /; if (v.loc_type == LOCATION.LITERAL)
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
-                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
-                }, "")
-            ;; else
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(3, sz), "\n"
-                }, "")
-            ;/
-        ;/
-    ;/
-
-    /; mul (Variable v, ~CompData dat)
-        ;int sz = self.norm_size()
-        /; if (self.loc_type == LOCATION.LITERAL)
-            /; if (v.loc_type !== LOCATION.LITERAL)
-                ;v.mul(self)
-            ;; else
-                ;self.location = self.location * v.location
-            ;/
-        ;; else
-            ;{}uint8 s_ext = "", op = "imul"
-            /; if (v.loc_type == LOCATION.LITERAL || v.loc_type == LOCATION.REGISTER)
-                ;s_ext = mov_by_size(sz)
-            ;; if (self.data_type.name{0} == 'u')
-                ;op{0} = ' '
-            ;/
-            
-            ;dat`.csec = string_join( {
-                dat`.csec,
-                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n"
-            }, "")
-
-            /; if (v.loc_type == LOCATION.LITERAL)
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
-                    "\t", op, " ", s_ext, get_reg(3, sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
-                }, "")
-            ;; else
-                ;dat`.csec = string_join( {
-                    dat`.csec,
-                    "\t", op, " ", s_ext, v.norm_loc(sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
-                }, "")
-            ;/
+            ;self.ax_compute("mul", self.norm_size(), v, data, 0)
         ;/
     ;/
 
@@ -853,13 +777,13 @@
     /; begin_scope (~CompData out)
         ;int reg = 8
 
-        ;{}uint8 intro = "\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
+        ;{}uint8 intro = "\tpush rbp\n\tlea rbp, [rsp + 8]\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
         ;out`.csec = string_add(out`.csec, intro)
         
     ;/
     
     /; end_scope (~CompData out)
-        ;{}uint8 outro = "\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n"
+        ;{}uint8 outro = "\tlea rsp, [rbp - 72]\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
 
         ;out`.csec = string_add(out`.csec, outro)
     ;/
@@ -941,10 +865,6 @@
     ;/
 
     /; find_var ({}{}uint8 artifact, ~Module current) [Variable]
-        /; if (len artifact > 1)
-            ;return current`.find_def(artifact)
-        ;/
-
         /; loop (int i = 0; i < len (self.vars)) [i++]
             /; if (string_equate(self.vars{i}.name, artifact{0}))
                 ;return self.vars{i}
@@ -1316,7 +1236,7 @@
 ;/
 
 /; decompose_empty (~Module current, Type t) [{}uint8]
-    /; if (len t.ptr_chain > 0)
+    /; if (len (t.ptr_chain) > 0)
         ;return "\tdq 0\n"
     ;/
     ;{}uint8 out = "\tdb 0"
@@ -1671,7 +1591,12 @@
 /; _eval_value(~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
     /; if (start == max - 1)
         /; if (tok`{start}.type_is(TOKEN.LITERAL))
-            ;{}uint8 l = string_add(current`.full_path(), ".")
+            ;{}uint8 l = current`.full_path()
+            
+            /; if (len l > 0)
+                ;l.append('.')
+            ;/
+
             ;l = string_add(l, scope`.next_const())
             ;return literal_variable(tok`{start}.data, l, out)
         ;/
