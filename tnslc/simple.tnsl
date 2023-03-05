@@ -1,6 +1,7 @@
 uint a = 2, b = 4
-{}uint8 str = "Hello"
+{}uint8 str = "Hello", c = "#"
 
 /; main [int]
-    return 273
+    int i = -b
+    return i
 ;/

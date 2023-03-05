@@ -3,3 +3,5 @@ tint
 *.asm
 *.o
 *.out
+*.obj
+*.exe
