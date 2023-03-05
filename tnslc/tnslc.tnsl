@@ -378,6 +378,12 @@
     ;return -1
 ;/
 
+/; get_primitive (int i) [Type]
+    ;{}{}uint8 pn = PRIM_NAMES
+    ;{}int ps = PRIM_SIZES
+    ;return {ps{i}, pn{i}, string_add("_", pn{i}), {}, {}}
+;/
+
 # Represents the place in memory where a variable is
 ;enum LOCATION [int] {
     REGISTER = 0,
@@ -489,10 +495,8 @@
         /; if (self.loc_type == LOCATION.LABEL)
             ;return label_to_loc(self.name, sz, 0)
         ;; else if (self.loc_type == LOCATION.REGISTER)
-            /; if (len (self.data_type.ptr_chain) == 1)
-                /; if (self.data_type.ptr_chain{0} == POINTER.REFERENCE)
-                    ;return string_join( {"[", get_reg(self.location, 8), "]"}, "")
-                ;/
+            /; if (is_primitive(self.data_type.name) < 0 && len (self.data_type.ptr_chain) == 0)
+                ;return string_join( {"[", get_reg(self.location, 8), "]"}, "")
             ;/
             ;return get_reg(self.location, sz)
         ;; else if (self.loc_type == LOCATION.STACK)
@@ -574,6 +578,22 @@
             ;self.location = self.location ^ v.location
         ;; else
             ;self.norm_op("xor", self.norm_size(), v, data)
+        ;/
+    ;/
+
+    /; not (Variable v, ~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = !v.location
+        ;; else if (string_equate(v.data_type.name, "bool") && len (v.data_type.ptr_chain) == 0)
+            
+            ;self.xor({"#literal", get_primitive(is_primitive("bool")), 1, LOCATION.LITERAL}, data)
+        ;; else
+            ;v = self.match_types(v, data)
+            ;self.set(v, data)
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tnot ", mov_by_size(self.norm_size()), self.norm_loc(self.norm_size()), "\n"
+            }, "")
         ;/
     ;/
 
@@ -660,32 +680,15 @@
         ;int sz = self.norm_size()
         /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
             ;self.location = v.location
-        ;; else if (is_primitive(self.data_type.name) < 0)
+        ;; else if (is_primitive(self.data_type.name) < 0 && len (self.data_type.ptr_chain) == 0)
             ;v = self.match_types(v, data)
-            /; if (len (self.data_type.ptr_chain) > 0)
-                /; if (len (self.data_type.ptr_chain) == 1 && self.data_type.ptr_chain{0} == PTYPE.REF)
-                    ;data`.csec = string_join( {
-                        data`.csec,
-                        "\tlea rdi, ", self.norm_loc(0), "\n",
-                        "\tlea rsi, ", v.norm_loc(0), "\n",
-                        "\tmov rcx, ", int_to_string(sz), "\n",
-                        "\trep movsb\n"
-                    }, "")
-                ;; else
-                    ;data`.csec = string_join( {
-                        data`.csec,
-                        "\tmov ", mov_by_size(sz), self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
-                    }, "")
-                ;/
-            ;; else if (self.loc_type == LOCATION.LABEL || self.loc_type == LOCATION.STACK)
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\tlea rdi, ", self.norm_loc(0), "\n",
-                    "\tlea rsi, ", v.norm_loc(0), "\n",
-                    "\tmov rcx, ", int_to_string(sz), "\n",
-                    "\trep movsb\n"
-                }, "")
-            ;/
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tlea rdi, ", self.norm_loc(0), "\n",
+                "\tlea rsi, ", v.norm_loc(0), "\n",
+                "\tmov rcx, ", int_to_string(sz), "\n",
+                "\trep movsb\n"
+            }, "")
         ;; else
             ;v = self.match_types(v, data)
             ;data`.csec = string_join( {
@@ -697,6 +700,7 @@
 
     # functions that do work on another variable
     /; ref (Variable to_ref, ~CompData data)
+
     ;/
 
     /; deref (Variable to_deref, ~CompData data)
@@ -1536,7 +1540,7 @@
 # 7 - assignment
 /; priority (Token tok) [int]
     /; if (!(tok.type_is(TOKEN.AUGMENT)))
-        ;return 999
+        ;return -1
     ;/
 
     /; if (tok.cmp("."))
@@ -1573,28 +1577,29 @@
         ;return 6
     ;/
 
-    ;return 999
+    ;return -1
 ;/
 
-/; _eval_dot (~{}Token tok, int start, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
-    ;Variable wk = scope.find_var(get_artifact(tok, ~start), current)
-    
-    ;int loc = 1
-    /; if (alt)
-        ;loc = 2
-    ;/
+/; _eval_dot (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+    ;int art_ct = start
+    ;Variable wk = scope`.find_var(get_artifact(tok, ~art_ct), current)
 
-    ;Variable refer = {"#tmp", wk.data_type, loc, LOCATION.REGISTER}
+    ;Variable refer = {"#tmp", wk.data_type, 1, LOCATION.REGISTER}
+    /; if (alt)
+        ;refer.location = 2
+    ;/
     ;refer.set(wk, out)
 
-    /; loop (start < len tok`) [start++]
+    /; loop (start < max) [start++]
         /; if (tok`{start}.cmp("`"))
-            ;wk.deref(out)
+            ;refer.deref(refer, out)
         ;; else if (tok`{start}.cmp(".") && tok`{start + 1}.type_is(TOKEN.DEFWORD))
-            ;wk = wk.get()
+            ;refer.member(refer, out, tok`{start + 1}.data)
             ;start++
         ;/
     ;/
+
+    ;return refer
 ;/
 
 /; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
@@ -1652,7 +1657,7 @@
         /; if (tok`{i}.type_is(TOKEN.AUGMENT) && priority(tok`{i}) !< pr)
             ;first = i
             ;pr = priority(tok`{i})
-        ;; else if (tok`{i}.cmp("("))
+        ;; else if (tok`{i}.type_is(TOKEN.DELIMITER))
             ;pa = i
             ;i = find_closing(tok, ~i)
         ;/
@@ -1660,11 +1665,14 @@
 
     # This is all kinda garbage, to fix.
     /; if (pr == -1)
+        ;tnsl.io.println("scope var")
         ;return scope`.find_var( { tok`{start}.data }, current )
     ;; else if (is_call(tok, start))
+        ;tnsl.io.println("call")
         ;return _eval_call(tok, start, max, out, current, scope, t, loc)
     ;; else if (pr == 0 || pr == 1)
-        ;return _eval_dot(tok, start, out, current, scope, t, loc)
+        ;tnsl.io.println("dot")
+        ;return _eval_dot(tok, start, max, out, current, scope, t, alt)
     ;/
     
 
@@ -1733,6 +1741,8 @@
         ;wk.deref(s1, out)
     ;; else if (tok`{first}.cmp("~"))
         ;wk.ref(s1, out)
+    ;; else if (tok`{first}.cmp("!"))
+        ;wk.not(s1, out)
     ;/
 
     ;return wk
@@ -1853,6 +1863,7 @@
 
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+            ;tnsl.io.println("block")
             /; if (m)
                 ;compile_block(tok, cur, current, out)
             ;; else
@@ -1888,8 +1899,10 @@
                 ;tnsl.io.println(tok`{cur`}.data)
             ;/
         ;; else if (is_definition(tok, cur, current))
+            ;tnsl.io.println("def")
             ;eval_def(tok, cur, out, current, ~root)
         ;; else
+            ;tnsl.io.println("val")
             ;eval_value(tok, cur, out, current, ~root, NO_TYPE, false)
         ;/
     ;/
@@ -2135,7 +2148,7 @@
 
 ;{}uint8 MULTI_PARENS = "/;:#"
 ;{}uint8 PARENS = "()[]{}"
-;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,"
+;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,\""
 ;{}uint8 AUGMENTS = "=~!<>&|^+-*/`."
 
 ;{}{}uint8 MULTI_AUGMENTS = {
@@ -2258,6 +2271,8 @@
 /; is_num_literal ({}uint8 str) [bool]
     /; if (len str < 1)
         ;return false
+    ;; if (len str == 1 && str{0} == '.')
+        ;return false
     ;/
 
     ;bool dec = false
@@ -2276,7 +2291,7 @@
 ;/
 
 /; is_literal({}uint8 str) [bool]
-    ;return is_str_literal(str) || is_num_literal(str)
+    ;return is_str_literal(str) || is_num_literal(str) || string_equate(str, "true") || string_equate(str, "false")
 ;/
 
 /; gen_type (Token t) [int]
@@ -2379,7 +2394,7 @@
             ;continue
         ;/
 
-        /; if (i == '\n')
+        /; if (i == '\n'  && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
             ;tnsl.io.print(".")
             /; if (!(current.cmp("\n")))
                 ;current.tokenType = gen_type(current)
