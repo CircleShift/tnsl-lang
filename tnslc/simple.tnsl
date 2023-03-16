@@ -1,14 +1,16 @@
-uint a = 2, b = 4
-{}uint8 str = "Hello", c = "#"
 
-struct test {
-    int i, j,
-    bool k,
-    uint8 m
-}
+/; module mod
+    uint a = 2, b = 4
+    {}uint8 str = "Hello", c = "#"
+
+    struct test {
+        int i, j,
+        bool k,
+        uint8 m
+    }
+;/
+
 
 /; main [int]
-    test i
-    i.i = 9
-    return i.i
+    return 0
 ;/

@@ -14,6 +14,7 @@
 tnslc.Try A = {1, 2, 3}
 
 /; raw main (uint argc, ~~uint8 argv) [int]
+    # Manually match registers so values are in expected compile registers
     asm "mov r8, rdi"
     asm "mov r9, rsi"
     raw return tnslc.run(argc, argv)
