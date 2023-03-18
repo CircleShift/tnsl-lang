@@ -34,7 +34,7 @@
 ;/
 
 /; _delete (~void ptr)
-    # setup call
+    # setup call by clearing most values
     asm "mov rdi, rax"
     asm "mov rsi, 0"
     asm "mov rdx, 0"
@@ -56,7 +56,7 @@ struct Array {
 /; method Array
 
     /; resize (int num_el)
-        _realloc(dat, num_el * self.el_size)
+        _realloc(self.dat, self.num_el * self.el_size)
     ;/
 
     /; get (int i) [~void]

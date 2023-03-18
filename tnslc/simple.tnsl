@@ -12,5 +12,8 @@
 
 
 /; main [int]
-    return 0
+    ~int b = ~mod.a
+    ~int c = b+8
+    ~~int d = ~c
+    return d``
 ;/
