@@ -1565,7 +1565,7 @@
     ;{}uint8 arr = ""
     ;int alen = 0
 
-    /; loop (cur`++; cur` < max) [cur`++]
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
         ;alen++
         
         /; if (tok`{cur`}.cmp("{"))
@@ -1576,10 +1576,10 @@
                 ;/
                 ;t.ptr_chain = ptr
                 ;arr = string_add(arr, decompose_array(tok, cur, current, t))
-                ;cur`++
+                ;cur` = next_non_nl(tok, cur` + 1)
             ;; else
                 ;decompose_struct(tok, cur, current, t)
-                ;cur`++
+                ;cur` = next_non_nl(tok, cur` + 1)
             ;/
         ;; else
             ;arr = string_add(arr, decompose_data(tok, cur, current, t))
@@ -1597,15 +1597,17 @@
     ;int max = find_closing(tok, cur)
     ;{}uint8 out = ""
     ;int m = 0
-    /; loop (cur`++; cur` < max) [cur`++]
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("}"))
             ;break
         ;; else if (tok`{cur`}.cmp(","))
-            ;cur`++
+            ;cur` = next_non_nl(tok, cur` + 1)
         ;/
+        ;tnsl.io.println(tok`{cur`}.data)
         ;out = string_add(out, decompose_data(tok, cur, current, t.members{m}.data_type))
         ;m++
     ;/
+    ;tnsl.io.println("o")
 
     /; if (m < len (t.members) - 1)
         /; loop (m < len (t.members)) [m++]
@@ -1644,6 +1646,14 @@
             ;return decompose_struct(tok, cur, current, t)
         ;/
     ;; if (tok`{cur`}.type_is(TOKEN.LITERAL))
+        /; if (string_equate(t.name, "bool"))
+            ;{}uint data = "0"
+            /; if (!(tok`{cur`}.cmp("false")))
+                ;data = "1"
+            ;/
+            ;return string_add(string_add(declare_size(t.s), data), "\n")
+        ;/
+
         /; if (tok`{cur`}.data{0} == '"')
             ;return string_join({
                 declare_size(8), int_to_string(len unquote_str(tok`{cur`}.data)), "\n",
@@ -1654,7 +1664,6 @@
         ;/
         ;return string_add(string_add(declare_size(t.s), tok`{cur`}.data), "\n")
     ;/
-
     ;return decompose_empty(current, t)
 ;/
 
