@@ -2,25 +2,51 @@
 ## LOG UTILITIES
 ##
 
-;{}uint8 log_level = "2"
+# Log levels:
+# 0 - Visual queues and errors only
+# 1 - Info (default)
+# 2 - Debugging information (useful for me, probably less for you)
+# 3 - Also logs the state changes of the log itself
+;{}uint8 log_level = "1"
+;{}uint8 log_mode = "single"
+
+/; log_state({}uint8 new_state)
+    ;~{}uint8 l = ~log_mode
+    /; if (!string_equate(new_state, log_mode))
+        ;tnsl.io.println("")
+        /; if (string_to_int(log_level) > 2)
+            ;tnsl.io.print("[TNSLC] [LOG]: Swapping to state [")
+            ;tnsl.io.print(new_state)
+            ;tnsl.io.println("]")
+        ;/
+    ;/
+    
+    ;l` = new_state
+;/
 
 /; log_err ({}uint8 msg)
+    ;log_state("err")
     ;tnsl.io.print("[TNSLC] [ERR]: ")
     ;tnsl.io.println(msg)
     ;tnsl.exit()
 ;/
 
 /; log_info ({}uint8 msg)
-    ;uint l = string_to_int(log_level)
-    /; if (l > 0)
+    /; if (string_to_int(log_level) > 0)
+        ;log_state("info")
         ;tnsl.io.print("[TNSLC] [INFO]: ")
         ;tnsl.io.println(msg)
     ;/
 ;/
 
+/; log_vis ({}uint8 msg)
+    ;log_state("vis")
+    ;tnsl.io.print(msg)
+;/
+
 /; log_debug ({}uint8 msg)
-    ;uint l = string_to_int(log_level)
-    /; if (l > 1)
+    /; if (string_to_int(log_level) > 1)
+        ;log_state("debug")
         ;tnsl.io.print("[TNSLC] [DEBUG]: ")
         ;tnsl.io.println(msg)
     ;/
@@ -323,15 +349,6 @@
 
     /; cmp ({}uint8 str) [bool]
         ;return string_equate(self.data, str)
-    ;/
-
-    /; print
-        ;tnsl.io.print(self.data)
-        ;tnsl.io.print(": { type: ")
-        ;tnsl.io.print(self.tokenType)
-        ;tnsl.io.print(" line: ")
-        ;tnsl.io.print(self.line)
-        ;tnsl.io.print(" }")
     ;/
 
     /; sprint [{}uint8]
@@ -1188,8 +1205,7 @@
         ;/
 
         /; if (!(self.is_cf()))
-            ;tnsl.io.print(reg)
-            ;log_err("Can't move variable to stack as it does not exist in the current context")
+            ;log_err(string_add("Can't move variable to stack as it does not exist in the current context ", int_to_string(reg)))
         ;/
         ;return self.parent`.find_reg_variable(reg)
     ;/
@@ -1201,8 +1217,7 @@
         ;/
 
         /; if (reg < 8 || reg > last_var - 1)
-            ;tnsl.io.println(reg)
-            ;log_err("Can't move a register to stack as it is not in scope.")
+            ;log_err(string_add("Can't move a register to stack as it is not in scope. ", int_to_string(reg)))
         ;/
 
         ;log_debug(string_join( {
@@ -1648,11 +1663,9 @@
         ;; else if (tok`{cur`}.cmp(","))
             ;cur` = next_non_nl(tok, cur` + 1)
         ;/
-        ;tnsl.io.println(tok`{cur`}.data)
         ;out = string_add(out, decompose_data(tok, cur, t.members{m}.data_type))
         ;m++
     ;/
-    ;tnsl.io.println("o")
 
     /; if (m < len (t.members) - 1)
         /; loop (m < len (t.members)) [m++]
@@ -2098,7 +2111,7 @@
 
     # This is all kinda garbage, to fix.
     /; if (is_call(tok, start))
-        ;tnsl.io.println("call")
+        ;log_debug("Attempt to invoke a call")
         ;return _eval_call(tok, start, max, out, current, scope, t, alt)
     ;; else if (pr < 2)
         ;return _eval_dot(tok, start, max, out, current, scope, t, alt)
@@ -2259,7 +2272,7 @@
     ;bool returned = false
     /; loop (cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
-            ;tnsl.io.println("Block block")
+            ;log_debug("Block in block")
             ;_compile_block(tok, cur, current, out, ~cf)
 
             /; if (tok`{cur`}.cmp(";;"))
@@ -2274,8 +2287,7 @@
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
                 /; if (!(cf.r))
-                    ;tnsl.io.println("Unable to perform a raw return from a non-raw block.")
-                    ;tok`{e}.cmp()
+                    ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
                 ;eval_value(tok, cur, out, current, ~root, ret, true)
@@ -2287,8 +2299,7 @@
                 ;out`.csec = string_add(out`.csec, unquote_str(tok`{cur`}.data))
                 ;out`.csec.append('\n')
             ;; else
-                ;tnsl.io.print("Keyword not impl: ")
-                ;tnsl.io.println(tok`{cur`}.data)
+                ;log_err(string_add("Keyword not impl: ", tok`{cur`}.data))
             ;/
         ;; else if (is_definition(tok, cur, current))
             ;log_debug("Block def")
@@ -2318,14 +2329,11 @@
                 ;root.r = true
             ;; else if (tok`{cur`}.cmp("method"))
                 ;m = true
-                ;tnsl.io.println(tok`{cur` + 1}.data)
-                ;tnsl.io.println(current`.sub{0}.name)
                 ;current = current`.find_sub(tok`{cur` + 1}.data)
             ;; else
-                ;tnsl.io.print("Keyword ")
-                ;tnsl.io.print(tok`{cur`}.data)
-                ;tnsl.io.println(" not impl on mod level blocks")
-                ;tok`{e}.cmp()
+                ;log_err(string_join( {
+                    "Keyword ", tok`{cur`}.data, " not impl on mod level blocks"
+                }, ""))
             ;/
         ;; if (tok`{cur`}.cmp("("))
             ;root.vars = parse_param_list(tok, cur, current)
@@ -2358,7 +2366,7 @@
 
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
-            ;tnsl.io.println("Block block")
+            ;log_debug("Block in block")
             /; if (m)
                 ;compile_block(tok, cur, current, out)
             ;; else
@@ -2377,8 +2385,7 @@
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
                 /; if (!(root.r))
-                    ;tnsl.io.println("Unable to perform a raw return from a non-raw block.")
-                    ;tok`{e}.cmp()
+                    ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
                 ;eval_value(tok, cur, out, current, ~root, ret, true)
@@ -2390,8 +2397,7 @@
                 ;out`.csec = string_add(out`.csec, unquote_str(tok`{cur`}.data))
                 ;out`.csec.append('\n')
             ;; else
-                ;tnsl.io.print("Keyword not impl: ")
-                ;tnsl.io.println(tok`{cur`}.data)
+                ;log_err(string_add("Keyword not impl: ", tok`{cur`}.data))
             ;/
         ;; else if (is_definition(tok, cur, current))
             ;log_debug("Block def")
@@ -2405,8 +2411,7 @@
     ;cur` = max
 
     /; if (!returned && !string_equate(ret.name, ""))
-        ;tnsl.io.println("Block must return a value.")
-        ;tok`{e}.cmp()
+        ;log_err("Block must return a value.")
     ;/
 
     /; if (!m && !returned)
@@ -2431,9 +2436,9 @@
     ;/
 
     /; loop (cur` < max) [cur`++]
-        ;tnsl.io.print(".")
+        ;log_vis(".")
         /; if (tok`{cur`}.cmp(":"))
-            ;tnsl.io.println("INCLUDE")
+            ;log_debug("INCLUDE")
             /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
                 ;compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), ~new)
                 ;cur` = cur` + 2
@@ -2463,9 +2468,9 @@
     ;/
 
     /; loop (cur` = next_non_nl(tok, cur`); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
-        ;tnsl.io.print(".")
+        ;log_vis(".")
         /; if (tok`{cur`}.cmp(":"))
-            ;tnsl.io.println("INCLUDE")
+            ;log_debug("INCLUDE")
             /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
                 ;CompData tmp = compile_file_pass_two(f.relative(unquote_str(tok`{cur` + 2}.data)), current)
                 ;out`.hsec = string_add(out`.hsec, tmp.hsec)
@@ -2491,9 +2496,7 @@
             ;log_debug("Mod def")
             ;compile_file_def(tok, cur, current, out)
         ;; else if (!(tok`{cur`}.cmp("\n")))
-            ;tnsl.io.println("Failed to recognize file-level statement")
-            ;tok`{cur`}.print()
-            ;break
+            ;log_err(string_add("Failed to recognize file-level statement ", tok`{cur`}.sprint()))
         ;/
     ;/
 ;/
@@ -2502,14 +2505,12 @@
 # Only creates structs, enums, and moduless
 /; compile_file_pass_one (Path f, ~Module current)
     ;{}Token tok = tokenize(f)
-
-    ;tnsl.io.print("Number of tokens generated: ")
-    ;tnsl.io.println(len tok)
+    ;log_info(string_add("Number of tokens generated: ", int_to_string(len tok)))
 
     /; loop (int i = 0; i < len tok) [i++]
-        ;tnsl.io.print(".")
+        ;log_vis(".")
         /; if (tok{i}.cmp(":"))
-            ;tnsl.io.println("INCLUDE")
+            ;log_debug("INCLUDE")
             /; if (tok{i + 2}.type_is(TOKEN.LITERAL))
                 ;CompData tmp = compile_file_pass_one(f.relative(unquote_str(tok{i + 2}.data)), current)
                 ;i = i + 2
@@ -2535,7 +2536,7 @@
         ;; else if (p >== 0)
             ;s = s + p
         ;; else
-            ;tnsl.io.println("STRUCT!!!!!!")
+            ;log_debug("STRUCT!!!!!!")
             ;{}{}uint8 artifact = { t`.members{i}.data_type.name }
             ;~Type tp = m`.find_type(artifact)
             /; if (tp`.s == 0)
@@ -2545,7 +2546,7 @@
             ;s = s + tp`.s
         ;/
     ;/
-    ;tnsl.io.println(string_add("Sized type ", t`.name))
+    ;log_debug(string_add("Sized type ", t`.name))
     ;t`.s = s
 ;/
 
@@ -2568,9 +2569,9 @@
     ;{}Token tok = tokenize(f)
 
     /; loop (int i = next_non_nl(~tok, 0); i < len tok) [i = next_non_nl(~tok, i+1)]
-        ;tnsl.io.print(".")
+        ;log_vis(".")
         /; if (tok{i}.cmp(":"))
-            ;tnsl.io.println("INCLUDE")
+            ;log_debug("INCLUDE")
             /; if (tok{i + 2}.type_is(TOKEN.LITERAL))
                 ;CompData tmp = compile_file_pass_two(f.relative(unquote_str(tok{i + 2}.data)), current)
                 ;out.hsec = string_add(out.hsec, tmp.hsec)
@@ -2606,14 +2607,11 @@
             ;/
             ;i++
         ;; else if (!(tok{i}.cmp("\n")))
-            ;tnsl.io.println("Failed to recognize file-level statement")
-            ;tok{i}.print()
-            ;break
+            ;log_err(string_add("Failed to recognize file-level statement", tok{i}.sprint()))
         ;/
     ;/
 
-    ;tnsl.io.print("Generated code length: ")
-    ;tnsl.io.println(len (out.hsec) + len (out.dsec) + len (out.csec))
+    ;log_info(string_add("File compiled! Generated code length: ", int_to_string(len (out.hsec) + len (out.dsec) + len (out.csec))))
 
     ;return out
 ;/
@@ -2625,10 +2623,10 @@
     ;Module root = {0, true, {}, {}, {}, {}, {}}
     ;compile_file_pass_one(f, ~root)
     ;flush_structs(~root)
-    ;tnsl.io.println("First pass DONE")
+    ;log_info("First pass DONE")
 
     ;CompData data = compile_file_pass_two(f, ~root)
-    ;tnsl.io.println("Second pass DONE")
+    ;log_info("Second pass DONE")
 
     ;out = string_join({
         data.hsec,
@@ -2898,7 +2896,7 @@
         ;/
 
         /; if (i == '\n'  && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
-            ;tnsl.io.print(".")
+            ;log_vis(".")
             /; if (!(current.cmp("\n")))
                 ;current.tokenType = gen_type(current)
                 /; if (!(current.cmp("")))
@@ -2921,7 +2919,7 @@
             ;current.data.append(i)
         ;/
     ;/
-    ;tnsl.io.println("OK")
+    ;log_vis("OK\n")
 
     /; if (!(current.cmp("")) && !(current.cmp("\n")))
         ;current.tokenType = gen_type(current)
@@ -2940,7 +2938,7 @@
 /; main ({}{}uint8 args) [int]
     ;log_debug("TNSLC version 0.0.1, built with debugging enabled")
     /; if (len args < 1)
-        ;tnsl.io.println("Give me something to compile!")
+        ;log_info("Give me something to compile!")
         ;return 1
     ;/
 
@@ -2953,8 +2951,8 @@
         ;p.path.append(fsplit{i})
     ;/
 
-    ;tnsl.io.print("Path: ")
-    ;tnsl.io.println(p.full_path())
+    ;log_info("Path: ")
+    ;log_info(p.full_path())
 
     ;{}uint8 code = ""
     /; if (!tokenize_only)
@@ -2962,10 +2960,10 @@
     ;; else
         ;{}Token tok = tokenize(p)
         /; loop(int i = 0; i < len tok) [i++]
-            ;tnsl.io.print(".")
+            ;log_vis(".")
             ;code = string_add(code, tok{i}.sprint())
         ;/
-        ;tnsl.io.println("OK")
+        ;log_vis("OK\n")
     ;/
 
     ;p.name = string_add(p.name, ".asm")
