@@ -389,6 +389,15 @@
         ;out = string_add(out, " } }")
         ;return out
     ;/
+
+    /; size [int]
+        /; loop (int i = 0; i < len(self.ptr_chain)) [i++]
+            /; if (self.ptr_chain{i} !== PTYPE.REFERENCE)
+                ;return 8
+            ;/
+        ;/
+        ;return self.s
+    ;/
 ;/
 
 ;{}{}uint8 PRIM_NAMES = {
@@ -639,7 +648,7 @@
 
         ;int pc = len (out.data_type.ptr_chain)
         /; loop (pc > 1) [pc = len (out.data_type.ptr_chain)]
-            /; if (out.data_type.ptr_chain{pc - 1} == PTYPE.REFERENCE)
+            /; if (out.data_type.ptr_chain{pc - 1} == PTYPE.REFERENCE && out.data_type.ptr_chain{pc - 2} !== PTYPE.ARRAY)
                 ;out.strip_one(data)
             ;; else
                 ;break
@@ -820,12 +829,12 @@
             /; if (v.is_ref())
                 ;data`.csec = string_join( {
                     data`.csec,
-                    "\tmov rdi, ", v.norm_loc(8), "\n"
+                    "\tmov rsi, ", v.norm_loc(8), "\n"
                 }, "")
             ;; else
                 ;data`.csec = string_join( {
                     data`.csec,
-                    "\tlea rdi, ", v.norm_loc(8), "\n"
+                    "\tlea rsi, ", v.norm_loc(8), "\n"
                 }, "")
             ;/
 
@@ -896,42 +905,40 @@
 
     /; index (Variable i, ~CompData data) [Variable]
         ;Variable out = self.strip_refs(data)
-
+        
         ;int sz = out.norm_size()
         ;int opc = len (out.data_type.ptr_chain)
-        ;bool ts_arr = out.data_type.ptr_chain{opc - 1} == PTYPE.ARRAY
-        ;Variable t = {"#tmp", a.data_type, 4, LOCATION.REGISTER}
 
-        /; if (ts_arr)
+        /; if (opc == 0 || (out.is_ref() && opc == 1))
+            ;log_err(string_add("Unable to index a type if it is not a pointer or array ", out.sprint()))
+        ;/
+        
+        /; if (out.is_ref())
             ;data`.csec = string_join( {
                 data`.csec,
                 "\tadd rsi, 8\n"
             }, "")
         ;/
 
-        /; if (i.loc_type == LOCATION.LITERAL && i.location > 0)
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tlea rsi, ", loc_from_str("rsi", string_add(" + ", int_to_string(sz * i)), 0), "\n"
-            }, "")
-        ;; else if (i.loc_type == LOCATION.REGISTER)
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tlea rsi, ", loc_from_str("rsi", string_add(" + ", int_to_string(sz * i)), 0), "\n"
-            }, "")
-        ;; else if (i.loc_type == LOCATION.LABEL || i.loc_type == LOCATION.STACK)
-            ;Variable t2 = {"#tmp", get_primitive(is_primitive("uint")), 5, LOCATION.REGISTER}
-            ;t2.set(i, data)
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tlea rsi, [rsi + rdi * ", int_to_string(sz), "]\n"
-            }, "")
+        ;Variable t = {"#tmp", get_primitive(is_primitive("uint")), 5, LOCATION.REGISTER}
+        ;t.set({"#literal", t.data_type, sz, LOCATION.LITERAL}, data)
+        ;t.mul(i, data)
+        ;data`.csec = string_join( {
+            data`.csec,
+            "\tadd rsi, rdi\n"
+        }, "")
+
+        /; if (out.is_ref())
+            ;out.data_type.ptr_chain = strip_int(out.data_type.ptr_chain)
+            ;out.data_type.ptr_chain{len (out.data_type.ptr_chain) - 1} == PTYPE.REFERENCE
         ;/
 
+        ;log_debug(string_add("Index returning: ", out.sprint()))
         ;return out.deref(data)
     ;/
 
     /; length_of (Variable a, ~CompData data)
+        ;a = a.strip_refs()
         ;a.data_type.name = "uint"
         ;a.data_type.s = 8
         ;a.data_type.ptr_chain = {PTYPE.REFERENCE}
@@ -963,10 +970,24 @@
     int num, c,
     ~Scope parent,
     {}uint8 name,
-    {}Variable vars
+    {}Variable vars,
+    bool r
 }
 
 /; method Scope
+    /; sprint [{}uint8]
+        ;{}uint8 out = string_join( {
+            "SCOPE PRINT [", self.name, "] num:", int_to_string(self.num),
+            " C:", int_to_string(self.c),
+            " vars:", int_to_string(len (self.vars)), " { "
+        }, "")
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            ;out = string_add(out, self.vars{i}.sprint())
+            ;out.append(' ')
+        ;/
+        ;return string_add(out, "}")
+    ;/
+
     /; is_cf [bool]
         /;if (len(self.name) < 1)
             ;return false
@@ -1054,17 +1075,21 @@
     ;/
 
     /; begin_scope (~CompData out)
-        ;int reg = 8
-
-        ;{}uint8 intro = "\tpush rbp\n\tlea rbp, [rsp + 8]\n\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
-        ;out`.csec = string_add(out`.csec, intro)
-        
+        /; if (!(self.r))
+            ;{}uint8 intro = "\tpush rbp\n\tlea rbp, [rsp + 8]\n\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
+            ;out`.csec = string_add(out`.csec, intro)
+        ;/
     ;/
     
     /; end_scope (~CompData out)
+        /; if (!(self.r))
+        ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
         ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
 
-        ;out`.csec = string_add(out`.csec, outro)
+            ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
+
+            ;out`.csec = string_add(out`.csec, outro)
+        ;/
     ;/
 
     /; scope_cleanup (~CompData out)
@@ -1099,7 +1124,7 @@
         ;cf = string_add(cf, int_to_string(self.num))
         ;self.num++
 
-        ;return {0, 0, ~self, cf, {}}
+        ;return {0, 0, ~self, cf, {}, self.r}
     ;/
 
     /; get_continue (uint i) [{}uint8]
@@ -1124,7 +1149,6 @@
 
     /; new_var (Type t, {}uint8 name, ~CompData out)
         ;Variable new = {name, t, 0, 0}
-        ;log_debug(string_add("Creating new variable ", new.sprint()))
         /; if (self.next_loc(t) !< 0)
             ;new.loc_type = LOCATION.REGISTER
             ;new.location = self.next_loc(t)
@@ -1136,10 +1160,14 @@
                 "\tsub rsp, ", int_to_string(new.norm_size()), "\n"
             }, "")
         ;/
+        ;log_debug(string_add("Created new variable ", new.sprint()))
         ;self.vars.append(new)
     ;/
 
     /; find_var ({}{}uint8 artifact, ~Module current) [Variable]
+
+        ;log_debug(string_join(artifact, "."))
+        ;log_debug(string_add("Trying to find scope var in ", self.sprint()))
         /; loop (int i = 0; i < len (self.vars)) [i++]
             /; if (string_equate(self.vars{i}.name, artifact{0}))
                 ;return self.vars{i}
@@ -1291,7 +1319,7 @@
         /; if (len artifact - 1 > r)
             /; loop (int i = 0; i < len (self.sub)) [i++]
                 /; if (string_equate(artifact{r}, self.sub{i}.name))
-                    ;log_debug(artifact{r})
+                    ;log_debug(string_add("Artifact: ", artifact{r}))
                     ;return self.sub{i}._find_def(artifact, r + 1)
                 ;/
             ;/
@@ -1504,10 +1532,10 @@
         ;cur`++
         /; if (tok`{cur`}.cmp("="))
             ;cur`++
-            ;out`.dsec = string_add(out`.dsec, decompose_data(tok, cur, current, t))
+            ;out`.dsec = string_add(out`.dsec, decompose_data(tok, cur, t))
             ;cur`++
         ;; else
-            ;out`.dsec = string_add(out`.dsec, decompose_empty(current, t))
+            ;out`.dsec = string_add(out`.dsec, decompose_empty(t))
         ;/
     ;/
 ;/
@@ -1568,7 +1596,7 @@
     ;current`.types.append(out)
 ;/
 
-/; decompose_empty (~Module current, Type t) [{}uint8]
+/; decompose_empty (Type t) [{}uint8]
     /; if (len (t.ptr_chain) > 0)
         ;return "\tdq 0\n"
     ;/
@@ -1581,32 +1609,28 @@
 ;/
 
 # Used to take an array literal and make it into a label
-/; decompose_array (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+/; decompose_array (~{}Token tok, ~int cur, Type t) [{}uint8]
     ;int max = find_closing(tok, cur)
     ;{}uint8 arr = ""
     ;int alen = 0
 
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
         ;alen++
-        
         /; if (tok`{cur`}.cmp("{"))
-            /; if (ptr_chain{0} == PTYPE.ARRAY)
-                ;{}int ptr = {}
-                /; loop (int i = 1; i < len (t.ptr_chain)) [i++]
-                    ;ptr.append(t.ptr_chain{i})
-                ;/
-                ;t.ptr_chain = ptr
-                ;arr = string_add(arr, decompose_array(tok, cur, current, t))
+            /; if (len(t.ptr_chain) > 0)
+                ;t.ptr_chain = strip_int(t.ptr_chain)
+                ;arr = string_add(arr, decompose_array(tok, cur, t))
                 ;cur` = next_non_nl(tok, cur` + 1)
             ;; else
-                ;decompose_struct(tok, cur, current, t)
+                ;decompose_struct(tok, cur, t)
                 ;cur` = next_non_nl(tok, cur` + 1)
             ;/
-        ;; else
-            ;arr = string_add(arr, decompose_data(tok, cur, current, t))
-            ;cur`++
+        ;; else 
+            ;arr = string_add(arr, decompose_data(tok, cur, t))
+            ;cur` = next_non_nl(tok, cur` + 1)
         ;/
     ;/
+    ;cur` = max
 
     ;{}uint out = string_join( { "\tdq ", int_to_string(alen), "\n", arr, "\n" }, "")
 
@@ -1614,7 +1638,7 @@
 ;/
 
 # Used to take a struct literal and make it into a label
-/; decompose_struct (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+/; decompose_struct (~{}Token tok, ~int cur, Type t) [{}uint8]
     ;int max = find_closing(tok, cur)
     ;{}uint8 out = ""
     ;int m = 0
@@ -1625,14 +1649,14 @@
             ;cur` = next_non_nl(tok, cur` + 1)
         ;/
         ;tnsl.io.println(tok`{cur`}.data)
-        ;out = string_add(out, decompose_data(tok, cur, current, t.members{m}.data_type))
+        ;out = string_add(out, decompose_data(tok, cur, t.members{m}.data_type))
         ;m++
     ;/
     ;tnsl.io.println("o")
 
     /; if (m < len (t.members) - 1)
         /; loop (m < len (t.members)) [m++]
-            ;out = string_add(out, decompose_empty(current, t.members{m}))
+            ;out = string_add(out, decompose_empty(t.members{m}))
         ;/
     ;/
 
@@ -1654,17 +1678,13 @@
 ;/
 
 # Used to take data from a literal and make it into a label
-/; decompose_data (~{}Token tok, ~int cur, ~Module current, Type t) [{}uint8]
+/; decompose_data (~{}Token tok, ~int cur, Type t) [{}uint8]
     /; if (tok`{cur`}.cmp("{"))
         /; if (len (t.ptr_chain) > 0)
-            ;{}int ptr = {}
-            /; loop (int i = 1; i < len (t.ptr_chain)) [i++]
-                ;ptr.append(t.ptr_chain{i})
-            ;/
-            ;t.ptr_chain = ptr
-            ;return decompose_array(tok, cur, current, t)
+            ;t.ptr_chain = strip_int(t.ptr_chain)
+            ;return decompose_array(tok, cur, t)
         ;; else
-            ;return decompose_struct(tok, cur, current, t)
+            ;return decompose_struct(tok, cur, t)
         ;/
     ;; if (tok`{cur`}.type_is(TOKEN.LITERAL))
         /; if (string_equate(t.name, "bool"))
@@ -1685,7 +1705,7 @@
         ;/
         ;return string_add(string_add(declare_size(t.s), tok`{cur`}.data), "\n")
     ;/
-    ;return decompose_empty(current, t)
+    ;return decompose_empty(t)
 ;/
 
 # Compiles new enum for the file
@@ -1737,7 +1757,7 @@
             ;l.append(':')
             ;l.append('\n')
             ;cur` = cur` + 2
-            ;l = string_add(l, decompose_data(tok, cur, current, et))
+            ;l = string_add(l, decompose_data(tok, cur, et))
             ;out`.dsec = string_add(out`.dsec, l)
         ;/
     ;/
@@ -1877,6 +1897,10 @@
     ;Variable wk
     ;{}{}uint8 art = {}
 
+    ;log_debug(string_join( {
+        "Dot eval with s:", int_to_string(start), " m:", int_to_string(max), " first:", tok`{start}.sprint()
+    }, ""))
+
     /; loop (tok`{start}.type_is(TOKEN.DEFWORD) && start < max) [start++]
         ;art.append(tok`{start}.data)
         ;wk = scope`.find_var(art, current)
@@ -1894,7 +1918,9 @@
         ;/
     ;/
 
-    /; if (string_equate(wk.name, "") || start !< max)
+    /; if (string_equate(wk.name, ""))
+        ;log_err(string_add("Unable to find variable within artifact ", string_join(art, ".")))
+    ;; else if (start !< max)
         ;return wk
     ;/
 
@@ -1963,6 +1989,67 @@
     ;return v
 ;/
 
+/; num_elements(~{}Token tok, int start, max) [int]
+    ;int out = 1
+    /; loop (start < max) [start++]
+        /; if (tok`{start}.type_is(TOKEN.DELIMITER))
+            ;start = find_closing(tok, ~start)
+        ;; else if (tok`{start}.cmp(","))
+            ;out++
+        ;/
+    ;/
+;/
+
+/; element_end(~{}Token tok, int start, max) [int]
+    /; loop (out < max + 1 && !(tok`{start}.cmp(","))) [start++] ;/
+    ;return start
+;/
+
+/; _eval_composite (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+    ;{}uint8 l = scope`.next_const()
+    /; if (start == max - 1)
+        ;out`.dsec = string_join( {
+            out`.dsec,
+            l,
+            decompose_empty(t)
+        }, "")
+        ;return {l, t, 0, LOCATION.LABEL}
+    ;; else if (len(t.ptr_chain) > 0)
+        ;Variable vout = {l, t, 0, LOCATION.LABEL}
+        ;t.ptr_chain = strip_int(t.ptr_chain)
+
+        ;int count = num_elements(tok, start, max)
+        ;{}uint8 out_text = string_join( {
+            l,
+            "\tdq ", int_to_string(count), "\n"
+        }, "")
+        
+        ;{}uint8 one_el = "\tdb 0"
+        /; loop (int i = 1; i < t.size()) [i++] 
+            ;one_el = string_add(one_el, ", 0")
+        ;/
+        ;one_el.append('\n')
+
+        ;int ind = 0
+        /; loop (start < max) [start = next_non_nl(tok, start + 1)]
+            ;Variable v = _eval_value(tok, start, element_end(tok, start, max), out, current, scope, t, alt)
+            /; if (v.loc_type == LOCATION.LITERAL)
+                ;out_text = string_join( {
+                    out_text,
+                    declare_size(t.size()), int_to_string(v.location), "\n"
+                }, "")
+            ;; else
+                ;out_text = string_add(out_text, one_el)
+                ;Variable tos = vout.index({"#literal", get_primitive(is_primitive("uint")), ind, LOCATION.LITERAL}, out)
+                ;tos.set(v, out)
+            ;/
+            ;ind++
+        ;/
+        ;out`.dsec = string_add(out`.dsec, out_text)
+        ;return out
+    ;/
+;/
+
 # FIXME:
 # Need to impliment in place solving
 # Need to impliment auto typing
@@ -1991,15 +2078,29 @@
         ;/
     ;/
 
+    /; if (pa !< 0)
+        /; if (tok`{pa}.cmp("(") && first == pa)
+            ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+        ;; else if (tok`{pa}.cmp("{"))
+            /; if (pr < 2 && pa !== first)
+                ;log_debug("Index")
+                ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+                ;Variable vout = _eval_dot(tok, start, pa, out, current, scope, t, !alt)
+                ;return vout.index(i, out)
+            ;; else if (pa == first)
+                ;log_debug("Composite")
+                ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+            ;/
+        ;; else if (tok`{pa}.cmp("[") && first)
+            # code for converting value to another type here
+        ;/
+    ;/
+
     # This is all kinda garbage, to fix.
-    /; if (pr == -1)
-        ;tnsl.io.println("scope var")
-        ;return scope`.find_var( { tok`{start}.data }, current )
-    ;; else if (is_call(tok, start))
+    /; if (is_call(tok, start))
         ;tnsl.io.println("call")
-        ;return _eval_call(tok, start, max, out, current, scope, t, loc)
-    ;; else if (pr == 0 || pr == 1)
-        ;tnsl.io.println("dot")
+        ;return _eval_call(tok, start, max, out, current, scope, t, alt)
+    ;; else if (pr < 2)
         ;return _eval_dot(tok, start, max, out, current, scope, t, alt)
     ;/
     
@@ -2078,7 +2179,7 @@
 ;/
 
 # ALWAYS put the value in rax
-/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t, bool save)
+/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t, bool save) [Variable]
     ;int end = cur`
     /; loop (end < len tok`) [end++]
         /; if (tok`{end}.cmp(",") || tok`{end}.cmp("\n") || tok`{end}.cmp(";") || tok`{end}.cmp(";/"))
@@ -2091,8 +2192,10 @@
     /; if (save)
         ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
         ;set.set(val, out)
+        ;return val
     ;/
     ;cur` = end
+    ;return { "", NO_TYPE, 0, 0 }
 ;/
 
 # FIXME:
@@ -2123,8 +2226,24 @@
     ;Scope cf = parent`
     /; loop (cur`++; cur` < max) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
-            ;cf = parent`.new_sub_cf(tok`{cur`}.data)
+            /; if (tok`{cur` + 1}.cmp("if"))
+                ;cf = parent`.new_sub_cf("elif")
+                ;cur`++
+            ;; else
+                ;cf = parent`.new_sub_cf(tok`{cur`}.data)
+            ;/
         ;; else if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
+            /; if (tok`{cur`}.cmp("["))
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    "\t", cf.scope_rep_label(), ":\n"
+                }, "")
+            ;; else
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    "\t", cf.scope_start_label(), ":\n"
+                }, "")
+            ;/
             ;int psl = find_closing(tok, cur)
             ;statement_list(tok, cur`, psl, current, out, ~cf)
             ;cur` = psl
@@ -2132,22 +2251,71 @@
             ;break
         ;/
     ;/
-
-    /; loop (cur`++; cur` < max) [cur`++]
+    
+    /; if (tok`{cur`}.cmp("\n"))
+        ;cur` = next_non_nl(tok, cur` + 1)
     ;/
+
+    ;bool returned = false
+    /; loop (cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
+        /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+            ;tnsl.io.println("Block block")
+            ;_compile_block(tok, cur, current, out, ~cf)
+
+            /; if (tok`{cur`}.cmp(";;"))
+                ;cur` = cur` - 1
+            ;/
+        ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
+            /; if (tok`{cur`}.cmp("return"))
+                ;cur`++
+                ;eval_value(tok, cur, out, current, ~cf, ret, true)
+                ;cf.end_scope(out)
+                ;out`.csec = string_add(out`.csec, "\tret\n")
+                ;returned = true
+            ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
+                /; if (!(cf.r))
+                    ;tnsl.io.println("Unable to perform a raw return from a non-raw block.")
+                    ;tok`{e}.cmp()
+                ;/
+                ;cur` = cur` + 2
+                ;eval_value(tok, cur, out, current, ~root, ret, true)
+                ;out`.csec = string_add(out`.csec, "\tret\n")
+                ;returned = true
+            ;; else if (tok`{cur`}.cmp("asm"))
+                ;cur`++
+                ;out`.csec.append('\t')
+                ;out`.csec = string_add(out`.csec, unquote_str(tok`{cur`}.data))
+                ;out`.csec.append('\n')
+            ;; else
+                ;tnsl.io.print("Keyword not impl: ")
+                ;tnsl.io.println(tok`{cur`}.data)
+            ;/
+        ;; else if (is_definition(tok, cur, current))
+            ;log_debug("Block def")
+            ;eval_def(tok, cur, out, current, ~root)
+        ;; else
+            ;log_debug("Block val")
+            ;eval_value(tok, cur, out, current, ~root, NO_TYPE, false)
+        ;/
+    ;/
+
+    ;out`.csec = string_join( {
+        out`.csec,
+        "\t", cf.scope_end_label(), ":\n"
+    }, "")
 ;/
 
 /; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
-    ;Scope root = {0, 0, 0, "", {}}
+    ;Scope root = {0, 0, 0, "", {}, false}
     ;int max = find_closing(tok, cur)
-    ;bool r = false, m = false, returned = false
+    ;bool m = false, returned = false
     ;Type ret = NO_TYPE
     /; loop (cur`++; cur` < max && !m) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;root.name = tok`{cur`}.data
         ;; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("raw"))
-                ;r = true
+                ;root.r = true
             ;; else if (tok`{cur`}.cmp("method"))
                 ;m = true
                 ;tnsl.io.println(tok`{cur` + 1}.data)
@@ -2185,10 +2353,7 @@
         ;/
         ;out`.csec = string_add(out`.csec, l)
         ;out`.csec = string_add(out`.csec, ":\n")
-
-        /; if (!r)
-            ;root.begin_scope(out)
-        ;/
+        ;root.begin_scope(out)
     ;/
 
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
@@ -2211,7 +2376,7 @@
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
-                /; if (!r)
+                /; if (!(root.r))
                     ;tnsl.io.println("Unable to perform a raw return from a non-raw block.")
                     ;tok`{e}.cmp()
                 ;/
@@ -2245,9 +2410,7 @@
     ;/
 
     /; if (!m && !returned)
-        /; if (!r)
-            ;root.end_scope(out)
-        ;/
+        ;root.end_scope(out)
         ;out`.csec = string_add(out`.csec, "\tret\n")
     ;/
 ;/

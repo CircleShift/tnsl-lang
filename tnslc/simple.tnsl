@@ -2,6 +2,7 @@
 /; module mod
     uint a = 2, b = 4
     {}uint8 str = "Hello", c = "#"
+    {}int arr_i = {2, 3, 4, 5} 
 
     struct test {
         int i, j,
@@ -14,7 +15,12 @@ mod.test tv = {
     1, 2, false, 0
 }
 
+mod.test sv = {
+    4, 5, true, 6
+}
+
 /; main [int]
-    ~int i = ~tv.i
-    return i`
+    ~int j = ~sv.i
+    int i = mod.arr_i{j` - 1}
+    return i
 ;/
