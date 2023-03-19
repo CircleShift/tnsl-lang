@@ -7,7 +7,7 @@
 # 1 - Info (default)
 # 2 - Debugging information (useful for me, probably less for you)
 # 3 - Also logs the state changes of the log itself
-;{}uint8 log_level = "1"
+;{}uint8 log_level = "2"
 ;{}uint8 log_mode = "single"
 
 /; log_state({}uint8 new_state)
@@ -266,6 +266,14 @@
         dsec,
         csec
 }
+
+/; method CompData
+    /; add (CompData data)
+        ;self.hsec = string_add(self.hsec, data.hsec)
+        ;self.dsec = string_add(self.dsec, data.dsec)
+        ;self.csec = string_add(self.csec, data.csec)
+    ;/
+;/
 
 # Represents a relative file path
 ;struct Path {
@@ -1906,34 +1914,41 @@
     ;return -1
 ;/
 
-/; _eval_dot (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; first_match(~{}Token tok, ~int i, int max, ~Module current, ~Scope scope) [Variable]
     ;Variable wk
     ;{}{}uint8 art = {}
 
     ;log_debug(string_join( {
-        "Dot eval with s:", int_to_string(start), " m:", int_to_string(max), " first:", tok`{start}.sprint()
+        "Variable match with s:", int_to_string(i`), " m:", int_to_string(max), " first:", tok`{i`}.sprint()
     }, ""))
 
-    /; loop (tok`{start}.type_is(TOKEN.DEFWORD) && start < max) [start++]
-        ;art.append(tok`{start}.data)
+    /; loop (tok`{i`}.type_is(TOKEN.DEFWORD) && i` < max) [i`++]
+        ;art.append(tok`{i`}.data)
         ;wk = scope`.find_var(art, current)
 
         /; if (!string_equate(wk.name, ""))
-            ;start++
+            ;i`++
             ;break
         ;/
 
-        /; if (tok`{start + 1}.cmp("."))
-            ;start++
+        /; if (tok`{i` + 1}.cmp("."))
+            ;i`++
         ;; else
-            ;start++
+            ;i`++
             ;break
         ;/
     ;/
 
     /; if (string_equate(wk.name, ""))
         ;log_err(string_add("Unable to find variable within artifact ", string_join(art, ".")))
-    ;; else if (start !< max)
+    ;/
+    ;return wk
+;/
+
+/; _eval_dot (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+    ;Variable wk = first_match(tok, ~start, max, current, scope)
+
+    /; if (start !< max)
         ;return wk
     ;/
 
@@ -2018,7 +2033,7 @@
     ;return start
 ;/
 
-/; _eval_composite (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; _eval_composite (~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
     ;{}uint8 l = scope`.next_const()
     /; if (start == max - 1)
         ;out`.dsec = string_join( {
@@ -2045,7 +2060,7 @@
 
         ;int ind = 0
         /; loop (start < max) [start = next_non_nl(tok, start + 1)]
-            ;Variable v = _eval_value(tok, start, element_end(tok, start, max), out, current, scope, t, alt)
+            ;Variable v = _eval_value(tok, start, element_end(tok, start, max), out, mov, current, scope, t, alt)
             /; if (v.loc_type == LOCATION.LITERAL)
                 ;out_text = string_join( {
                     out_text,
@@ -2066,7 +2081,7 @@
 # FIXME:
 # Need to impliment in place solving
 # Need to impliment auto typing
-/; _eval_value(~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; _eval_value(~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
     /; if (start == max - 1)
         /; if (tok`{start}.type_is(TOKEN.LITERAL))
             ;{}uint8 l = current`.full_path()
@@ -2093,11 +2108,11 @@
 
     /; if (pa !< 0)
         /; if (tok`{pa}.cmp("(") && first == pa)
-            ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+            ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
         ;; else if (tok`{pa}.cmp("{"))
             /; if (pr < 2 && pa !== first)
                 ;log_debug("Index")
-                ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+                ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
                 ;Variable vout = _eval_dot(tok, start, pa, out, current, scope, t, !alt)
                 ;return vout.index(i, out)
             ;; else if (pa == first)
@@ -2120,15 +2135,15 @@
 
     ;Variable s1, s2
     /; if (first == start)
-        ;s1 = _eval_value(tok, first + 1, max, out, current, scope, t, alt)
+        ;s1 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
     ;; else if (first == max - 1)
-        ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
     ;; else
-        ;s1 = _eval_value(tok, start, first, out, current, scope, t, alt)
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
         /; if (tok`{first}.cmp("="))
             ;t = s1.data_type
         ;/
-        ;s2 = _eval_value(tok, first + 1, max, out, current, scope, t, !alt)
+        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
         ;log_debug(string_add("Calculated s2 as ", s2.name))
     ;/
 
@@ -2181,7 +2196,7 @@
         ;wk.mod(s2, out)
     ;; else if (tok`{first}.cmp("~"))
         /; if (!(s1.is_ref()) && s1.loc_type == LOCATION.REGISTER)
-            ;s1 = scope`.move_to_stack(s1.location, out)
+            ;s1 = scope`.move_to_stack(s1.location, mov)
         ;/
         ;wk.ref(s1, out)
     ;; else if (tok`{first}.cmp("!"))
@@ -2192,16 +2207,16 @@
 ;/
 
 # ALWAYS put the value in rax
-/; eval_value (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope, Type t, bool save) [Variable]
+/; eval_value (~{}Token tok, ~int cur, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool save) [Variable]
     ;int end = cur`
     /; loop (end < len tok`) [end++]
-        /; if (tok`{end}.cmp(",") || tok`{end}.cmp("\n") || tok`{end}.cmp(";") || tok`{end}.cmp(";/"))
+        /; if (tok`{end}.type_is(TOKEN.SEPARATOR) || tok`{end}.cmp(";/") || tok`{end}.cmp("]") || tok`{end}.cmp(")"))
             ;break
         ;; else if (tok`{end}.type_is(TOKEN.DELIMITER))
             ;end = find_closing(tok, ~end)
         ;/
     ;/
-    ;Variable val = _eval_value(tok, cur`, end, out, current, scope, t, false)
+    ;Variable val = _eval_value(tok, cur`, end, out, mov, current, scope, t, false)
     /; if (save)
         ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
         ;set.set(val, out)
@@ -2214,27 +2229,71 @@
 # FIXME:
 # Need to find type of definition, then add all definitions to the current scope, while evaluating the
 # Value (if any) to store in them
-/; eval_def (~{}Token tok, ~int cur, ~CompData out, ~Module current, ~Scope scope)
+/; eval_def (~{}Token tok, ~int cur, ~CompData out, mov, ~Module current, ~Scope scope)
     ;Type t = get_type(tok, cur, current)
     /; loop (tok`{cur`}.type_is(TOKEN.DEFWORD))
         ;scope`.new_var(t, tok`{cur`}.data, out)
-        ;eval_value(tok, cur, out, current, scope, t, false)
+        ;eval_value(tok, cur, out, mov, current, scope, t, false)
 
         /; if (tok`{cur`}.cmp(","))
             ;cur` = next_non_nl(tok, cur` + 1)
+        ;; else
+            ;break
         ;/
     ;/
 ;/
 
-/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, ~Scope parent)
+/; is_bool_statement (~{}Token tok, int start, max, ~Module current, ~Scope parent) [bool]
+    ;int i = start
+    /; loop (i < max) [i++]
+        /; if (tok`{i}.type_is(TOKEN.AUGMENT))
+            /; if (priority(tok`{i}) == 6)
+                ;return true
+            ;/
+        ;; else if (tok`{i}.type_is(TOKEN.LITERAL))
+            /; if (string_equate(tok`{i}.data, "false") || string_equate(tok`{i}.data, "true"))
+                ;return true
+            ;/
+        ;; else if (tok`{i}.type_is(TOKEN.DEFWORD))
+            ;int j = i
+            ;Variable v = first_match(tok, ~j, max, current, parent)
+            /; if (string_equate(v.data_type.name, "bool"))
+                ;int j = len(v.data_type.ptr_chain)
+                /; if (j == 0 || (j == 1 && v.is_ref()))
+                    ;return true
+                ;/
+            ;/
+        ;; else if (tok`{i}.type_is(TOKEN.DELIMITER))
+            ;i = find_closing(tok, ~i)
+        ;; else if (tok`{i}.cmp(";") || tok`{i}.cmp("\n"))
+            ;break
+        ;/
+    ;/
 
+    ;return false
+;/
+
+
+/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, mov, ~Scope parent) [{}uint8]
+    ;log_debug("Statement list!")
+    /; loop (start = next_non_nl(tok, start + 1); start < end) [start = next_non_nl(tok, start + 1)]
+        /; if (is_definition(tok, cur, current))
+            ;log_debug("Block def")
+            ;eval_def(tok, ~start, out, mov, current, ~root)
+        ;; else
+            ;log_debug("Block val")
+            ;bool b = is_bool_statement(tok, start, end, current, scope)
+            ;eval_value(tok, ~start, out, mov, current, ~root, NO_TYPE, b)
+        ;/
+    ;/
+    ;return ""
 ;/
 
 # FIXME:
 # Need to impl:
 # cf block scoping and contextual keywords such as
 # continue, break, and return
-/; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, ~Scope parent)
+/; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, mov, ~Scope parent)
     ;int max = find_closing(tok, cur)
     ;Scope cf = parent`
     /; loop (cur`++; cur` < max) [cur`++]
@@ -2259,7 +2318,7 @@
             ;/
             ;int psl = find_closing(tok, cur)
             ;statement_list(tok, cur`, psl, current, out, ~cf)
-            ;cur` = psl
+            ;cur` = ps1
         ;; else
             ;break
         ;/
@@ -2273,7 +2332,7 @@
     /; loop (cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
             ;log_debug("Block in block")
-            ;_compile_block(tok, cur, current, out, ~cf)
+            ;_compile_block(tok, cur, current, out, mov, ~cf)
 
             /; if (tok`{cur`}.cmp(";;"))
                 ;cur` = cur` - 1
@@ -2281,7 +2340,7 @@
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, current, ~cf, ret, true)
+                ;eval_value(tok, cur, out, ~mov, current, ~cf, ret, true)
                 ;cf.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
@@ -2290,7 +2349,7 @@
                     ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
-                ;eval_value(tok, cur, out, current, ~root, ret, true)
+                ;eval_value(tok, cur, out, ~mov, current, ~root, ret, true)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
@@ -2303,10 +2362,10 @@
             ;/
         ;; else if (is_definition(tok, cur, current))
             ;log_debug("Block def")
-            ;eval_def(tok, cur, out, current, ~root)
+            ;eval_def(tok, cur, out, mov, current, ~root)
         ;; else
             ;log_debug("Block val")
-            ;eval_value(tok, cur, out, current, ~root, NO_TYPE, false)
+            ;eval_value(tok, cur, out, mov, current, ~root, NO_TYPE, false)
         ;/
     ;/
 
@@ -2370,7 +2429,11 @@
             /; if (m)
                 ;compile_block(tok, cur, current, out)
             ;; else
-                ;_compile_block(tok, cur, current, out, ~root)
+                ;CompData tmp = {"", "", ""}
+                ;CompData mov = {"", "", ""}
+                ;_compile_block(tok, cur, current, ~tmp, ~mov, ~root)
+                ;mov.add(tmp)
+                ;out`.add(mov)
             ;/
 
             /; if (tok`{cur`}.cmp(";;"))
@@ -2379,7 +2442,7 @@
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, current, ~root, ret, true)
+                ;eval_value(tok, cur, out, out, current, ~root, ret, true)
                 ;root.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
@@ -2388,7 +2451,7 @@
                     ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
-                ;eval_value(tok, cur, out, current, ~root, ret, true)
+                ;eval_value(tok, cur, out, out, current, ~root, ret, true)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
@@ -2401,10 +2464,10 @@
             ;/
         ;; else if (is_definition(tok, cur, current))
             ;log_debug("Block def")
-            ;eval_def(tok, cur, out, current, ~root)
+            ;eval_def(tok, cur, out, out, current, ~root)
         ;; else
             ;log_debug("Block val")
-            ;eval_value(tok, cur, out, current, ~root, NO_TYPE, false)
+            ;eval_value(tok, cur, out, out, current, ~root, NO_TYPE, false)
         ;/
     ;/
     
@@ -2649,6 +2712,7 @@
 
 ;{}uint8 MULTI_PARENS = "/;:#"
 ;{}uint8 PARENS = "()[]{}"
+;{}uint8 SEPS = "\n;:,"
 ;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,\""
 ;{}uint8 AUGMENTS = "=~!<>&|^+-*/`."
 
@@ -2733,6 +2797,13 @@
     ;return string_contains(PARENS, str{0})
 ;/
 
+/; is_separator ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;/
+    ;return string_contains(SEPS, str{0})
+;/
+
 /; is_reserved ({}uint8 str) [bool]
     /; if (len str < 1)
         ;return false
@@ -2796,7 +2867,7 @@
 ;/
 
 /; gen_type (Token t) [int]
-    /; if (t.cmp("\n") || t.cmp(","))
+    /; if (is_separator(t.data))
         ;return TOKEN.SEPARATOR
     ;/
 

@@ -22,5 +22,8 @@ mod.test sv = {
 /; main [int]
     ~int j = ~sv.i
     int i = mod.arr_i{j` - 1}
-    return i
+    /; if (1 == 1)
+        return i
+    ;/
+    return 0
 ;/
