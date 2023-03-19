@@ -14,10 +14,7 @@ mod.test tv = {
     1, 2, false, 0
 }
 
-
 /; main [int]
-    ~int b = ~mod.a
-    ~int c = b+8
-    ~~int d = ~c
-    return d``
+    ~int i = ~tv.i
+    return i`
 ;/

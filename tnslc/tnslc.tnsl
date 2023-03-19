@@ -5,7 +5,7 @@
 ;{}uint8 log_level = "2"
 
 /; log_err ({}uint8 msg)
-    ;tnsl.io.print("\n[TNSLC] [ERR]: ")
+    ;tnsl.io.print("[TNSLC] [ERR]: ")
     ;tnsl.io.println(msg)
     ;tnsl.exit()
 ;/
@@ -13,7 +13,7 @@
 /; log_info ({}uint8 msg)
     ;uint l = string_to_int(log_level)
     /; if (l > 0)
-        ;tnsl.io.print("\n[TNSLC] [INFO]: ")
+        ;tnsl.io.print("[TNSLC] [INFO]: ")
         ;tnsl.io.println(msg)
     ;/
 ;/
@@ -21,7 +21,7 @@
 /; log_debug ({}uint8 msg)
     ;uint l = string_to_int(log_level)
     /; if (l > 1)
-        ;tnsl.io.print("\n[TNSLC] [DEBUG]: ")
+        ;tnsl.io.print("[TNSLC] [DEBUG]: ")
         ;tnsl.io.println(msg)
     ;/
 ;/
@@ -575,6 +575,9 @@
     # TODO: Match a type to another type if possible
     # this is the type inference engine
     /; match_types (Variable to_match, ~CompData data) [Variable]
+        /; if (to_match.loc_type == LOCATION.LITERAL)
+            ;return to_match
+        ;/
         ;return to_match
     ;/
     
@@ -606,6 +609,10 @@
         ;return false
     ;/
 
+    /; is_prim [bool]
+        ;return len(self.data_type.ptr_chain) > 1 || is_primitive(self.data_type.name) !< 0
+    ;/
+
     /; strip_one (~CompData data)
         ;data`.csec = string_join( {
             data`.csec,
@@ -615,7 +622,7 @@
     ;/
 
     /; strip_refs (~CompData data) [Variable]
-        ;int pc = len (self.data_type.ptr_chain)
+        ;Variable out = {"#ref", self.data_type, 4, LOCATION.REGISTER}
 
         /; if (self.loc_type == LOCATION.REGISTER)
             ;data`.csec = string_join( {
@@ -625,11 +632,12 @@
         ;; else
             ;data`.csec = string_join( {
                 data`.csec,
-                "\tmov rsi, ", self.norm_loc(8), "\n"
+                "\tlea rsi, ", self.norm_loc(8), "\n"
             }, "")
+            ;out.data_type.ptr_chain.append(PTYPE.REFERENCE)
         ;/
-        ;Variable out = {"#ref", self.data_type, 4, LOCATION.REGISTER}
 
+        ;int pc = len (out.data_type.ptr_chain)
         /; loop (pc > 1) [pc = len (out.data_type.ptr_chain)]
             /; if (out.data_type.ptr_chain{pc - 1} == PTYPE.REFERENCE)
                 ;out.strip_one(data)
@@ -780,22 +788,51 @@
     # Todo: Make sure this works well.
     /; set (Variable v, ~CompData data)
         ;int sz = self.norm_size()
+        ;v = self.match_types(v, data)
         /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
             ;self.location = v.location
-        ;; else if (is_primitive(self.data_type.name) < 0 && len (self.data_type.ptr_chain) == 0)
-            ;v = self.match_types(v, data)
+        ;; else if (self.is_prim())
+            /;if (self.is_ref() && v.is_ref())
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
+                    "\tmov ", self.norm_loc(sz), ", ", get_reg(4, sz), "\n"
+                }, "")
+            ;; else
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tmov ", self.norm_loc(sz), ", ",v.norm_loc(sz), "\n"
+                }, "")
+            ;/
+        ;; else
+            /; if (self.is_ref())
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tmov rdi, ", self.norm_loc(8), "\n"
+                }, "")
+            ;; else
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tlea rdi, ", self.norm_loc(8), "\n"
+                }, "")
+            ;/
+
+            /; if (v.is_ref())
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tmov rdi, ", v.norm_loc(8), "\n"
+                }, "")
+            ;; else
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\tlea rdi, ", v.norm_loc(8), "\n"
+                }, "")
+            ;/
+
             ;data`.csec = string_join( {
                 data`.csec,
-                "\tlea rsi, ", v.norm_loc(0), "\n",
-                "\tlea rdi, ", self.norm_loc(0), "\n",
                 "\tmov rcx, ", int_to_string(sz), "\n",
                 "\trep movsb\n"
-            }, "")
-        ;; else
-            ;v = self.match_types(v, data)
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tmov ", self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
             }, "")
         ;/
     ;/
@@ -806,27 +843,22 @@
             data`.csec,
             "\tmov ", get_reg(new_reg, sz), ", ", get_reg(self.location, sz), "\n"
         }, "")
+        ;self.location = new_reg
     ;/
 
     /; ref (Variable to_ref, ~CompData data)
         ;int l = len (to_ref.data_type.ptr_chain)
-        /; if (l > 0)
-            /; if (to_ref.data_type.ptr_chain{l - 1} == PTYPE.REFERENCE)
-                ;to_ref.data_type.ptr_chain{l - 1} = PTYPE.POINTER
-                ;self.set(to_ref, data)
-            ;; else
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\tlea rsi, ", to_ref.norm_loc(0), "\n",
-                    "\tmov ", self.norm_loc(8), ", rsi\n"
-                }, "")
-            ;/
+        /; if (to_ref.is_ref())
+            ;to_ref.data_type.ptr_chain{l - 1} = PTYPE.POINTER
+            ;self.set(to_ref, data)
         ;; else if (to_ref.loc_type !== LOCATION.REGISTER && to_ref.loc_type !== LOCATION.LITERAL)
             ;data`.csec = string_join( {
                 data`.csec,
                 "\tlea rsi, ", to_ref.norm_loc(0), "\n",
                 "\tmov ", self.norm_loc(8), ", rsi\n"
             }, "")
+        ;; else
+            ;log_err(string_add("Failure to create reference from register or literal value ", to_ref.sprint()))
         ;/
     ;/
 
@@ -840,37 +872,26 @@
         ;return out
     ;/
 
-    /; member (Variable s, ~CompData data, {}uint8 name)
-        ;log_debug("member")
+    /; member ({}uint8 name, ~CompData data) [Variable]
+        ;Variable out = self.strip_refs(data)
         ;int accum = 0
-        ;self.data_type.name = ""
         ;int i = 0
-        /; loop(i < len (s.data_type.members)) [i++]
-            /; if (string_equate(s.data_type.members{i}.name, name))
+        /; loop(i < len (out.data_type.members)) [i++]
+            /; if (string_equate(out.data_type.members{i}.name, name))
                 ;break
             ;/
-            ;accum = accum + s.data_type.members{i}.data_type.s
+            ;accum = accum + out.data_type.members{i}.data_type.s
         ;/
-
-        /; if (s.is_ref() && (s.loc_type == LOCATION.STACK || s.loc_type == LOCATION.LABEL))
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tmov rsi, ", s.norm_loc(8), "\n"
-            }, "")
-        ;; else
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tlea rsi, ", s.norm_loc(8), "\n"
-            }, "")
-        ;/
-
+        
+        ;out.data_type = out.data_type.members{i}.data_type
+        ;out.data_type.ptr_chain.append(PTYPE.REFERENCE)
+        
         ;data`.csec = string_join( {
             data`.csec,
             "\tadd rsi, ", int_to_string(accum), "\n"
         }, "")
 
-        /; if (self.is_ref())
-        ;/
+        ;return out
     ;/
 
     /; index (Variable i, ~CompData data) [Variable]
@@ -1877,35 +1898,36 @@
         ;return wk
     ;/
 
-    ;Variable refer = {"#tmp", wk.data_type, 1, LOCATION.REGISTER}
-    /; if (alt)
-        ;refer.location = 2
-    ;/
-
     ;log_debug(string_add("Eval dot initial val: ", wk.sprint()))
 
-    ;refer.data_type.ptr_chain.append(PTYPE.REFERENCE)
     /; if (tok`{start}.cmp("."))
-        ;log_debug("Pre loop ref")
-        ;refer.ref(wk, out)
+        ;log_debug("Pre loop member")
+        ;wk = wk.member(tok`{start + 1}.data, out)
     ;; else
         ;log_debug("Pre loop deref")
-        ;refer = wk.deref(out)
+        ;wk = wk.deref(out)
     ;/
-    ;start++
+
+    ;start = start + 2
     
     /; loop (start < max) [start++]
         /; if (tok`{start}.cmp("`"))
             ;log_debug("Loop deref")
-            ;refer = refer.deref(out)
+            ;wk = wk.deref(out)
         ;; else if (tok`{start}.cmp(".") && tok`{start + 1}.type_is(TOKEN.DEFWORD))
             ;log_debug("Loop member")
-            ;refer.member(refer, out, tok`{start + 1}.data)
+            ;wk = wk.member(tok`{start + 1}.data, out)
             ;start++
         ;/
     ;/
 
-    ;return refer
+    /; if (alt)
+        ;wk.move_register(2, out)
+    ;; else
+        ;wk.move_register(1, out)
+    ;/
+
+    ;return wk
 ;/
 
 /; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
