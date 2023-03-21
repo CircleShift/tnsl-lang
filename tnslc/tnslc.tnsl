@@ -1984,6 +1984,7 @@
     ;return wk
 ;/
 
+# FIXME: Important last step before the language can be considered remotely usable
 /; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
     
 ;/
@@ -1991,7 +1992,6 @@
 /; literal_variable ({}uint8 data, l, ~CompData out) [Variable]
     ;Variable v = {"#literal", NO_TYPE, 0, LOCATION.LITERAL}
     /; if (data{0} == '"')
-        # TODO: String literals
         ;out`.dsec = string_join({
             out`.dsec,
             l, ":\n",
@@ -2078,9 +2078,6 @@
     ;/
 ;/
 
-# FIXME:
-# Need to impliment in place solving
-# Need to impliment auto typing
 /; _eval_value(~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
     /; if (start == max - 1)
         /; if (tok`{start}.type_is(TOKEN.LITERAL))
@@ -2106,21 +2103,34 @@
         ;/
     ;/
 
-    /; if (pa !< 0)
+    /; if (pa !< 0 && pr < 2)
         /; if (tok`{pa}.cmp("(") && first == pa)
             ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
         ;; else if (tok`{pa}.cmp("{"))
-            /; if (pr < 2 && pa !== first)
+            /; if (pa !== first)
                 ;log_debug("Index")
                 ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
                 ;Variable vout = _eval_dot(tok, start, pa, out, current, scope, t, !alt)
                 ;return vout.index(i, out)
-            ;; else if (pa == first)
+            ;; else
                 ;log_debug("Composite")
                 ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
             ;/
-        ;; else if (tok`{pa}.cmp("[") && first)
+        ;; else if (tok`{pa}.cmp("["))
             # code for converting value to another type here
+        ;/
+    ;/
+
+    # TODO: Boolean logic
+    /; if (pr == 6)
+        # create a boolean scope
+        /; if (!scope.is_cf() || !scope.cf_type("bool"))
+            ;Scope bsc = scope`.new_sub_cf("bool")
+            ;scope = ~bsc
+            # do some kinda boolean magic
+            # create an end clause as a landing pad for the result
+        ;; else
+            # boolean magic but without the end clause
         ;/
     ;/
 
@@ -2216,6 +2226,7 @@
             ;end = find_closing(tok, ~end)
         ;/
     ;/
+
     ;Variable val = _eval_value(tok, cur`, end, out, mov, current, scope, t, false)
     /; if (save)
         ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
@@ -2226,9 +2237,6 @@
     ;return { "", NO_TYPE, 0, 0 }
 ;/
 
-# FIXME:
-# Need to find type of definition, then add all definitions to the current scope, while evaluating the
-# Value (if any) to store in them
 /; eval_def (~{}Token tok, ~int cur, ~CompData out, mov, ~Module current, ~Scope scope)
     ;Type t = get_type(tok, cur, current)
     /; loop (tok`{cur`}.type_is(TOKEN.DEFWORD))
@@ -2274,19 +2282,33 @@
 ;/
 
 
-/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, mov, ~Scope parent) [{}uint8]
+/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, mov, ~Scope parent) [CompData]
     ;log_debug("Statement list!")
+    ;bool b = false
+    ;CompData carry = {"", "", ""}
     /; loop (start = next_non_nl(tok, start + 1); start < end) [start = next_non_nl(tok, start + 1)]
-        /; if (is_definition(tok, cur, current))
+        ;out`.add(carry)
+        ;carry = {"", "", ""}
+        ;b = false
+        /; if (is_definition(tok, ~start, current))
             ;log_debug("Block def")
-            ;eval_def(tok, ~start, out, mov, current, ~root)
+            ;eval_def(tok, ~start, out, mov, current, parent)
         ;; else
             ;log_debug("Block val")
-            ;bool b = is_bool_statement(tok, start, end, current, scope)
-            ;eval_value(tok, ~start, out, mov, current, ~root, NO_TYPE, b)
+            ;b = is_bool_statement(tok, start, end, current, parent)
+            ;Type t = NO_TYPE
+            /; if (b)
+                ;t = {1, "bool", "_bool", {}, {}}
+            ;/
+            ;eval_value(tok, ~start, carry, mov, current, parent, t, b)
         ;/
     ;/
-    ;return ""
+    ;out`.add(carry)
+    /; if (!b)
+        ;carry = {"", "", ""}
+    ;/
+
+    ;return carry
 ;/
 
 # FIXME:
@@ -2295,34 +2317,60 @@
 # continue, break, and return
 /; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, mov, ~Scope parent)
     ;int max = find_closing(tok, cur)
-    ;Scope cf = parent`
+    ;Scope cf = parent`.new_sub_cf("wrap")
+    ;CompData prelude = {"", "", ""}
+    ;out`.csec = string_join( {
+        out`.csec,
+        cf.scope_start_label(), ":\n"
+    }, "")
     /; loop (cur`++; cur` < max) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur` + 1}.cmp("if"))
                 ;cf = parent`.new_sub_cf("elif")
                 ;cur`++
             ;; else
-                ;cf = parent`.new_sub_cf(tok`{cur`}.data)
+                ;cf = cf.new_sub_cf(tok`{cur`}.data)
             ;/
         ;; else if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
+            ;int psl = find_closing(tok, cur)
             /; if (tok`{cur`}.cmp("["))
                 ;out`.csec = string_join( {
                     out`.csec,
-                    "\t", cf.scope_rep_label(), ":\n"
+                    cf.scope_end_label(), ":\n"
                 }, "")
+                ;CompData tmp = statement_list(tok, cur`, psl, current, out, mov, ~cf)
+                /; if (len (tmp.csec) == 0 && cf.cf_type("loop"))
+                    ;out`.csec = string_add(out`.csec, prelude.csec)
+                ;/
+                /; if (cf.is_cf())
+                    ;out`.csec = string_join( {
+                        out`.csec,
+                        "\tjmp ", cf.parent`.scope_end_label(), "\n"
+                    }, "")
+                ;/
             ;; else
                 ;out`.csec = string_join( {
                     out`.csec,
-                    "\t", cf.scope_start_label(), ":\n"
+                    cf.scope_start_label(), ":\n"
                 }, "")
+                ;prelude = statement_list(tok, cur`, psl, current, out, mov, ~cf)
+                /; if (len (prelude.csec) == 0)
+                    ;prelude.csec = string_join( {
+                        "\tjmp ", cf.scope_rep_label(), "\n"
+                    }, "")
+                    ;out`.csec = string_add(out`.csec, prelude.csec)
+                ;/
             ;/
-            ;int psl = find_closing(tok, cur)
-            ;statement_list(tok, cur`, psl, current, out, ~cf)
             ;cur` = ps1
         ;; else
             ;break
         ;/
     ;/
+
+    ;out`.csec = string_join( {
+        out`.csec,
+        cf.scope_rep_label(), ":\n"
+    }, "")
     
     /; if (tok`{cur`}.cmp("\n"))
         ;cur` = next_non_nl(tok, cur` + 1)
@@ -2369,10 +2417,12 @@
         ;/
     ;/
 
-    ;out`.csec = string_join( {
-        out`.csec,
-        "\t", cf.scope_end_label(), ":\n"
-    }, "")
+    /; if (cf.is_cf())
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\t", cf.parent`.scope_end_label(), ":\n"
+        }, "")
+    ;/
 ;/
 
 /; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
@@ -2429,11 +2479,12 @@
             /; if (m)
                 ;compile_block(tok, cur, current, out)
             ;; else
-                ;CompData tmp = {"", "", ""}
-                ;CompData mov = {"", "", ""}
+                ;CompData mov = {"", "", ""}, tmp = {"", "", ""}
+                ;log_debug("PRE COMPUTATION OF BLOCK\n")
                 ;_compile_block(tok, cur, current, ~tmp, ~mov, ~root)
-                ;mov.add(tmp)
                 ;out`.add(mov)
+                ;log_debug("POST COMPUTATION OF BLOCK")
+                ;_compile_block(tok, cur, current, out, ~tmp, ~root)
             ;/
 
             /; if (tok`{cur`}.cmp(";;"))
