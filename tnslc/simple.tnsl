@@ -20,10 +20,13 @@ mod.test sv = {
 }
 
 /; main [int]
-    ~int j = ~sv.i
-    int i = mod.arr_i{j` - 1}
-    /; if (1 == 1)
-        return i
+    ~uint8 i = ~mod.str{0}
+    bool b = i` > i`
+    /; loop (i` < 81)
+        i` = i` + 2
+        /; if (i` == 80)
+            i` = i` + 5
+        ;/
     ;/
-    return 0
+    return i`
 ;/
