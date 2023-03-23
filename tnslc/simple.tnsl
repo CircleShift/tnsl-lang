@@ -1,32 +1,14 @@
 
-/; module mod
-    uint a = 2, b = 4
-    {}uint8 str = "Hello", c = "#"
-    {}int arr_i = {2, 3, 4, 5} 
+struct Test {
+    int i
+}
 
-    struct test {
-        int i, j,
-        bool k,
-        uint8 m
-    }
+/; method Test
+    /; whatever [int]
+        return self.i
+    ;/
 ;/
 
-mod.test tv = {
-    1, 2, false, 0
-}
-
-mod.test sv = {
-    4, 5, true, 6
-}
-
 /; main [int]
-    ~uint8 i = ~mod.str{0}
-    bool b = i` > i`
-    /; loop (i` < 81)
-        i` = i` + 2
-        /; if (i` == 80)
-            i` = i` + 5
-        ;/
-    ;/
-    return i`
+    return 0
 ;/

@@ -1633,6 +1633,7 @@
 
 /; parse_param_list (~{}Token tok, ~int cur, ~Module current) [{}Variable]
     ;{}Variable out = {}
+
     ;int max = find_closing(tok, cur)
     ;Type t = NO_TYPE
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
@@ -2554,6 +2555,16 @@
     ;int max = find_closing(tok, cur)
     ;bool m = false, returned = false
     ;Type ret = NO_TYPE
+
+    /; if (len (current`.name) > 2)
+        /; if (current`.name{0} == '_' && current`.name{1} == '#')
+            ;{}{}uint8 split = string_split(current`.name, '#')
+            ;Type st = current`.find_type( {split{1}} )`
+            ;st.ptr_chain = {PTYPE.REFERENCE}
+            ;root.vars.append({"self", st, 0, 0})
+        ;/
+    ;/
+
     /; loop (cur`++; cur` < max && !m) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;root.name = tok`{cur`}.data
