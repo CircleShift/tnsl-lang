@@ -1504,6 +1504,10 @@
                 ;out = out + self.vars{i}.norm_size()
             ;/
         ;/
+        
+        /; if (!(self.is_cf()) && !(self.r))
+            ;return out + 80
+        ;/
 
         ;return out
     ;/
@@ -1520,6 +1524,65 @@
         /; if (!(self.r))
             ;{}uint8 intro = "\tpush rbp\n\tlea rbp, [rsp + 8]\n\tpush r8\n\tpush r9\n\tpush r10\n\tpush r11\n\tpush r12\n\tpush r13\n\tpush r14\n\tpush r15\n"
             ;out`.csec = string_add(out`.csec, intro)
+        ;/
+
+        # pre-stack loop
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            ;int loc = self.next_loc(self.vars{i}.data_type)
+            /; if (loc !< 0)
+                ;self.vars{i}.location = loc
+                ;self.vars{i}.loc_type = LOCATION.REGISTER
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    "\tmov ", get_reg(loc, 8), ", ", get_reg(loc - 8, 8), "\n"
+                }, "")
+            ;/
+        ;/
+
+        ;int accum = 0
+        /; if (!(self.r))
+            ;accum = 80
+        ;/
+
+        ;{}uint8 moves = string_join( {
+            "lea rsi, [rbp]\n"
+        }, "")
+        
+        # Move extra variables
+        /; loop (int i = len (self.vars) - 1; i !< 0) [i = i - 1]
+            /; if (self.vars{i}.loc_type == LOCATION.LITERAL)
+                ;self.vars{i}.loc_type = LOCATION.STACK
+                ;int sz = self.vars{i}.norm_size()
+                ;accum = accum + sz
+                ;self.vars{i}.location = accum
+                /; if (len (self.vars{i}.data_type.ptr_chain) > 0)
+                    ;moves.csec = string_join( {
+                        moves.csec,
+                        "\tmov rdi, qword [rsi]\n",
+                        "\tmov qword [rbp - ", int_to_string(accum), "], rdi\n",
+                        "\tadd rsi, 8\n"
+                    }, "")
+                ;; else if (self.vars{i}.is_prim())
+                    ;moves.csec = string_join( {
+                        moves.csec,
+                        "\tmov ", get_reg(5, sz), ", ", mov_by_size(sz), "[rsi]\n",
+                        "\tmov ", mov_by_size(sz), "[rbp - ", int_to_string(accum), "], ", get_reg(5, sz),"\n",
+                        "\tadd rsi, ", int_to_string(sz), "\n"
+                    }, "")
+                ;; else
+                    ;moves.csec = string_join( {
+                        moves.csec,
+                        "\tlea rdi, [rbp - ", int_to_string(accum), "]\n",
+                        "\tmov rcx", int_to_string(sz), "\n",
+                        "\tmovsb\n",
+                        "\tadd rsi, ", int_to_string(sz), "\n"
+                    }, "")
+                ;/
+            ;/
+        ;/
+        
+        /; if (accum > 80 && !(self.r))
+            ;out`.csec = string_add(out`.csec, moves)
         ;/
     ;/
     
@@ -2000,7 +2063,7 @@
     /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
         ;int nnl = next_non_nl(tok, cur` + 1)
         /; if (tok`{nnl}.cmp(",") || nnl == max)
-            ;out.append({tok`{cur`}.data, t, 0, 0})
+            ;out.append({tok`{cur`}.data, t, 0, LOCATION.LITERAL})
             /; if (tok`{nnl}.cmp(","))
                 ;cur`++
             ;/

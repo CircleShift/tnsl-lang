@@ -1,15 +1,18 @@
 
 {}uint8 str1 = "abcd"
-{}uint8 str2 = "abce"
+{}uint8 str2 = "abcd"
 
-/; main [int]
-    /; loop (int i = 0; i < 4) [i++]
-        /; if (str1{i} !== str2{i})
-            /; if (str2{i} == 'e')
-                return 3
-            ;/
-            return 1
-        ;/
-    ;/
-    return 0
+/; call_me [int]
+    return 4
+;/
+
+/; main (int argc, ~~uint argv) [int]
+    # On windows, the first two arguments are passed in RCX and RDX, so we need to
+    # update their positions here or else tnsl willhave garbage values in r8 and r9
+    asm "mov r8, rcx"
+    asm "mov r9, rdx"
+    # If on linux, you would use rdi and rsi instead of rcx and rdx, respectively
+
+    # return the number of arguments
+    return argc
 ;/
