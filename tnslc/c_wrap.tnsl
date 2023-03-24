@@ -74,7 +74,7 @@ struct Vector {
     ;/
 
     /; set (uint i, ~void data)
-        ~void index = get(i)
+        ~void index = self.get(i)
         /; loop (i = 0; i < self.el_size) [index = index + 1; data = data + 1; i++]
             index = data
         ;/

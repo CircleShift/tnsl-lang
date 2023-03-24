@@ -360,6 +360,309 @@
     ;/
 ;/
 
+##
+## Tokenizer funcs
+##
+
+
+/; is_whitespace (uint8 c) [bool]
+    ;return (c == '\n' || c == '\t' || c == ' ')
+;/
+
+;{}uint8 MULTI_PARENS = "/;:#"
+;{}uint8 PARENS = "()[]{}"
+;{}uint8 SEPS = "\n;:,"
+;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,\""
+;{}uint8 AUGMENTS = "=~!<>&|^+-*/%`."
+
+;{}{}uint8 MULTI_AUGMENTS = {
+    "++", "--",
+
+    "==", "!==", "&&", "||", "^^", "<==", ">==", "!>", "!<",
+
+    "~=", "`=", "%=", "^=", "&=", "*=",
+    "!=", "|=", "/=",
+
+    "<<", ">>", "!&", "!|", "!^"
+}
+
+
+;{}{}uint8 KEYWORDS = {
+    "len",
+    "is",
+
+    "if",
+    "else",
+    "loop",
+
+    "continue",
+    "break",
+    "return",
+
+    "method",
+    "struct",
+    "enum",
+    "interface",
+
+    "export",
+    "module",
+
+    "const",
+    "static",
+    "volatile",
+    "raw",
+
+    "extends",
+    "override",
+
+    "asm"
+}
+
+;{}{}uint8 KEYTYPES = {
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "uint",
+
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "int",
+
+    "float32",
+    "float64",
+    "float",
+
+    "comp32",
+    "comp64",
+    "comp",
+
+    "vect",
+    "bool",
+
+    "type",
+    "void"
+}
+
+/; is_delimiter ({}uint8 str) [bool]
+    /; if (len str > 2 || len str < 1)
+        ;return false
+    ;/
+
+    /; if (len str == 2)
+        ;return string_contains(MULTI_PARENS, str{0}) && string_contains(MULTI_PARENS, str{1})
+    ;/
+
+    ;return string_contains(PARENS, str{0})
+;/
+
+/; is_separator ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;/
+    ;return string_contains(SEPS, str{0})
+;/
+
+/; is_reserved ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;/
+    ;return string_contains(RESERVED, str{0})
+;/
+
+/; is_augment ({}uint8 str) [bool]
+    /; if (len str == 1)
+        ;return string_contains(AUGMENTS, str{0})
+    ;/
+
+    ;return list_contains(MULTI_AUGMENTS, str)
+;/
+
+/; is_str_literal ({}uint8 str) [bool]
+    /; if (string_equate(str, "\"") || string_equate(str, "'"))
+        ;return true
+    ;/
+
+    /; if (len str < 2)
+        ;return false
+    ;; else if (str{0} !== '\'' && str{0} !== '"')
+        ;return false
+    ;/
+
+    /; loop (int i = 1; i < len str) [i++]
+        /; if (str{i} == '\\')
+            ;i++
+        ;; else if (str{i} == str{0})
+            ;return i == len str - 1
+        ;/
+    ;/
+    ;return true
+;/
+
+/; is_num_literal ({}uint8 str) [bool]
+    /; if (len str < 1)
+        ;return false
+    ;; if (len str == 1 && str{0} == '.')
+        ;return false
+    ;/
+
+    ;bool dec = false
+    /; loop (int i = 0; i < len str) [i++]
+        /; if (str{i} == '.')
+            /; if (!dec)
+                ;dec = true
+            ;; else
+                ;return false
+            ;/
+        ;; else if (str{i} < '0' || str{i} > '9')
+            ;return false
+        ;/
+    ;/
+    ;return true
+;/
+
+/; is_literal({}uint8 str) [bool]
+    ;return is_str_literal(str) || is_num_literal(str) || string_equate(str, "true") || string_equate(str, "false")
+;/
+
+/; gen_type (Token t) [int]
+    /; if (is_separator(t.data))
+        ;return TOKEN.SEPARATOR
+    ;/
+
+    /; if (is_literal(t.data))
+        ;return TOKEN.LITERAL
+    ;/
+
+    /; if (is_reserved(t.data))
+        /; if (is_delimiter(t.data))
+            ;return TOKEN.DELIMITER
+        ;; else if (is_augment(t.data))
+            ;return TOKEN.AUGMENT
+        ;/
+    ;; else if (list_contains(KEYWORDS, t.data))
+        ;return TOKEN.KEYWORD
+    ;; else if (list_contains(KEYTYPES, t.data))
+        ;return TOKEN.KEYTYPE
+    ;/
+
+    ;return TOKEN.DEFWORD
+;/
+
+/; break_token (Token current, uint8 to_append) [bool]
+    /; if (is_literal(current.data))
+        ;current.data.append(to_append)
+        ;return !(is_literal(current.data))
+    ;/
+
+    /; if (is_whitespace(to_append) || current.cmp("\n"))
+        ;return true
+    ;/
+
+    /; if (is_reserved(current.data))
+        /; if (is_reserved({to_append}))
+            ;current.data.append(to_append)
+            ;return gen_type(current) == TOKEN.DEFWORD
+        ;/
+        ;return true
+    ;; else if (is_reserved({to_append}))
+        ;return true
+    ;/
+
+    ;return false
+;/
+
+/; handle_comment (tnsl.io.File fd, ~Token current, ~int line) [bool]
+    ;bool block = false
+    /; if (current`.cmp("/"))
+        ;block = true
+    ;/
+
+    /; loop (int i = fd.read(); i !== -1) [i = fd.read()]
+        /; if (i == '\n')
+            ;line`++
+            /; if (!block)
+                ;return true
+            ;/
+        ;; else if (block && i == '#')
+            ;i = fd.read()
+            /; if (i == '/')
+                ;current` = {0, line, ""}
+                ;return false
+            ;; else if (i == ';' || i == ':')
+                ;current`.data.append(i)
+                ;return false
+            ;/
+
+            /; loop (i !== '\n' && i !== -1) [i = fd.read()] ;/
+
+            ;line`++
+        ;/
+    ;/
+;/
+
+/; tokenize (Path f) [{}Token]
+    ;{}Token out = {}
+
+    ;tnsl.io.File fd = f.open_read()
+    
+    ;Token current = {0, 0, ""}
+    ;int line = 1
+    /; loop (int i = fd.read(); i > -1) [i = fd.read()]
+        /; if (i == '\r')
+            ;continue
+        ;/
+
+        /; if (i == '#' && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
+            ;bool ln = handle_comment(fd, ~current, ~line)
+            /; if (ln)
+                ;current.tokenType = gen_type(current)
+                /; if (!(current.cmp("")))
+                    ;out.append(current)
+                ;/
+                ;out.append({TOKEN.SEPARATOR, line - 1, "\n"})
+            ;/
+            ;continue
+        ;/
+
+        /; if (i == '\n'  && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
+            ;log_vis(".")
+            /; if (!(current.cmp("\n")))
+                ;current.tokenType = gen_type(current)
+                /; if (!(current.cmp("")))
+                    ;out.append(current)
+                ;/
+                ;current = {TOKEN.SEPARATOR, line, ""}
+                ;current.data.append(i)
+            ;/
+            ;line++
+        ;; else if (break_token(current, i))
+            ;current.tokenType = gen_type(current)
+            /; if (!(current.cmp("")))
+                ;out.append(current)
+            ;/
+            ;current = {0, line, ""}
+            /; if (!(is_whitespace(i)))
+                ;current.data.append(i)
+            ;/
+        ;; else
+            ;current.data.append(i)
+        ;/
+    ;/
+    ;log_vis("OK\n")
+
+    /; if (!(current.cmp("")) && !(current.cmp("\n")))
+        ;current.tokenType = gen_type(current)
+        ;out.append(current)
+    ;/
+
+    ;fd.close()
+
+    ;return out
+;/
+
 # General defs:
 ## Type defs
 ## Function defs
@@ -630,6 +933,28 @@
         ;return 8
     ;/
 
+    /; el_size [int]
+        ;int index = len(self.data_type.ptr_chain) - 1
+        /; loop (index > 0 && self.data_type.ptr_chain{index} == PTYPE.REFERENCE)
+            ;index--
+        ;/
+
+        ;bool arr = false
+        /; loop (index !< 0)
+            /; if (self.data_type.ptr_chain{index} !== PTYPE.REFERENCE)
+                /; if (arr)
+                    ;return 8
+                ;/
+                ;arr = true
+                ;index--
+            ;; else
+                ;index--
+            ;/
+        ;/
+
+        ;return self.data_type.s
+    ;/
+
     # TODO: Match a type to another type if possible
     # this is the type inference engine
     /; match_types (Variable to_match, ~CompData data) [Variable]
@@ -815,6 +1140,28 @@
         ;/
     ;/
 
+    /; inc (~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            ;self.location++
+        ;; else
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tinc ", self.norm_loc(self.norm_size()), "\n"
+            }, "")
+        ;/
+    ;/
+
+    /; dec (~CompData data)
+        /; if (self.loc_type == LOCATION.LITERAL)
+            ;self.location--
+        ;; else
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tdec ", self.norm_loc(self.norm_size()), "\n"
+            }, "")
+        ;/
+    ;/
+
     /; ax_compute ({}uint8 op, int sz, Variable v, ~CompData data, int keep)
         /; if (self.loc_type == LOCATION.LITERAL)
             ;v.ax_compute(op, sz, self, data)
@@ -992,15 +1339,20 @@
     ;/
 
     /; index (Variable i, ~CompData data) [Variable]
+        ;int sz = self.el_size()
+        ;log_debug(string_add("Index starting: ", self.sprint()))
         ;Variable out = self.strip_refs(data)
-        
-        ;int sz = out.norm_size()
+
         ;int opc = len (out.data_type.ptr_chain)
 
         /; if (opc == 0 || (out.is_ref() && opc == 1))
             ;log_err(string_add("Unable to index a type if it is not a pointer or array ", out.sprint()))
         ;/
-        
+
+        ;Variable ind = {"#index", {8, "void", "", {PTYPE.POINTER}, {}}, 3, LOCATION.REGISTER}
+        ;ind.set(i, data)
+        ;ind.mul({"#mul", {8, "uint", "", {}, {}}, sz, LOCATION.LITERAL}, data)
+
         /; if (out.is_ref())
             ;data`.csec = string_join( {
                 data`.csec,
@@ -1008,17 +1360,14 @@
             }, "")
         ;/
 
-        ;Variable t = {"#tmp", get_primitive(is_primitive("uint")), 0, LOCATION.REGISTER}
-        ;t.set({"#literal", t.data_type, sz, LOCATION.LITERAL}, data)
-        ;t.mul(i, data)
         ;data`.csec = string_join( {
             data`.csec,
-            "\tadd rsi, rax\n"
+            "\tlea rsi, [rsi + rdx]\n"
         }, "")
 
         /; if (out.is_ref())
             ;out.data_type.ptr_chain = strip_int(out.data_type.ptr_chain)
-            ;out.data_type.ptr_chain{len (out.data_type.ptr_chain) - 1} == PTYPE.REFERENCE
+            ;out.data_type.ptr_chain{len (out.data_type.ptr_chain) - 1} = PTYPE.REFERENCE
         ;/
 
         ;log_debug(string_add("Index returning: ", out.sprint()))
@@ -1253,9 +1602,6 @@
     ;/
 
     /; find_var ({}{}uint8 artifact, ~Module current) [Variable]
-
-        ;log_debug(string_join(artifact, "."))
-        ;log_debug(string_add("Trying to find scope var in ", self.sprint()))
         /; loop (int i = 0; i < len (self.vars)) [i++]
             /; if (string_equate(self.vars{i}.name, artifact{0}))
                 ;return self.vars{i}
@@ -1540,8 +1886,18 @@
 ;/
 
 /; is_call(~{}Token tok, int i) [bool]
-    ;get_artifact(tok, ~i)
-    ;return tok`{i}.cmp("(")
+    /; loop (i < len (tok`)) [i++]
+        /; if (tok`{i}.cmp("{"))
+            ;i = find_closing(tok, ~i)
+        ;; else if (tok`{i}.cmp("("))
+            ;return true
+        ;; else if (tok`{i}.cmp(".") || tok`{i}.cmp("`") || tok`{i}.type_is(TOKEN.DEFWORD))
+            ;continue
+        ;; else
+            ;break
+        ;/
+    ;/
+    ;return false
 ;/
 
 /; get_type (~{}Token tok, ~int cur, ~Module current) [Type]
@@ -1928,12 +2284,13 @@
 # 0 - deref
 # 1 - get
 # 2 - ref
-# 3 - mul/div/mod
-# 4 - add/sub
-# 5 - bitwise
-# 6 - boolean cmp
-# 7 - boolean logic
-# 8 - assignment
+# 3 - inc/dec
+# 4 - mul/div/mod
+# 5 - add/sub
+# 6 - bitwise
+# 7 - boolean cmp
+# 8 - boolean logic
+# 9 - assignment
 /; priority (Token tok) [int]
     /; if (!(tok.type_is(TOKEN.AUGMENT)))
         ;return -1
@@ -1947,32 +2304,34 @@
         ;; else if (tok.cmp("~"))
             ;return 2
         ;; else if (tok.cmp("*") || tok.cmp("/") || tok.cmp("%"))
-            ;return 3
-        ;; else if (tok.cmp("-") || tok.cmp("+"))
             ;return 4
-        ;; else if (tok.cmp("&") || tok.cmp("|") || tok.cmp("^") || tok.cmp("!"))
+        ;; else if (tok.cmp("-") || tok.cmp("+"))
             ;return 5
-        ;; else if (tok.cmp("<") || tok.cmp(">"))
+        ;; else if (tok.cmp("&") || tok.cmp("|") || tok.cmp("^") || tok.cmp("!"))
             ;return 6
+        ;; else if (tok.cmp("<") || tok.cmp(">"))
+            ;return 7
         ;; else if (tok.cmp("="))
-            ;return 8
+            ;return 9
         ;/
     ;; else if (len (tok.data) == 2)
         /; if (tok.data{0} == tok.data{1})
             /; if (tok.data{0} == '<' || tok.data{0} == '>')
-                ;return 5
-            ;; else if (tok.data{0} == '=')
                 ;return 6
+            ;; else if (tok.data{0} == '=')
+                ;return 7
+            ;;  else if (tok.data{0} == '+' || tok.data{0} == '-')
+                ;return 3
             ;/
-            ;return 7
-        ;; else if (tok.data{1} == '=')
             ;return 8
+        ;; else if (tok.data{1} == '=')
+            ;return 9
         ;; else if (tok.data{1} == '<' || tok.data{1} == '>')
-            ;return 6
+            ;return 7
         ;/
-        ;return 5
-    ;; else if (len (tok.data) == 3)
         ;return 6
+    ;; else if (len (tok.data) == 3)
+        ;return 7
     ;/
 
     ;return -1
@@ -2006,6 +2365,7 @@
     /; if (string_equate(wk.name, ""))
         ;log_err(string_add("Unable to find variable within artifact ", string_join(art, ".")))
     ;/
+    ;log_info(string_add("Found ", wk.sprint()))
     ;return wk
 ;/
 
@@ -2048,9 +2408,9 @@
     ;return wk
 ;/
 
-# FIXME: Important last step before the language can be considered remotely usable
+# FIXME: Important step before the language can be considered remotely usable
 /; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
-    
+    ;return {"#null", NO_TYPE, 0, LOCATION.LITERAL}
 ;/
 
 /; literal_variable ({}uint8 data, l, ~CompData out) [Variable]
@@ -2167,6 +2527,11 @@
         ;/
     ;/
 
+    ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
+    /; if (alt)
+        ;wk.location = 2
+    ;/
+
     /; if (pa !< 0 && pr < 2)
         /; if (tok`{pa}.cmp("(") && first == pa)
             ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
@@ -2175,7 +2540,13 @@
                 ;log_debug("Index")
                 ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
                 ;Variable vout = _eval_dot(tok, start, pa, out, current, scope, t, !alt)
-                ;return vout.index(i, out)
+                ;vout = vout.index(i, out)
+                ;wk.data_type = vout.data_type
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    "\tmov ", get_reg(wk.location, 8), ", rsi\n"
+                }, "")
+                ;return wk
             ;; else
                 ;log_debug("Composite")
                 ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
@@ -2219,13 +2590,25 @@
         "_eval_value called with following type info:", t.sprint()
     }, " "))
 
-    ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
-    /; if (alt)
-        ;wk.location = 2
+    # Inc and dec
+    /; else if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
+        ;wk.data_type = s1.data_type
+        ;wk.set(s1, out)
+
+        /; if (tok`{first}.cmp("++"))
+            ;s1.inc(out)
+        ;; else
+            ;s1.dec(out)
+        ;/
+
+        /; if (first == max - 1)
+            ;return wk
+        ;/
+        ;return s1
     ;/
 
     # TODO: Boolean logic
-    /; if (pr == 6)
+    /; if (pr == 7)
         ;wk.set(s1, out)
         ;wk.cmp(s2, out)
         ;wk.data_type = {1, "bool", "_bool", {}, {}}
@@ -2327,7 +2710,7 @@
     ;int i = start
     /; loop (i < max) [i++]
         /; if (tok`{i}.type_is(TOKEN.AUGMENT))
-            /; if (priority(tok`{i}) == 6 || priority(tok`{i}) == 7)
+            /; if (priority(tok`{i}) == 7 || priority(tok`{i}) == 8)
                 ;return true
             ;/
         ;; else if (tok`{i}.type_is(TOKEN.LITERAL))
@@ -2377,7 +2760,7 @@
                 ;t = {1, "bool", "_bool", {}, {}}
                 ;log_debug("Boolish")
             ;/
-            ;eval_value(tok, ~s, out, mov, current, parent, t, b)
+            ;eval_value(tok, ~s, out, mov, current, parent, t, b > 0)
         ;/
     ;/
 
@@ -2556,15 +2939,6 @@
     ;bool m = false, returned = false
     ;Type ret = NO_TYPE
 
-    /; if (len (current`.name) > 2)
-        /; if (current`.name{0} == '_' && current`.name{1} == '#')
-            ;{}{}uint8 split = string_split(current`.name, '#')
-            ;Type st = current`.find_type( {split{1}} )`
-            ;st.ptr_chain = {PTYPE.REFERENCE}
-            ;root.vars.append({"self", st, 0, 0})
-        ;/
-    ;/
-
     /; loop (cur`++; cur` < max && !m) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;root.name = tok`{cur`}.data
@@ -2586,6 +2960,15 @@
             ;ret = get_type(tok, cur, current)
         ;; if (tok`{cur`}.cmp("\n"))
             ;break
+        ;/
+    ;/
+
+    /; if (len (current`.name) > 2)
+        /; if (current`.name{0} == '_' && current`.name{1} == '#')
+            ;{}{}uint8 split = string_split(current`.name, '#')
+            ;Type st = current`.find_type( {split{1}} )`
+            ;st.ptr_chain = {PTYPE.REFERENCE}
+            ;root.vars.append({"self", st, 0, 0})
         ;/
     ;/
 
@@ -2884,307 +3267,6 @@
         data.dsec,
         "section .text\n",
         data.csec}, "")
-
-    ;return out
-;/
-
-##
-## Tokenizer funcs
-##
-
-
-/; is_whitespace (uint8 c) [bool]
-    ;return (c == '\n' || c == '\t' || c == ' ')
-;/
-
-;{}uint8 MULTI_PARENS = "/;:#"
-;{}uint8 PARENS = "()[]{}"
-;{}uint8 SEPS = "\n;:,"
-;{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,\""
-;{}uint8 AUGMENTS = "=~!<>&|^+-*/%`."
-
-;{}{}uint8 MULTI_AUGMENTS = {
-    "~=", "`=", "%=", "^=", "&=", "*=",
-    "!=", "|=", "/=",
-
-    "==", "!==", "&&", "||", "^^", "<==", ">==", "!>", "!<",
-
-    "<<", ">>", "!&", "!|", "!^"
-}
-
-
-;{}{}uint8 KEYWORDS = {
-    "len",
-    "is",
-
-    "if",
-    "else",
-    "loop",
-
-    "continue",
-    "break",
-    "return",
-
-    "method",
-    "struct",
-    "enum",
-    "interface",
-
-    "export",
-    "module",
-
-    "const",
-    "static",
-    "volatile",
-    "raw",
-
-    "extends",
-    "override",
-
-    "asm"
-}
-
-;{}{}uint8 KEYTYPES = {
-    "uint8",
-    "uint16",
-    "uint32",
-    "uint64",
-    "uint",
-
-    "int8",
-    "int16",
-    "int32",
-    "int64",
-    "int",
-
-    "float32",
-    "float64",
-    "float",
-
-    "comp32",
-    "comp64",
-    "comp",
-
-    "vect",
-    "bool",
-
-    "type",
-    "void"
-}
-
-/; is_delimiter ({}uint8 str) [bool]
-    /; if (len str > 2 || len str < 1)
-        ;return false
-    ;/
-
-    /; if (len str == 2)
-        ;return string_contains(MULTI_PARENS, str{0}) && string_contains(MULTI_PARENS, str{1})
-    ;/
-
-    ;return string_contains(PARENS, str{0})
-;/
-
-/; is_separator ({}uint8 str) [bool]
-    /; if (len str < 1)
-        ;return false
-    ;/
-    ;return string_contains(SEPS, str{0})
-;/
-
-/; is_reserved ({}uint8 str) [bool]
-    /; if (len str < 1)
-        ;return false
-    ;/
-    ;return string_contains(RESERVED, str{0})
-;/
-
-/; is_augment ({}uint8 str) [bool]
-    /; if (len str == 1)
-        ;return string_contains(AUGMENTS, str{0})
-    ;/
-
-    ;return list_contains(MULTI_AUGMENTS, str)
-;/
-
-/; is_str_literal ({}uint8 str) [bool]
-    /; if (string_equate(str, "\"") || string_equate(str, "'"))
-        ;return true
-    ;/
-
-    /; if (len str < 2)
-        ;return false
-    ;; else if (str{0} !== '\'' && str{0} !== '"')
-        ;return false
-    ;/
-
-    /; loop (int i = 1; i < len str) [i++]
-        /; if (str{i} == '\\')
-            ;i++
-        ;; else if (str{i} == str{0})
-            ;return i == len str - 1
-        ;/
-    ;/
-    ;return true
-;/
-
-/; is_num_literal ({}uint8 str) [bool]
-    /; if (len str < 1)
-        ;return false
-    ;; if (len str == 1 && str{0} == '.')
-        ;return false
-    ;/
-
-    ;bool dec = false
-    /; loop (int i = 0; i < len str) [i++]
-        /; if (str{i} == '.')
-            /; if (!dec)
-                ;dec = true
-            ;; else
-                ;return false
-            ;/
-        ;; else if (str{i} < '0' || str{i} > '9')
-            ;return false
-        ;/
-    ;/
-    ;return true
-;/
-
-/; is_literal({}uint8 str) [bool]
-    ;return is_str_literal(str) || is_num_literal(str) || string_equate(str, "true") || string_equate(str, "false")
-;/
-
-/; gen_type (Token t) [int]
-    /; if (is_separator(t.data))
-        ;return TOKEN.SEPARATOR
-    ;/
-
-    /; if (is_literal(t.data))
-        ;return TOKEN.LITERAL
-    ;/
-
-    /; if (is_reserved(t.data))
-        /; if (is_delimiter(t.data))
-            ;return TOKEN.DELIMITER
-        ;; else if (is_augment(t.data))
-            ;return TOKEN.AUGMENT
-        ;/
-    ;; else if (list_contains(KEYWORDS, t.data))
-        ;return TOKEN.KEYWORD
-    ;; else if (list_contains(KEYTYPES, t.data))
-        ;return TOKEN.KEYTYPE
-    ;/
-
-    ;return TOKEN.DEFWORD
-;/
-
-/; break_token (Token current, uint8 to_append) [bool]
-    /; if (is_literal(current.data))
-        ;current.data.append(to_append)
-        ;return !(is_literal(current.data))
-    ;/
-
-    /; if (is_whitespace(to_append) || current.cmp("\n"))
-        ;return true
-    ;/
-
-    /; if (is_reserved(current.data))
-        /; if (is_reserved({to_append}))
-            ;current.data.append(to_append)
-            ;return gen_type(current) == TOKEN.DEFWORD
-        ;/
-        ;return true
-    ;; else if (is_reserved({to_append}))
-        ;return true
-    ;/
-
-    ;return false
-;/
-
-/; handle_comment (tnsl.io.File fd, ~Token current, ~int line) [bool]
-    ;bool block = false
-    /; if (current`.cmp("/"))
-        ;block = true
-    ;/
-
-    /; loop (int i = fd.read(); i !== -1) [i = fd.read()]
-        /; if (i == '\n')
-            ;line`++
-            /; if (!block)
-                ;return true
-            ;/
-        ;; else if (block && i == '#')
-            ;i = fd.read()
-            /; if (i == '/')
-                ;current` = {0, line, ""}
-                ;return false
-            ;; else if (i == ';' || i == ':')
-                ;current`.data.append(i)
-                ;return false
-            ;/
-
-            /; loop (i !== '\n' && i !== -1) [i = fd.read()] ;/
-
-            ;line`++
-        ;/
-    ;/
-;/
-
-/; tokenize (Path f) [{}Token]
-    ;{}Token out = {}
-
-    ;tnsl.io.File fd = f.open_read()
-    
-    ;Token current = {0, 0, ""}
-    ;int line = 1
-    /; loop (int i = fd.read(); i > -1) [i = fd.read()]
-        /; if (i == '\r')
-            ;continue
-        ;/
-
-        /; if (i == '#' && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
-            ;bool ln = handle_comment(fd, ~current, ~line)
-            /; if (ln)
-                ;current.tokenType = gen_type(current)
-                /; if (!(current.cmp("")))
-                    ;out.append(current)
-                ;/
-                ;out.append({TOKEN.SEPARATOR, line - 1, "\n"})
-            ;/
-            ;continue
-        ;/
-
-        /; if (i == '\n'  && (break_token(current, i) || gen_type(current) !== TOKEN.LITERAL))
-            ;log_vis(".")
-            /; if (!(current.cmp("\n")))
-                ;current.tokenType = gen_type(current)
-                /; if (!(current.cmp("")))
-                    ;out.append(current)
-                ;/
-                ;current = {TOKEN.SEPARATOR, line, ""}
-                ;current.data.append(i)
-            ;/
-            ;line++
-        ;; else if (break_token(current, i))
-            ;current.tokenType = gen_type(current)
-            /; if (!(current.cmp("")))
-                ;out.append(current)
-            ;/
-            ;current = {0, line, ""}
-            /; if (!(is_whitespace(i)))
-                ;current.data.append(i)
-            ;/
-        ;; else
-            ;current.data.append(i)
-        ;/
-    ;/
-    ;log_vis("OK\n")
-
-    /; if (!(current.cmp("")) && !(current.cmp("\n")))
-        ;current.tokenType = gen_type(current)
-        ;out.append(current)
-    ;/
-
-    ;fd.close()
 
     ;return out
 ;/
