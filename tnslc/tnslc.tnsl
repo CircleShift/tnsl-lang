@@ -134,6 +134,10 @@
         ;return 0
     ;/
 
+    /; if (str{1} !== '\\')
+        ;return str{1}
+    ;/
+
     ;uint8 cmp = str{2}
     /; if (cmp == '\\')
         ;return '\\'
@@ -145,8 +149,9 @@
         ;return '\t'
     ;; else if (cmp == '0')
         ;return '\0'
+    ;; else if (cmp == '\'')
+        ;return '\''
     ;/
-
 ;/
 
 /; unquote_str({}uint8 str) [{}uint8]
@@ -2427,7 +2432,7 @@
         ;v.name = l
     ;; else if (data{0} == '\'')
         ;v.data_type = {1, "uint8", "", {}, {}}
-        ;v.location = unqote_char(tok`{start}.data)
+        ;v.location = unqote_char(data)
     ;; else if (string_equate(data, "true"))
         ;v.data_type = {1, "bool", "", {}, {}}
         ;v.location = 1

@@ -1,10 +1,13 @@
 
 {}uint8 str1 = "abcd"
-{}uint8 str2 = "abcd"
+{}uint8 str2 = "abce"
 
 /; main [int]
     /; loop (int i = 0; i < 4) [i++]
         /; if (str1{i} !== str2{i})
+            /; if (str2{i} == 'e')
+                return 3
+            ;/
             return 1
         ;/
     ;/
