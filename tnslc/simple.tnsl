@@ -2,17 +2,35 @@
 {}uint8 str1 = "abcd"
 {}uint8 str2 = "abcd"
 
+/; method Test
+    /; wamba
+    ;/
+;/
+
+struct Test {
+    int i, j, k
+}
+
 /; call_me [int]
     return 4
 ;/
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
-    # update their positions here or else tnsl willhave garbage values in r8 and r9
+    # update their positions here or else tnsl will have garbage values in r8 and r9
     asm "mov r8, rcx"
     asm "mov r9, rdx"
     # If on linux, you would use rdi and rsi instead of rcx and rdx, respectively
+    Test m
+    ~int i = ~m.i
+    i{1} = 3
+
+    /; if (argc > 8)
+        argc = 90
+    ;/
+    
+    call_me()
 
     # return the number of arguments
-    return argc
+    return m.j
 ;/

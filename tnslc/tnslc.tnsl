@@ -1545,7 +1545,7 @@
         ;/
 
         ;{}uint8 moves = string_join( {
-            "lea rsi, [rbp]\n"
+            "\tlea rsi, [rbp]\n"
         }, "")
         
         # Move extra variables
@@ -1556,31 +1556,31 @@
                 ;accum = accum + sz
                 ;self.vars{i}.location = accum
                 /; if (len (self.vars{i}.data_type.ptr_chain) > 0)
-                    ;moves.csec = string_join( {
-                        moves.csec,
+                    ;moves = string_join( {
+                        moves,
                         "\tmov rdi, qword [rsi]\n",
                         "\tmov qword [rbp - ", int_to_string(accum), "], rdi\n",
                         "\tadd rsi, 8\n"
                     }, "")
                 ;; else if (self.vars{i}.is_prim())
-                    ;moves.csec = string_join( {
-                        moves.csec,
+                    ;moves = string_join( {
+                        moves,
                         "\tmov ", get_reg(5, sz), ", ", mov_by_size(sz), "[rsi]\n",
                         "\tmov ", mov_by_size(sz), "[rbp - ", int_to_string(accum), "], ", get_reg(5, sz),"\n",
                         "\tadd rsi, ", int_to_string(sz), "\n"
                     }, "")
                 ;; else
-                    ;moves.csec = string_join( {
-                        moves.csec,
+                    ;moves = string_join( {
+                        moves,
                         "\tlea rdi, [rbp - ", int_to_string(accum), "]\n",
-                        "\tmov rcx", int_to_string(sz), "\n",
+                        "\tmov rcx, ", int_to_string(sz), "\n",
                         "\tmovsb\n",
                         "\tadd rsi, ", int_to_string(sz), "\n"
                     }, "")
                 ;/
             ;/
         ;/
-        
+
         /; if (accum > 80 && !(self.r))
             ;out`.csec = string_add(out`.csec, moves)
         ;/
@@ -1744,7 +1744,8 @@
     {}uint8 name,
     {}Type 
         inputs,
-        outputs
+    Type
+        output
 }
 
 ;struct Module {
@@ -1848,15 +1849,15 @@
         ;return self._find_def(artifact, 0)
     ;/
 
-    /; _find_function ({}{}uint8 artifact, int r) [Variable]
+    /; _find_function ({}{}uint8 artifact, int r) [Function]
         /; if (len artifact !> r)
-            ;retirn {{}, "", 0, 0, 0}
+            ;return {"", {}, {}}
         ;/
 
         /; if (len artifact - 1 > r)
             /; loop (int i = 0; i < len (self.sub)) [i++]
                 /; if (string_equate(artifact{r}, self.sub{i}.name))
-                    ;return self._find_type(artifact, r + 1)
+                    ;return self._find_function(artifact, r + 1)
                 ;/
             ;/
         ;/
@@ -1867,7 +1868,7 @@
             ;/
         ;/
         
-        ;return {{}, "", 0, 0, 0}
+        ;return {"", {}, {}}
     ;/
 
     /; find_function ({}{}uint8 artifact) [Variable]
@@ -1968,6 +1969,31 @@
     ;return false
 ;/
 
+/; pre_get_type (~{}Token tok, ~int cur) [Type]
+    ;{}int ptr_chain = {}
+
+    /; loop (cur` < len tok`) [cur`++]
+        /; if (tok`{cur`}.cmp("{"))
+            ;ptr_chain.append(PTYPE.ARRAY)
+            ;cur`++
+        ;; else if (tok`{cur`}.cmp("~"))
+            ;ptr_chain.append(PTYPE.POINTER)
+        ;; else
+            ;break
+        ;/
+    ;/
+
+    ;{}uint8 a = string_join(get_artifact(tok, cur), ".")
+    ;Type out = {0, a, "", ptr_chain, {}}
+
+    /; if (tok`{cur`}.cmp("`"))
+        ;out.ptr_chain.append(PTYPE.REFERENCE)
+        ;cur`++
+    ;/
+
+    ;return out
+;/
+
 /; get_type (~{}Token tok, ~int cur, ~Module current) [Type]
     ;{}int ptr_chain = {}
 
@@ -1998,6 +2024,10 @@
     ;/
 
     # TODO: References
+    /; if (tok`{cur`}.cmp("`"))
+        ;ptr_chain.append(PTYPE.REFERENCE)
+        ;cur`++
+    ;/
     
     ;out.ptr_chain = ptr_chain
     ;return out
@@ -2055,6 +2085,28 @@
     ;return c
 ;/
 
+/; pre_parse_params (~{}Token tok, ~int cur) [{}Type]
+    ;{}Type out = {}
+
+    ;int max = find_closing(tok, cur)
+
+    ;Type t = NO_TYPE
+    /; loop (cur` = next_non_nl(tok, cur` + 1); cur` < max) [cur` = next_non_nl(tok, cur` + 1)]
+        ;int nnl = next_non_nl(tok, cur` + 1)
+        /; if (tok`{nnl}.cmp(",") || nnl == max)
+            ;out.append(t)
+            /; if (tok`{nnl}.cmp(","))
+                ;cur`++
+            ;/
+        ;; else
+            ;t = pre_get_type(tok, cur)
+            ;cur` = cur` - 1
+        ;/
+    ;/
+
+    ;return out
+;/
+
 /; parse_param_list (~{}Token tok, ~int cur, ~Module current) [{}Variable]
     ;{}Variable out = {}
 
@@ -2075,19 +2127,39 @@
     ;return out
 ;/
 
+/; find_or_create ({}uint sub_name, ~Module current, bool exp) [~Module]
+    /; if (!(string_equate(current`.find_sub(sub_name)`.name, current`.name)))
+        ;return current`.find_sub(sub_name)
+    ;/
+    ;Module out = {current, exp, "", {}, {}, {}, {}}
+    
+
+    ;out.name = current`.full_path()
+    /; if (len (out.name) > 0)
+        ;out.name.append('.')
+    ;/
+    ;out.name = string_add(out.name, sub_name)
+    
+
+    ;current`.sub.append(out)
+    ;return current`.find_sub(sub_name)
+;/
+
 # Generates new type
 /; new_type (~{}Token tok, ~int cur, ~Module current)
     ;cur`++
-    ;Type out = {0, tok`{cur`}.data, "", {}, {}}
 
-    ;out.mod_name = current`.full_path()
-    /; if (len (out.mod_name) > 0)
-        ;out.mod_name.append('.')
+    /; if (tok`{cur`}.tokenType !== TOKEN.DEFWORD) 
+        ;log_err(string_join( {
+            "Unexpected token type at ", tok`{cur`}.sprint(), " The struct keyword should be followed by an identifier."
+        }, ""))
     ;/
-    ;out.mod_name = string_add(out.mod_name, "_#")
-    ;out.mod_name = string_add(out.mod_name, out.name)
 
-    ;current`.sub.append({current, current`.exp, string_add("_#", out.name), {}, {}, {}, {}})
+    ;Type out = {0, tok`{cur`}.data, "", {}, {}}
+    
+    ;{}uint8 mod_name = string_add("_#", out.name)
+    ;find_or_create(mod_name, current, current`.exp)
+    ;out.mod_name = mod_name
 
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("{"))
@@ -2102,6 +2174,37 @@
     
     ;log_debug(string_add("Generated type ", string_add(out.name, string_add(":", out.mod_name))))
     ;current`.types.append(out)
+;/
+
+/; new_function (~{}Token tok, ~int cur, ~Module current)
+    ;{}Type inputs = {}
+    ;Type output = NO_TYPE
+    
+    ;int max = find_closing(tok, cur)
+    ;cur`++
+    
+    /; if (tok`{cur`}.tokenType !== TOKEN.DEFWORD) 
+        ;log_err(string_join( {
+            "Unexpected token type at ", tok`{cur`}.sprint(), " The struct keyword should be followed by an identifier."
+        }, ""))
+    ;/
+
+    ;{}uint8 name = tok`{cur`}.data
+    ;cur`++
+
+    /; loop (cur` < max) [cur`++]
+        /; if (tok`{cur`}.cmp("("))
+            ;inputs = pre_parse_params(tok, cur)
+        ;; else if (tok`{cur`}.cmp("["))
+            ;cur`++
+            ;output = pre_get_type(tok, cur)
+        ;; else
+            ;break
+        ;/
+    ;/
+
+    ;cur` = max
+    ;current`.functions.append( {name, inputs, output} )
 ;/
 
 /; decompose_empty (Type t) [{}uint8]
@@ -2433,7 +2536,7 @@
     /; if (string_equate(wk.name, ""))
         ;log_err(string_add("Unable to find variable within artifact ", string_join(art, ".")))
     ;/
-    ;log_info(string_add("Found ", wk.sprint()))
+    ;log_debug(string_add("Found ", wk.sprint()))
     ;return wk
 ;/
 
@@ -3125,35 +3228,53 @@
 # Generates structs, enums, and submodules
 /; module_pass_one (~{}Token tok, ~int cur, ~Module current, Path f)
     ;int max = find_closing(tok, cur)
-    ;Module new = {current, false, "", {}, {}, {}, {}}
+    ;{}uint8 name = ""
+    ;bool exp = false
     /; loop (cur`++; cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
-            ;new.name = tok`{cur`}.data
+            ;name = tok`{cur`}.data
         ;; else if (tok`{cur`}.cmp("export"))
-            ;new.exp = true
+            ;exp = true
+        ;; else if (tok`{cur`}.cmp("method"))
+            ;exp = current`.exp
+            /; if (len name > 0)
+                ;name = string_add("_#", name)
+            ;; else if (tok`{cur` + 1}.type_is(TOKEN.DEFWORD))
+                ;cur`++
+                ;name = string_add("_#", tok`{cur`}.data)
+            ;; else
+                ;log_err(string_add("Tried to find name for method block, but there wasn't one nearby. ", tok`{cur`}.sprint()))
+            ;/
         ;; else if (!(tok`{cur`}.cmp("module")))
             ;break
         ;/
     ;/
 
+    /; if (len name == 0)
+        ;log_err(string_add("Did not find name for module or pethod block. ", tok`{cur`}.sprint()))
+    ;/
+
+    ;~Module new = find_or_create(name, current, exp)
+    
     /; loop (cur` < max) [cur`++]
         ;log_vis(".")
         /; if (tok`{cur`}.cmp(":"))
             ;log_debug("INCLUDE")
             /; if (tok`{cur` + 2}.type_is(TOKEN.LITERAL))
-                ;compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), ~new)
+                ;compile_file_pass_one(f.relative(unquote_str(tok`{cur` + 2}.data)), new)
                 ;cur` = cur` + 2
             ;/
             ;continue
         ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
-            /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
-                ;module_pass_one(tok, cur, ~new, f)
+            /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module") || tok`{cur` + 1}.cmp("method"))
+                ;module_pass_one(tok, cur, new, f)
+            ;; else
+                ;new_function(tok, cur, new)
             ;/
         ;; else if (tok`{cur`}.cmp("struct"))
-            ;new_type(tok, cur, ~new)
+            ;new_type(tok, cur, new)
         ;/
     ;/
-    ;current`.sub.append(new)
 ;/
 
 # Second pass on a module
@@ -3218,8 +3339,10 @@
             ;/
             ;continue
         ;; else if (tok{i}.cmp("/;") || tok{i}.cmp(";;"))
-            /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module"))
+            /; if (tok{i + 1}.cmp("export") || tok{i + 1}.cmp("module") || tok{i + 1}.cmp("method"))
                 ;module_pass_one(~tok, ~i, current, f)
+            ;; else
+                ;new_function(~tok, ~i, current)
             ;/
         ;; else if (tok{i}.cmp("struct"))
             ;new_type(~tok, ~i, current)
