@@ -721,6 +721,15 @@
         ;/
         ;return self.s
     ;/
+
+    /; has_member ({}uint8 name) [bool]
+        /; loop (int i = 0; i < len(self.members)) [i++]
+            /; if (string_equate(self.members{i}.name, name))
+                ;return true
+            ;/
+        ;/
+        ;return false
+    ;/
 ;/
 
 ;{}{}uint8 PRIM_NAMES = {
@@ -960,15 +969,16 @@
         ;return self.data_type.s
     ;/
 
-    # TODO: Match a type to another type if possible
+    # FIXME: Match a type to another type if possible
     # this is the type inference engine
+    # don't really know how well this works
     /; match_types (Variable to_match, ~CompData data) [Variable]
         /; if (to_match.loc_type == LOCATION.LITERAL)
             ;return to_match
         ;; if (!(to_match.is_prim()) || (len(to_match.data_type.ptr_chain) > 0 && !(to_match.is_ref())))
             ;return to_match
         ;/
-
+        
         ;Variable out = {"#match", self.data_type, 4, LOCATION.REGISTER}
         ;{}uint8 mov = "mov"
         
@@ -1004,8 +1014,8 @@
             ;; else
                 ;data`.csec = string_join( {
                     data`.csec,
-                    "\tmov ", get_reg(0, sz), ", ", v.norm_loc(sz), "\n",
-                    "\t", op, " ", self.norm_loc(sz), ", ", get_reg(0, sz), "\n"
+                    "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
+                    "\t", op, " ", self.norm_loc(sz), ", ", get_reg(4, sz), "\n"
                 }, "")
             ;/
         ;/
@@ -1020,7 +1030,12 @@
     ;/
 
     /; is_prim [bool]
-        ;return len(self.data_type.ptr_chain) > 1 || is_primitive(self.data_type.name) !< 0
+        /; if (len(self.data_type.ptr_chain) == 0)
+            ;return is_primitive(self.data_type.name) !< 0
+        ;; if (len(self.data_type.ptr_chain) == 1)
+            ;return !(self.is_ref()) || is_primitive(self.data_type.name) !< 0
+        ;/
+        ;return true
     ;/
 
     /; strip_one (~CompData data)
@@ -1233,7 +1248,7 @@
             ;; else
                 ;data`.csec = string_join( {
                     data`.csec,
-                    "\tmov ", self.norm_loc(sz), ", ",v.norm_loc(sz), "\n"
+                    "\tmov ", self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
                 }, "")
             ;/
         ;; else
@@ -1385,26 +1400,6 @@
         ;a.data_type.s = 8
         ;a.data_type.ptr_chain = {PTYPE.REFERENCE}
         ;self.set(a, data)
-    ;/
-
-    # Uses rax, does not resolve any ending state after function returns
-    /; call ({}uint8 name, ~CompData data)
-        /; if (self.is_ref())
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tmov rax, ", self.norm_loc(8), "\n"
-            }, "")
-        ;; else
-            ;data`.csec = string_join( {
-                data`.csec,
-                "\tlea rax, ", self.norm_loc(8), "\n"
-            }, "")
-        ;/
-
-        ;data`.csec = string_join( {
-            data`.csec,
-            "\tcall ", self.data_type.mod_name, ".", name, "\n"
-        }, "")
     ;/
 ;/
 
@@ -1721,7 +1716,7 @@
         ;copy.set(rv`, out)
         ;rv` = copy
 
-        /; if (reg < last_var)
+        /; if (reg < last_var - 1)
             ;rv = self.find_reg_variable(last_var - 1)
             ;log_debug(string_join({
                 "Moving variable from ", int_to_string(last_var - 1), " to ", int_to_string(reg), ". ",
@@ -1745,8 +1740,28 @@
     {}Type 
         inputs,
     Type
-        output
+        output,
+    ~Module mod
 }
+
+/; method Function
+    /; full_label [{}uint8]
+        ;{}uint8 out = self.mod`.full_path()
+        /; if (len out > 0)
+            ;out.append('.')
+        ;/
+        ;out = string_add(out, self.name)
+        ;return out
+    ;/
+
+    /; is_method [bool]
+        ;{}uint8 mod_name = self.mod`.name
+        /; if (len mod_name  > 2)
+            ;return mod_name{0} == '_' && mod_name{1} == '#'
+        ;/
+        ;return false
+    ;/
+;/
 
 ;struct Module {
     # Parent module
@@ -1857,22 +1872,31 @@
         /; if (len artifact - 1 > r)
             /; loop (int i = 0; i < len (self.sub)) [i++]
                 /; if (string_equate(artifact{r}, self.sub{i}.name))
-                    ;return self._find_function(artifact, r + 1)
+                    ;log_debug(string_add("Artifact: ", artifact{r}))
+                    ;return self.sub{i}._find_function(artifact, r + 1)
+                ;/
+            ;/
+        ;; else if (len artifact - 1 == r)
+            /; loop (int i = 0; i < len (self.functions)) [i++]
+                /; if (string_equate(self.functions{i}.name, artifact{r}))
+                    ;return self.functions{i}
                 ;/
             ;/
         ;/
 
-        /; loop (int i = 0; i < len (self.funcs)) [i++]
-            /; if (string_equate(self.funcs{i}.name, artifact{r}))
-                ;return self.funcs{i}
-            ;/
+        /; if (string_equate(self.name, ""))
+            ;return {"", {}, {}}
         ;/
         
-        ;return {"", {}, {}}
+        ;~Module m = self.parent
+        /; loop (r > 0) [r = r - 1]
+            ;m = m.parent
+        ;/
+        ;return m`._find_function(artifact, 0)
     ;/
 
-    /; find_function ({}{}uint8 artifact) [Variable]
-        ;return _find_function(artifact, 0)
+    /; find_function ({}{}uint8 artifact) [Function]
+        ;return self._find_function(artifact, 0)
     ;/
 
     /; _find_mod ({}{}uint8 artifact, int r) [~Module]
@@ -2023,7 +2047,6 @@
         ;/
     ;/
 
-    # TODO: References
     /; if (tok`{cur`}.cmp("`"))
         ;ptr_chain.append(PTYPE.REFERENCE)
         ;cur`++
@@ -2158,8 +2181,8 @@
     ;Type out = {0, tok`{cur`}.data, "", {}, {}}
     
     ;{}uint8 mod_name = string_add("_#", out.name)
-    ;find_or_create(mod_name, current, current`.exp)
-    ;out.mod_name = mod_name
+    ;~Module new = find_or_create(mod_name, current, current`.exp)
+    ;out.mod_name = new`.full_path()
 
     /; loop (cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.cmp("{"))
@@ -2204,7 +2227,7 @@
     ;/
 
     ;cur` = max
-    ;current`.functions.append( {name, inputs, output} )
+    ;current`.functions.append( {name, inputs, output, current} )
 ;/
 
 /; decompose_empty (Type t) [{}uint8]
@@ -2508,7 +2531,7 @@
     ;return -1
 ;/
 
-/; first_match(~{}Token tok, ~int i, int max, ~Module current, ~Scope scope) [Variable]
+/; first_match (~{}Token tok, ~int i, int max, ~Module current, ~Scope scope) [Variable]
     ;Variable wk
     ;{}{}uint8 art = {}
 
@@ -2534,39 +2557,187 @@
     ;/
 
     /; if (string_equate(wk.name, ""))
-        ;log_err(string_add("Unable to find variable within artifact ", string_join(art, ".")))
+        ;log_debug(string_add("Unable to find variable within artifact ", string_join(art, ".")))
     ;/
     ;log_debug(string_add("Found ", wk.sprint()))
     ;return wk
 ;/
 
-/; _eval_dot (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
-    ;Variable wk = first_match(tok, ~start, max, current, scope)
+/; _param_end (~{}Token tok, int start) [int]
+    /; loop (start < len tok`) [start++]
+        /; if (tok`{start}.cmp(")") || tok`{start}.cmp("}") || tok`{start}.cmp(","))
+            ;return start
+        ;; else if (tok`{start}.type_is(TOKEN.DELIMITER))
+            ;start = find_closing(tok, ~start)
+        ;/
+    ;/
+    ;return start
+;/
 
-    /; if (start !< max)
+# FIXME: should set up the call by eval of all params
+/; _setup_call (~{}Token tok, int start, Variable base, ~CompData out, mov, ~Module current, ~Scope scope) [Function]
+    ;{}uint8 name = tok`{start}.data
+    ;start++
+    ;int max = find_closing(tok, ~start)
+    ;start++
+    ;Function f
+
+    ;int regs = 1
+    /; if (string_equate(base.name, ""))
+        ;regs = 0
+        ;f = current`.find_function( {name} )
+    ;; else
+        ;~Module tmp = current`.find_mod(string_split(base.mod_name, '.'))
+        ;f = current`.find_function(name)
+    ;/
+    ;Variable ctmp = {"#ctmp", NO_TYPE, 0-1, LOCATION.REGISTER}
+
+    /; loop (int i = 0; i < len (f.inputs)) [i++]
+        ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
+        ;t.ptr_chain = f.inputs{i}.ptr_chain
+        ;ctmp.data_type = t
+
+        /; if (ctmp.is_ref())
+            ;ctmp.data_type.ptr_chain{len (ctmp.data_type.ptr_chain)} = PTYPE.POINTER
+        ;/
+        ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
+        
+        /; if (!(ctmp.is_prim()) || regs > 5)
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, true)
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tsub rsp, ", int_to_string(ctmp.norm_size()), "\n"
+            }, "")
+            ;ctmp.set(val, out)
+        ;; else
+            ;regs++
+        ;/
+    ;/
+
+    ;int regs = 1
+    /; if (string_equate(base.name, ""))
+        ;regs = 0
+    ;/
+
+    /; loop (int i = 0; i < len (f.inputs)) [i++]
+        ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
+        ;t.ptr_chain = f.inputs{i}.ptr_chain
+        ;ctmp.data_type = t
+
+        /; if (ctmp.is_ref())
+            ;ctmp.data_type.ptr_chain{len (ctmp.data_type.ptr_chain)} = PTYPE.POINTER
+        ;/
+        ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
+
+        /; if (ctmp.is_prim() && regs < 6)
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, true)
+            
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tsub rsp, ", int_to_string(ctmp.norm_size()), "\n"
+            }, "")
+            ;ctmp.set(val, out)
+            ;regs++
+        ;; else if (regs == 6)
+            ;break
+        ;/
+    ;/
+
+    ;return f
+;/
+
+# FIXME: should actually do call based on function given, and return a proper variable.
+# assumes the call has been set up
+/; _perform_call (Function f, ~CompData out) [Variable]
+    ;int reg = 0
+    /; if (f.is_method())
+        ;reg = 1
+    ;/
+    ;Variable ctmp = {"#ctmp", NO_TYPE, 4, LOCATION.REGISTER}
+    /; loop (int i = 0; i < len (f.inputs)) [i++]
+        ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
+        ;t.ptr_chain = f.inputs{i}.ptr_chain
+        ;ctmp.data_type = t
+        /; if (ctmp.is_prim() && reg < 6)
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tmov ", get_reg(reg, ctmp.norm_size()),", [rsp]\n",
+                "\tadd rsp, ", int_to_string(ctmp.norm_size()), "\n"
+            }, "")
+        ;; else if (reg == 6)
+            ;break
+        ;/
+    ;/
+    ;out`.csec = string_join( {
+        out`.csec,
+        "\tcall ", f.full_label(), "\n"
+    }, "")
+    
+    ;Type t = f.mod`.find_type(string_split(f.output.name, '.'))`
+    ;t.ptr_chain = f.output.ptr_chain
+    ;ctmp.data_type = t
+    ;ctmp.location = 0
+    /; if (!(ctmp.is_prim()) && !(ctmp.is_ref()))
+        ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
+    ;/
+    ;return ctmp
+;/
+
+# Evaluates dot chains, indexing, and calls
+/; _eval_dot (~{}Token tok, ~int start, int max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+    ;Variable wk = first_match(tok, start, max, current, scope)
+
+    /; if (start` !< max)
         ;return wk
     ;/
 
     ;log_debug(string_add("Eval dot initial val: ", wk.sprint()))
 
-    /; if (tok`{start}.cmp("."))
+    /; if (tok`{start`}.cmp("."))
         ;log_debug("Pre loop member")
-        ;wk = wk.member(tok`{start + 1}.data, out)
-    ;; else
+        /; if (wk.data_type.has_member(tok`{start` + 1}.data))
+            ;wk = wk.member(tok`{start` + 1}.data, out)
+            ;start` = start` + 2
+        ;/
+    ;; if (tok`{start`}.cmp("("))
+        ;start` = start` - 1
+    ;; else if (tok`{start`}.cmp("`"))
         ;log_debug("Pre loop deref")
         ;wk = wk.deref(out)
+        ;start` = start` + 1
     ;/
-
-    ;start = start + 2
     
-    /; loop (start < max) [start++]
-        /; if (tok`{start}.cmp("`"))
+    /; loop (start` < max) [start`++]
+        /; if (tok`{start`}.cmp("`"))
             ;log_debug("Loop deref")
             ;wk = wk.deref(out)
-        ;; else if (tok`{start}.cmp(".") && tok`{start + 1}.type_is(TOKEN.DEFWORD))
+        ;; else if (tok`{start`}.cmp(".") && tok`{start` + 1}.type_is(TOKEN.DEFWORD))
             ;log_debug("Loop member")
-            ;wk = wk.member(tok`{start + 1}.data, out)
-            ;start++
+            /; if (wk.data_type.has_member(tok`{start` + 1}.data))
+                ;start`++
+                ;wk = wk.member(tok`{start`}.data, out)
+            ;; else if (!(tok`{start` + 2}.cmp("(")))
+                ;log_err(string_join( {
+                    "Invalid member [", tok`{start` + 1}.data, "] for variable ", wk.sprint()
+                },""))
+            ;/
+        ;; else if (tok`{start`}.cmp("{"))
+            ;log_debug("Index!")
+            ;Variable i = _eval_value(tok, start` + 1, find_closing(tok, start), out, mov, current, scope, t, alt)
+            ;log_debug(i.sprint())
+            ;wk = wk.index(i, out)
+            ;log_debug(wk.sprint())
+            ;start` = find_closing(tok, start)
+        ;; else if (tok`{start` + 1}.cmp("(") && tok`{start`}.type_is(TOKEN.DEFWORD))
+            ;log_debug("Call")
+            # Pre-flight check
+            ;CompData trash = {"", "", ""}
+            ;_setup_call(tok, start`, wk, ~trash, mov, current, scope)
+            # Actually do call
+            ;Function to_call = _setup_call(tok, start`, wk, out, ~trash, current, scope)
+            ;wk = _perform_call(to_call, out)
+            ;start`++
+            ;start` = find_closing(tok, start)
         ;/
     ;/
 
@@ -2577,11 +2748,6 @@
     ;/
 
     ;return wk
-;/
-
-# FIXME: Important step before the language can be considered remotely usable
-/; _eval_call (~{}Token tok, int start, max, ~CompData out, ~Module current, ~Scope scope, Type t) [Variable]
-    ;return {"#null", NO_TYPE, 0, LOCATION.LITERAL}
 ;/
 
 /; literal_variable ({}uint8 data, l, ~CompData out) [Variable]
@@ -2698,43 +2864,25 @@
         ;/
     ;/
 
+    /; if (tok`{start}.cmp("("))
+        ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
+    ;/
+
+    /; if (pa !< 0 && pr < 2)
+        /; if (tok`{pa}.cmp("{") && pa == first)
+            ;log_debug("Composite")
+            ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+        ;/
+    ;/
+
+    /; if (pr < 2)
+        ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, alt)
+    ;/
+
     ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
     /; if (alt)
         ;wk.location = 2
     ;/
-
-    /; if (pa !< 0 && pr < 2)
-        /; if (tok`{pa}.cmp("(") && first == pa)
-            ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
-        ;; else if (tok`{pa}.cmp("{"))
-            /; if (pa !== first)
-                ;log_debug("Index")
-                ;Variable i = _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
-                ;Variable vout = _eval_dot(tok, start, pa, out, current, scope, t, !alt)
-                ;vout = vout.index(i, out)
-                ;wk.data_type = vout.data_type
-                ;out`.csec = string_join( {
-                    out`.csec,
-                    "\tmov ", get_reg(wk.location, 8), ", rsi\n"
-                }, "")
-                ;return wk
-            ;; else
-                ;log_debug("Composite")
-                ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
-            ;/
-        ;; else if (tok`{pa}.cmp("["))
-            # code for converting value to another type here
-        ;/
-    ;/
-
-    # This is all kinda garbage, to fix.
-    /; if (is_call(tok, start))
-        ;log_debug("Attempt to invoke a call")
-        ;return _eval_call(tok, start, max, out, current, scope, t, alt)
-    ;; else if (pr < 2)
-        ;return _eval_dot(tok, start, max, out, current, scope, t, alt)
-    ;/
-    
 
     ;Variable s1, s2
     /; if (first == start)
@@ -2742,11 +2890,11 @@
     ;; else if (first == max - 1)
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
     ;; else
-        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
+        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, !alt)
         /; if (tok`{first}.cmp("="))
             ;t = s1.data_type
         ;/
-        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
         ;log_debug(string_add("Calculated s2 as ", s2.name))
     ;/
 
@@ -2778,7 +2926,7 @@
         ;return s1
     ;/
 
-    # TODO: Boolean logic
+    # TODO: Boolean combinations such as and, or, xor
     /; if (pr == 7)
         ;wk.set(s1, out)
         ;wk.cmp(s2, out)
@@ -3129,6 +3277,9 @@
         ;; if (tok`{cur`}.cmp("["))
             ;cur`++
             ;ret = get_type(tok, cur, current)
+            /; if (is_primitive(ret.name) < 0 && len (ret.ptr_chain) == 0)
+                ;ret.ptr_chain.append(PTYPE.REFERENCE)
+            ;/
         ;; if (tok`{cur`}.cmp("\n"))
             ;break
         ;/
