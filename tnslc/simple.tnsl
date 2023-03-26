@@ -3,17 +3,14 @@
 {}uint8 str2 = "abcd"
 
 /; method Test
-    /; wamba
+    /; wamba [int]
+        return self.i + self.j
     ;/
 ;/
 
 struct Test {
     int i, j, k
 }
-
-/; call_me (int i, ~int j) [int]
-    return i + j`
-;/
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
@@ -35,8 +32,8 @@ struct Test {
         argc = 90
     ;/
 
-    m.j = call_me(m.j, ~argc)
+    m.i = argc
 
     # return 3
-    return m.j
+    return m.wamba()
 ;/
