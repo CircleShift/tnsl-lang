@@ -1239,7 +1239,7 @@
         /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
             ;self.location = v.location
         ;; else if (self.is_prim())
-            /;if (self.is_ref() && v.is_ref())
+            /;if (self.is_ref() && (v.is_ref() || v.loc_type == LOCATION.STACK))
                 ;data`.csec = string_join( {
                     data`.csec,
                     "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
@@ -1465,6 +1465,8 @@
 
         /; loop (int i = 0; i < len (self.vars) && out < 16) [i++]
             /; if (self.vars{i}.loc_type == LOCATION.REGISTER)
+                ;log_debug("Found register variable")
+                ;log_debug(self.vars{i}.sprint())
                 ;out++
             ;/
         ;/
@@ -1501,7 +1503,7 @@
         ;/
         
         /; if (!(self.is_cf()) && !(self.r))
-            ;return out + 80
+            ;return out + 72
         ;/
 
         ;return out
@@ -1536,7 +1538,7 @@
 
         ;int accum = 0
         /; if (!(self.r))
-            ;accum = 80
+            ;accum = 72
         ;/
 
         ;{}uint8 moves = string_join( {
@@ -1576,7 +1578,7 @@
             ;/
         ;/
 
-        /; if (accum > 80 && !(self.r))
+        /; if (accum > 72 && !(self.r))
             ;out`.csec = string_add(out`.csec, moves)
         ;/
     ;/
@@ -1714,7 +1716,9 @@
             "\tsub rsp, ", int_to_string(copy.norm_size()), "\n"
         }, "")
         ;copy.set(rv`, out)
-        ;rv` = copy
+        ;rv`.location = copy.location
+        ;rv`.loc_type = LOCATION.STACK
+        ;log_debug(self.sprint())
 
         /; if (reg < last_var - 1)
             ;rv = self.find_reg_variable(last_var - 1)
@@ -1724,6 +1728,8 @@
             }, ""))
             ;rv`.move_register(reg, out)
         ;/
+        ;log_debug(self.sprint())
+
 
         ;return copy
     ;/
@@ -2651,12 +2657,24 @@
 # FIXME: should actually do call based on function given, and return a proper variable.
 # assumes the call has been set up
 /; _perform_call (Function f, ~CompData out) [Variable]
-    ;int reg = 0
+    ;int reg = 0, i = 0
     /; if (f.is_method())
         ;reg = 1
     ;/
     ;Variable ctmp = {"#ctmp", NO_TYPE, 4, LOCATION.REGISTER}
-    /; loop (int i = 0; i < len (f.inputs)) [i++]
+    /; loop (i < len (f.inputs)) [i++]
+        ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
+        ;t.ptr_chain = f.inputs{i}.ptr_chain
+        ;ctmp.data_type = t
+        /; if (ctmp.is_prim() && reg < 6)
+            ;reg++
+        ;; else if (reg == 6)
+            ;break
+        ;/
+    ;/
+    ;reg = reg - 1
+    ;i = i - 1
+    /; loop (i !< 0) [i = i - 1]
         ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
         ;t.ptr_chain = f.inputs{i}.ptr_chain
         ;ctmp.data_type = t
@@ -2666,7 +2684,7 @@
                 "\tmov ", get_reg(reg, ctmp.norm_size()),", [rsp]\n",
                 "\tadd rsp, ", int_to_string(ctmp.norm_size()), "\n"
             }, "")
-            ;reg++
+            ;reg = reg - 1
         ;; else if (reg == 6)
             ;break
         ;/
@@ -2707,7 +2725,7 @@
     ;; else if (tok`{start`}.cmp("`"))
         ;log_debug("Pre loop deref")
         ;wk = wk.deref(out)
-        ;start` = start` + 1
+        ;start` = start` + 2
     ;/
     
     /; loop (start` < max) [start`++]
@@ -2879,6 +2897,8 @@
     ;/
 
     /; if (pr < 2)
+        ;log_debug("Dot _eval_value")
+        ;tnsl.io.println(alt)
         ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, alt)
     ;/
 
@@ -2893,8 +2913,8 @@
     ;; else if (first == max - 1)
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
     ;; else
-        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
-        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, !alt)
+        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
         /; if (tok`{first}.cmp("="))
             ;t = s1.data_type
         ;/

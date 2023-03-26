@@ -11,8 +11,8 @@ struct Test {
     int i, j, k
 }
 
-/; call_me (int i, j) [int]
-    return i + j
+/; call_me (int i, ~int j) [int]
+    return i + j`
 ;/
 
 /; main (int argc, ~~uint argv) [int]
@@ -35,7 +35,7 @@ struct Test {
         argc = 90
     ;/
 
-    m.j = call_me(m.j, argc)
+    m.j = call_me(m.j, ~argc)
 
     # return 3
     return m.j
