@@ -2779,6 +2779,7 @@
         ;wk.move_register(1, out)
     ;/
 
+    ;log_debug(string_add("Dot returning ", wk.sprint()))
     ;return wk
 ;/
 
@@ -2897,7 +2898,7 @@
     ;/
 
     /; if (tok`{start}.cmp("("))
-        ;return _eval_value(tok, pa + 1, find_closing(tok, ~pa), out, mov, current, scope, t, alt)
+        ;return _eval_value(tok, start + 1, find_closing(tok, ~start), out, mov, current, scope, t, alt)
     ;/
 
     /; if (pa !< 0 && pr < 2)
@@ -2924,10 +2925,13 @@
     ;; else if (first == max - 1)
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
     ;; else
-        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
-        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
         /; if (tok`{first}.cmp("="))
+            ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
+            ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, !alt)
             ;t = s1.data_type
+        ;; else
+            ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
+            ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
         ;/
         ;log_debug(string_add("Calculated s2 as ", s2.name))
     ;/
@@ -3292,6 +3296,15 @@
     ;bool m = false, returned = false
     ;Type ret = NO_TYPE
 
+    /; if (len (current`.name) > 2)
+        /; if (current`.name{0} == '_' && current`.name{1} == '#')
+            ;{}{}uint8 split = string_split(current`.name, '#')
+            ;Type st = current`.find_type( {split{1}} )`
+            ;st.ptr_chain = {PTYPE.REFERENCE}
+            ;root.vars.append({"self", st, 0, LOCATION.LITERAL})
+        ;/
+    ;/
+
     /; loop (cur`++; cur` < max && !m) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
             ;root.name = tok`{cur`}.data
@@ -3307,7 +3320,11 @@
                 }, ""))
             ;/
         ;; if (tok`{cur`}.cmp("("))
-            ;root.vars = parse_param_list(tok, cur, current)
+            ;log_debug("Parsing params")
+            ;{}Variable params = parse_param_list(tok, cur, current)
+            /;loop (int i = 0; i < len params) [i++]
+                ;root.vars.append(params{i})
+            ;/
         ;; if (tok`{cur`}.cmp("["))
             ;cur`++
             ;ret = get_type(tok, cur, current)
@@ -3316,15 +3333,6 @@
             ;/
         ;; if (tok`{cur`}.cmp("\n"))
             ;break
-        ;/
-    ;/
-
-    /; if (len (current`.name) > 2)
-        /; if (current`.name{0} == '_' && current`.name{1} == '#')
-            ;{}{}uint8 split = string_split(current`.name, '#')
-            ;Type st = current`.find_type( {split{1}} )`
-            ;st.ptr_chain = {PTYPE.REFERENCE}
-            ;root.vars.append({"self", st, 0, 0})
         ;/
     ;/
 

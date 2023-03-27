@@ -3,8 +3,12 @@
 {}uint8 str2 = "abcd"
 
 /; method Test
+    /; mamba [int]
+        return 0
+    ;/
+
     /; wamba [int]
-        return self.i + self.j
+        return self.i + self.j + self.mamba()
     ;/
 ;/
 
