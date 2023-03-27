@@ -1,7 +1,0 @@
-struct Try {
-    int a, b, c
-}
-
-/; method Try
-    /; raw e ;/
-;/
