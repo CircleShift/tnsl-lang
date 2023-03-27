@@ -1768,6 +1768,12 @@
         ;/
         ;return false
     ;/
+
+    /; sprint [{}uint8]
+        ;return string_join( {
+            "Function ", self.name, " (", int_to_string(len(self.inputs)), ") ", self.output.sprint()
+        }, "")
+    ;/
 ;/
 
 ;struct Module {
@@ -2705,6 +2711,10 @@
         "\tcall ", f.full_label(), "\n"
     }, "")
     
+    /; if (string_equate(f.output.name, ""))
+        ;return {"", NO_TYPE, 0, 0}
+    ;/
+
     ;Type t = f.mod`.find_type(string_split(f.output.name, '.'))`
     ;t.ptr_chain = f.output.ptr_chain
     ;ctmp.data_type = t
@@ -2712,6 +2722,7 @@
     /; if (!(ctmp.is_prim()) && !(ctmp.is_ref()))
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
     ;/
+    ;log_debug("perf call ret")
     ;return ctmp
 ;/
 
