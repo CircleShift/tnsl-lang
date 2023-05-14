@@ -2679,7 +2679,7 @@
 ;/
 
 # FIXME: should set up the call by eval of all params
-/; _setup_call (~{}Token tok, int start, Variable base, ~CompData out, mov, ~Module current, ~Scope scope, ~int layer) [Function]
+/; _setup_call (~{}Token tok, int start, Variable base, ~CompData out, mov, ~Module current, ~Scope scope) [Function]
     ;{}uint8 name = tok`{start}.data
     ;start++
     ;int max = find_closing(tok, ~start)
@@ -2734,12 +2734,17 @@
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
 
         /; if (ctmp.is_prim() && regs < 6)
-            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, layer)
+            ;int layer = 0
+            ;Scope tmp_sc = scope`.new_sub_cf("call")
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, ~tmp_sc, t, ~layer)
+            ;tmp_sc.clear_tmp(out)
             
             ;out`.csec = string_join( {
                 out`.csec,
                 "\tsub rsp, ", int_to_string(ctmp.norm_size()), "\n"
             }, "")
+            ;scope`.tmp = scope`.tmp + ctmp.norm_size()
+
             ;ctmp.set(val, out)
             ;regs++
             ;start = _param_end(tok, start) + 1
@@ -2764,7 +2769,7 @@
 
 # FIXME: should actually do call based on function given, and return a proper variable.
 # assumes the call has been set up
-/; _perform_call (Function f, ~CompData out) [Variable]
+/; _perform_call (Function f, ~Scope scope, ~CompData out) [Variable]
     ;int reg = 0, i = 0
     /; if (f.is_method())
         ;reg = 1
@@ -2792,6 +2797,7 @@
                 "\tmov ", get_reg(reg, ctmp.norm_size()),", [rsp]\n",
                 "\tadd rsp, ", int_to_string(ctmp.norm_size()), "\n"
             }, "")
+            ;scope`.tmp = scope`.tmp - ctmp.norm_size()
             ;reg = reg - 1
         ;; else if (reg == 6)
             ;break
@@ -2887,11 +2893,8 @@
                 ;scope`.tmp = scope`.tmp + 8
             ;/
 
-            ;int lfc = 0
-            ;Scope call_sc = scope`.new_sub_cf("call")
-            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, ~call_sc, ~lfc)
-            ;wk = _perform_call(to_call, out)
-            ;call_sc.clear_tmp(out)
+            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, scope)
+            ;wk = _perform_call(to_call, scope, out)
 
             /; if (layer` > 2)
                 ;out`.csec = string_join({
