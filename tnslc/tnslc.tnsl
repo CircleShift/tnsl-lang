@@ -148,7 +148,7 @@
     ;; else if (cmp == 't')
         ;return '\t'
     ;; else if (cmp == '0')
-        ;return '\0'
+        ;return 0
     ;; else if (cmp == '\'')
         ;return '\''
     ;/
@@ -257,6 +257,20 @@
     /; if (inv)
         ;out = -out
     ;/
+    ;return out
+;/
+
+/; string_to_csb ({}uint8 str) [{}uint8]
+    ;{}uint8 out = ""
+
+    /; loop (int i = 0; i < len str) [i++]
+        ;out = string_add(out, int_to_string(str{i}))
+        /; if (i < len str - 1)
+            ;out.append(',')
+            ;out.append(' ')
+        ;/
+    ;/
+
     ;return out
 ;/
 
@@ -388,13 +402,13 @@
     "~=", "`=", "%=", "^=", "&=", "*=",
     "!=", "|=", "/=",
 
-    "<<", ">>", "!&", "!|", "!^"
+    "<<", ">>", "!&", "!|", "!^",
+
+    "len", "is"
 }
 
 
 ;{}{}uint8 KEYWORDS = {
-    "len",
-    "is",
 
     "if",
     "else",
@@ -535,19 +549,15 @@
 /; gen_type (Token t) [int]
     /; if (is_separator(t.data))
         ;return TOKEN.SEPARATOR
-    ;/
-
-    /; if (is_literal(t.data))
+    ;; else if (is_literal(t.data))
         ;return TOKEN.LITERAL
+    ;; else if (is_delimiter(t.data))
+        ;return TOKEN.DELIMITER
+    ;; else if (is_augment(t.data))
+        ;return TOKEN.AUGMENT
     ;/
 
-    /; if (is_reserved(t.data))
-        /; if (is_delimiter(t.data))
-            ;return TOKEN.DELIMITER
-        ;; else if (is_augment(t.data))
-            ;return TOKEN.AUGMENT
-        ;/
-    ;; else if (list_contains(KEYWORDS, t.data))
+    /; if (list_contains(KEYWORDS, t.data))
         ;return TOKEN.KEYWORD
     ;; else if (list_contains(KEYTYPES, t.data))
         ;return TOKEN.KEYTYPE
@@ -1409,7 +1419,7 @@
     ;/
 
     /; index (Variable i, ~CompData data) [Variable]
-	;int sz = self.el_size()
+	    ;int sz = self.el_size()
         ;log_debug(string_add("Index starting: ", self.sprint()))
         ;Variable out = self.strip_refs(data)
         
@@ -1420,7 +1430,7 @@
         ;/
 
         ;Variable ind = {"#index", {8, "void", {PTYPE.POINTER}, {}, 0}, 3, LOCATION.REGISTER}
-	;ind.set(i, data)
+	    ;ind.set(i, data)
         ;ind.mul({"#mul", {8, "uint", {}, {}, 0}, sz, LOCATION.LITERAL}, data)
 
         /; if (out.is_ref())
@@ -1445,7 +1455,7 @@
     ;/
 
     /; length_of (Variable a, ~CompData data)
-        ;a = a.strip_refs()
+        ;a = a.strip_refs(data)
         ;a.data_type.name = "uint"
         ;a.data_type.s = 8
         ;a.data_type.ptr_chain = {PTYPE.REFERENCE}
@@ -2432,9 +2442,10 @@
         ;/
 
         /; if (tok`{cur`}.data{0} == '"')
+            ;{}uint8 data = unquote_str(tok`{cur`}.data)
             ;return string_join({
-                declare_size(8), int_to_string(len unquote_str(tok`{cur`}.data)), "\n",
-                declare_size(1), tok`{cur`}.data, "\n"}, "")
+                declare_size(8), int_to_string(len data), "\n",
+                declare_size(1), string_to_csb(data), "\n"}, "")
         ;; else if (tok`{cur`}.data{0} == '\'')
             ;return string_join({
                 declare_size(1), tok`{cur`}.data, "\n"}, "")
@@ -2581,7 +2592,7 @@
 # Priority
 # 0 - deref
 # 1 - get
-# 2 - ref
+# 2 - ref, len
 # 3 - inc/dec
 # 4 - mul/div/mod
 # 5 - add/sub
@@ -2596,6 +2607,8 @@
 
     /; if (tok.cmp("."))
         ;return 1
+    ;; else if (tok.cmp("len"))
+        ;return 2
     ;; else if (len (tok.data) == 1)
         /; if (tok.cmp("`"))
             ;return 0
@@ -2864,7 +2877,8 @@
             ;/
         ;; else if (tok`{start`}.cmp("{"))
             ;log_debug("Index!")
-            ;Variable i = _eval_value(tok, start` + 1, find_closing(tok, start), out, mov, current, scope, t, layer)
+            ;Type ut = {8, "uint", {}, {}, 0}
+            ;Variable i = _eval_value(tok, start` + 1, find_closing(tok, start), out, mov, current, scope, ut, layer)
             ;log_debug(i.sprint())
             ;wk = wk.index(i, out)
             ;log_debug(wk.sprint())
@@ -2938,7 +2952,7 @@
             out`.dsec,
             l, ":\n",
             declare_size(8), int_to_string(len unquote_str(data)), "\n",
-            declare_size(1), data, "\n"}
+            declare_size(1), string_to_csb(unquote_str(data)), "\n"}
         , "")
         ;v.data_type = {1, "uint8", "", {POINTER.ARRAY}, {}}
         ;v.loc_type = LOCATION.LABEL
@@ -3092,6 +3106,9 @@
     /; if (tok`{first}.cmp("="))
 	    ;s1.set(s2, out)
         ;return s1
+    ;; if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
+        ;t = s1.data_type
+        ;t.strip_refs()
     ;/
  
     ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
@@ -3107,8 +3124,6 @@
 
     # Inc and dec
     /; if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
-        ;wk.data_type = s1.data_type
-        ;wk.data_type.strip_refs()
         ;wk.set(s1, out)
 
         /; if (tok`{first}.cmp("++"))
@@ -3184,6 +3199,8 @@
         ;wk.ref(s1, out)
     ;; else if (tok`{first}.cmp("!"))
         ;wk.not(s1, out)
+    ;; else if (tok`{first}.cmp("len"))
+        ;wk.length_of(s1, out)
     ;/
 
     ;return wk

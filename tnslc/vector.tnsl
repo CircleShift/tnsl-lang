@@ -1,0 +1,69 @@
+struct Vector {
+    uint
+        el_size,
+        num_el,
+        dat_size,
+    ~uint8 dat
+}
+
+/; method Vector
+
+    /; resize (uint num_el)
+        self.dat_size = num_el
+        self.dat = _realloc(self.dat, num_el * self.el_size)
+    ;/
+
+    /; get (uint i) [~uint8]
+        /; if (i !< self.num_el)
+            return self.dat
+        ;/
+        return self.dat + (i * self.el_size)
+    ;/
+
+    /; set (uint i, ~uint8 data)
+        ~uint8 index = self.get(i)
+        /; loop (i = 0; i < self.el_size) [i++]
+            index` = data`
+            index++
+            data++
+        ;/
+    ;/
+
+    /; push (~uint8 data)
+        self.num_el++
+        self.set(self.num_el - 1, data)
+        /; if (self.num_el !< self.dat_size)
+            self.resize(2 * self.dat_size)
+        ;/
+    ;/
+
+    /; pop
+        self.num_el--
+        /; if (self.num_el !== 0 && self.num_el < self.dat_size / 4)
+            self.resize(self.dat_size / 2)
+        ;/
+    ;/
+
+    /; remove (int index)
+        index++
+        /; loop (index < self.num_el) [index++]
+            self.set(index - 1, self.get(index))
+        ;/
+        self.pop()
+    ;/
+
+    /; start (int el_size)
+        self.num_el = 0
+        self.el_size = el_size
+        self.dat_size = 1
+        self.dat = _alloc(self.el_size)
+    ;/
+
+    /; clean
+        self.num_el = 0
+        self.el_size = 0
+        self.dat_size = 0
+        _delete(self.dat)
+        self.dat = 0
+    ;/
+;/

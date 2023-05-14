@@ -3,8 +3,8 @@ asm "extern realloc"
 asm "extern free"
 asm "extern printf"
 
-{}uint8 _alert = "Alert!"
-uint _stop = 0
+{}uint8 _alert = "Alert!\n\0"
+{}uint8 _dec = "%d\n\0"
 
 /; _alloc (uint size) [~void]
     ~void out
@@ -72,79 +72,24 @@ uint _stop = 0
     asm "mov r10, 0"
     # do call
     asm "call printf"
-    # there's no more to do 'cause free returns nothing 
+    # there's no more to do 'cause printf returns nothing 
+;/
+
+/; _print_num (~void str, int num)
+    # setup call by clearing most values
+    asm "mov rcx, rax"
+    asm "mov rdx, rbx"
+    asm "mov rdi, 0"
+    asm "mov rsi, 0"
+    asm "mov r8, 0"
+    asm "mov r9, 0"
+    asm "mov r10, 0"
+    # do call
+    asm "call printf"
+    # there's no more to do 'cause printf returns nothing 
 ;/
 
 /; print_alert
     _printf(~_alert{0})
 ;/
 
-struct Vector {
-    uint
-        el_size,
-        num_el,
-        dat_size,
-    ~uint8 dat
-}
-
-/; method Vector
-
-    /; resize (uint num_el)
-        self.dat_size = num_el
-        self.dat = _realloc(self.dat, num_el * self.el_size)
-    ;/
-
-    /; get (uint i) [~uint8]
-        /; if (i !< self.num_el)
-            return self.dat
-        ;/
-        return self.dat + (i * self.el_size)
-    ;/
-
-    /; set (uint i, ~uint8 data)
-        ~uint8 index = self.get(i)
-        /; loop (i = 0; i < self.el_size) [i++]
-            index` = data`
-            index++
-            data++
-        ;/
-    ;/
-
-    /; push (~uint8 data)
-        self.set(self.num_el, data)
-        self.num_el = self.num_el + 1
-        /; if (self.num_el !< self.dat_size)
-            self.resize(2 * self.dat_size)
-        ;/
-    ;/
-
-    /; pop
-        self.num_el = self.num_el - 1
-        /; if (self.num_el !== 0 && self.num_el < self.dat_size / 4)
-            self.resize(self.dat_size / 2)
-        ;/
-    ;/
-
-    /; remove (int index)
-        index++
-        /; loop (index < self.num_el) [index++]
-            self.set(index - 1, self.get(index))
-        ;/
-        self.pop()
-    ;/
-
-    /; start (int el_size)
-        self.num_el = 0
-        self.el_size = el_size
-        self.dat_size = 1
-        self.dat = _alloc(self.el_size)
-    ;/
-
-    /; clean
-        self.num_el = 0
-        self.el_size = 0
-        self.dat_size = 0
-        _delete(self.dat)
-        self.dat = 0
-    ;/
-;/

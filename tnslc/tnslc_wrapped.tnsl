@@ -1,4 +1,5 @@
 :include "c_wrap.tnsl"
+:include "vector.tnsl"
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
@@ -13,14 +14,15 @@
 
     Vector vec
     vec.start(1)
-    uint8 a = 97
+    uint8 a = _alert{0}
     vec.push(~a)
     vec.push(~a)
-    vec.push(~a)
+    a = _alert{len _alert - 2}
     vec.push(~a)
     a = 0
     vec.push(~a)
-    _printf(vec.dat)
+    _printf(vec.get(0))
+    _printf(vec.get(0))
     vec.clean()
-    return a
+    return 0
 ;/

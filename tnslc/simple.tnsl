@@ -1,44 +1,13 @@
 
 {}uint8 str1 = "abcd"
-{}uint8 str2 = "abcd"
-
-/; method Test
-    /; mamba [int]
-        return 1
-    ;/
-
-    /; wamba [int]
-        return self.i + self.j + self.mamba()
-    ;/
-;/
-
-struct Test {
-    int i, j, k
-}
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
     # update their positions here or else tnsl will have garbage values in r8 and r9
     asm "mov r8, rcx"
     asm "mov r9, rdx"
-    
-    # If on linux, you would use rdi and rsi instead of rcx and rdx, respectively
-    # simply comment out the bove asm, and uncomment the below lines
-    # asm "mov r8, rdi"
-    # asm "mov r9, rsi"
-
-    Test m
-    ~int j = ~m.i
-    ~~int i = ~j
-    i{0}{1} = 3
-
-    /; if (argc > 8)
-        argc = 90
-    ;/
-
-    m.i = argc
 
     # return 3
-    return m.wamba()
+    return argc + len str1
 ;/
 
