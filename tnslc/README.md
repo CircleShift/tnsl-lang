@@ -5,10 +5,13 @@ The reference compiler for the TNSL programming language.  The compiler is writt
 ## Usage:
 
 Place the interpreter `tint` in the parent folder and execute `run.sh` with the argument being the flags for the compiler.
+The compiler outputs x86 NASM compatible assembly.
 
 Examples:
 - `./run.sh dummy.tnsl` - Run the compiler on the dummy file
 - `./run.sh "dummy.tnsl ../libtnsl/libtnsl.tnsl"` - Run the compiler on the dummy file but also link libtnsl
+
+- `.\run.ps1 tnslc_wrapped.tnsl`: Run the compiler on the sample "Hello World" program
 
 ### Credits
 
