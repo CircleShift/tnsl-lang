@@ -3063,12 +3063,12 @@
     ;/
 
     ;Variable s1, s2
+    ;layer` = layer` + 1
     /; if (first == start)
         ;s1 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, layer)
     ;; else if (first == max - 1)
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, layer)
     ;; else
-        ;layer` = layer` + 1
         /; if (tok`{first}.cmp("="))
             ;layer` = layer` - 1
         ;/
@@ -3076,7 +3076,7 @@
         
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, layer)
         ;t = s1.data_type
-	;t.strip_refs()
+	    ;t.strip_refs()
         ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, ~l2)
         
         /; if (tok`{first}.cmp("="))
@@ -3084,13 +3084,13 @@
         ;/
 
         ;log_debug(string_add("Calculated s2 as ", s2.sprint()))
-        ;layer` = layer` - 1
     ;/
-    
+    ;layer` = layer` - 1
+
     ;log_debug(string_add("Calculated s1 as ", s1.sprint()))
 
     /; if (tok`{first}.cmp("="))
-	;s1.set(s2, out)
+	    ;s1.set(s2, out)
         ;return s1
     ;/
  
@@ -3106,11 +3106,19 @@
     }, " "))
 
     # Inc and dec
-    /; else if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
+    /; if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
+        ;wk.data_type = s1.data_type
+        ;wk.data_type.strip_refs()
+        ;wk.set(s1, out)
+
         /; if (tok`{first}.cmp("++"))
             ;s1.inc(out)
         ;; else
             ;s1.dec(out)
+        ;/
+
+        /; if (first == max - 1)
+            ;return wk
         ;/
 
         ;return s1
