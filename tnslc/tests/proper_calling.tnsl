@@ -1,0 +1,25 @@
+struct CallMe {
+    int a, b
+}
+
+/; method CallMe
+    /; call_two (int a, b) [int]
+        return a + b + self.a + self.b
+    ;/
+
+    /; call_three (int a, b, c) [int]
+        return self.call_two(a, b) + self.call_two(a, b) + c
+    ;/
+
+    /; call_four (int a, b, c, d) [int]
+        return self.call_three(a, b, c) + self.call_three(b, c, d)
+    ;/
+
+;/
+
+/; main [int]
+    CallMe cm
+    cm.a = 0
+    cm.b = 0
+    return cm.call_four(2, 0, 0, 1)
+;/
