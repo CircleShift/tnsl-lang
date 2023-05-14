@@ -10,6 +10,8 @@ Examples:
 - `./run.sh dummy.tnsl` - Run the compiler on the dummy file
 - `./run.sh "dummy.tnsl ../libtnsl/libtnsl.tnsl"` - Run the compiler on the dummy file but also link libtnsl
 
+- `.\run.ps1 tnslc_wrapped.tnsl`: Run the compiler on the sample "Hello World" program
+
 ### Credits
 
 	Copyright 2021-2022 Kyle Gunger
