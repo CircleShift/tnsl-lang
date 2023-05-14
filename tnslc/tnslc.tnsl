@@ -2932,8 +2932,16 @@
      
     /; if (layer` > 1)
         ;log_debug("Dot tmp variable generated")
-        ;Variable tt = scope`.new_tmp_var(wk.data_type, out)
+        ;Variable tt
+        
+        /; if (wk.is_ref())
+            ;tt = scope`.new_tmp_var({8, "void", {PTYPE.POINTER}, {}, 0}, out)
+        ;; else
+            ;tt = scope`.new_tmp_var(wk.data_type, out)
+        ;/
+        
         ;tt.set_raw(wk, out)
+        ;tt.data_type = wk.data_type
         ;wk = tt
     ;; else if (layer` == 1)
         ;wk.move_register(2, out)

@@ -7,7 +7,9 @@
     asm "mov r8, rcx"
     asm "mov r9, rdx"
 
+    ~uint8 a = ~str1{0}
+
     # return 3
-    return argc + len str1
+    return a`
 ;/
 
