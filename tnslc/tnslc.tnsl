@@ -3062,13 +3062,13 @@
         ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, layer)
     ;/
 
-    ;layer` = layer` + 1
     ;Variable s1, s2
     /; if (first == start)
         ;s1 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, layer)
     ;; else if (first == max - 1)
         ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, layer)
     ;; else
+        ;layer` = layer` + 1
         /; if (tok`{first}.cmp("="))
             ;layer` = layer` - 1
         ;/
@@ -3084,9 +3084,9 @@
         ;/
 
         ;log_debug(string_add("Calculated s2 as ", s2.sprint()))
+        ;layer` = layer` - 1
     ;/
-    ;layer` = layer` - 1
-
+    
     ;log_debug(string_add("Calculated s1 as ", s1.sprint()))
 
     /; if (tok`{first}.cmp("="))
@@ -3107,18 +3107,12 @@
 
     # Inc and dec
     /; else if (tok`{first}.cmp("++") || tok`{first}.cmp("--"))
-        ;wk.data_type = s1.data_type
-        ;wk.set(s1, out)
-
         /; if (tok`{first}.cmp("++"))
             ;s1.inc(out)
         ;; else
             ;s1.dec(out)
         ;/
 
-        /; if (first == max - 1)
-            ;return wk
-        ;/
         ;return s1
     ;/
 
