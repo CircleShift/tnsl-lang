@@ -15,7 +15,7 @@
     /; if (!string_equate(new_state, log_mode))
         ;tnsl.io.println("")
         /; if (string_to_int(log_level) > 2)
-            ;tnsl.io.print("[TNSLC] [LOG]: Swapping to state [")
+            ;tnsl.io.print("[TNSLC] [LOG] Swapping to state [")
             ;tnsl.io.print(new_state)
             ;tnsl.io.println("]")
         ;/
@@ -26,7 +26,7 @@
 
 /; log_err ({}uint8 msg)
     ;log_state("err")
-    ;tnsl.io.print("[TNSLC] [ERR]: ")
+    ;tnsl.io.print("[TNSLC] [ERR] ")
     ;tnsl.io.println(msg)
     ;tnsl.exit()
 ;/
@@ -34,7 +34,7 @@
 /; log_info ({}uint8 msg)
     /; if (string_to_int(log_level) > 0)
         ;log_state("info")
-        ;tnsl.io.print("[TNSLC] [INFO]: ")
+        ;tnsl.io.print("[TNSLC] [INFO] ")
         ;tnsl.io.println(msg)
     ;/
 ;/
@@ -47,7 +47,7 @@
 /; log_debug ({}uint8 msg)
     /; if (string_to_int(log_level) > 1)
         ;log_state("debug")
-        ;tnsl.io.print("[TNSLC] [DEBUG]: ")
+        ;tnsl.io.print("[TNSLC] [DEBUG] ")
         ;tnsl.io.println(msg)
     ;/
 ;/
@@ -731,6 +731,19 @@
         ;/
         ;return false
     ;/
+
+    /; strip_refs
+        /; loop (true)
+            ;int ch = len (self.ptr_chain)
+	    /; if (ch == 0)
+	        ;break
+	    ;; else if (self.ptr_chain{ch - 1} == PTYPE.REFERENCE)
+	        ;self.ptr_chain = strip_int(self.ptr_chain)
+	    ;; else
+	        ;break
+	    ;/
+        ;/
+    ;/
 ;/
 
 ;{}{}uint8 PRIM_NAMES = {
@@ -929,7 +942,7 @@
             ;/
             ;return get_reg(self.location, sz)
         ;; else if (self.loc_type == LOCATION.STACK)
-            ;return string_join( { "[ rbp - ", int_to_string(self.location), " ]" }, "")
+            ;return string_join( {mov_by_size(sz), "[ rbp - ", int_to_string(self.location), " ]" }, "")
         ;; else if (self.loc_type == LOCATION.LITERAL)
             ;return int_to_string(self.location)
         ;/
@@ -974,13 +987,31 @@
     # this is the type inference engine
     # don't really know how well this works
     /; match_types (Variable to_match, ~CompData data) [Variable]
+        ;Variable out = {"#match", self.data_type, 4, LOCATION.REGISTER}
+
+        /; if (self.loc_type == LOCATION.STACK && self.is_ref())
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tmov rdi, ", self.norm_loc(0), "\n"
+            }, "")
+            ;self.loc_type = LOCATION.REGISTER
+            ;self.location = 5
+        ;; if (to_match.loc_type == LOCATION.STACK && to_match.is_ref())
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tmov rsi, ", to_match.norm_loc(0), "\n"
+            }, "")
+            ;to_match.loc_type = LOCATION.REGISTER
+            ;to_match.location = 4
+            ;return to_match
+        ;/
+
         /; if (to_match.loc_type == LOCATION.LITERAL)
             ;return to_match
         ;; if (!(to_match.is_prim()) || (len(to_match.data_type.ptr_chain) > 0 && !(to_match.is_ref())))
             ;return to_match
         ;/
         
-        ;Variable out = {"#match", self.data_type, 4, LOCATION.REGISTER}
         ;{}uint8 mov = "mov"
         
         /; if (self.data_type.name{0} == 'i' && out.norm_size() > to_match.norm_size())
@@ -1007,16 +1038,16 @@
             ;v.norm_op(op, sz, self, data)
         ;; else
             ;v = self.match_types(v, data)
-            /; if (self.loc_type == LOCATION.REGISTER || v.loc_type == LOCATION.REGISTER)
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\t", op, " ", self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
-                }, "")
-            ;; else
+	    /; if ((self.is_ref() || self.loc_type == LOCATION.STACK) && (v.is_ref() || v.loc_type == LOCATION.STACK))
                 ;data`.csec = string_join( {
                     data`.csec,
                     "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
                     "\t", op, " ", self.norm_loc(sz), ", ", get_reg(4, sz), "\n"
+                }, "")
+            ;; else
+                ;data`.csec = string_join( {
+                    data`.csec,
+                    "\t", op, " ", self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
                 }, "")
             ;/
         ;/
@@ -1046,7 +1077,8 @@
         }, "")
         ;self.data_type.ptr_chain = strip_int(self.data_type.ptr_chain)
     ;/
-
+    
+    # Mostly for internal use
     /; strip_refs (~CompData data) [Variable]
         ;Variable out = {"#ref", self.data_type, 4, LOCATION.REGISTER}
 
@@ -1148,7 +1180,7 @@
         /; if (v.loc_type == LOCATION.LITERAL)
             ;data`.csec = string_join( {
                 data`.csec,
-                "\tmov ", mov_by_size(sz), self.norm_loc(sz), ", ", int_to_string(v.location), "\n"
+                "\tmov ", self.norm_loc(sz), ", ", int_to_string(v.location), "\n"
             }, "")
         ;; else
             ;v = self.match_types(v, data)
@@ -1234,25 +1266,17 @@
     ;/
 
     # Todo: Make sure this works well.
-    /; set (Variable v, ~CompData data)
-        ;int sz = self.norm_size()
+    /; set (Variable v, ~CompData data)	
+	;int sz = self.norm_size()
         ;v = self.match_types(v, data)
         /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
             ;self.location = v.location
         ;; else if (self.is_prim())
-            /;if (self.is_ref() && (v.is_ref() || v.loc_type == LOCATION.STACK))
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(4, sz), "\n"
-                }, "")
-            ;; else
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\tmov ", self.norm_loc(sz), ", ", v.norm_loc(sz), "\n"
-                }, "")
-            ;/
+	    ;self.norm_op("mov", self.norm_size(), v, data)
         ;; else
+	    ;log_debug("Full struct set")
+	    ;log_debug(self.sprint())
+	    ;log_debug(v.sprint())
             /; if (self.is_ref())
                 ;data`.csec = string_join( {
                     data`.csec,
@@ -1285,6 +1309,34 @@
         ;/
     ;/
 
+    # To be used to set pointers without dereferencing
+    /; set_raw(Variable v, ~CompData data)
+        ;int sz = self.norm_size()
+        /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
+            ;self.location = v.location
+        ;; else if (self.loc_type == LOCATION.STACK && v.loc_type == LOCATION.STACK)
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
+                "\tmov ", self.norm_loc(sz), ", ", get_reg(4, sz), "\n"
+            }, "")
+        ;; else
+            ;{}uint8 p1 = self.norm_loc(sz)
+	    ;{}uint8 p2 = v.norm_loc(sz)
+
+	    /; if (self.loc_type == LOCATION.REGISTER)
+	        ;p1 = get_reg(self.location, 8)
+	    ;; if (v.loc_type == LOCATION.REGISTER)
+	        ;p2 = get_reg(v.location, 8)
+	    ;/
+
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tmov ", p1, ", ", p2, "\n"
+            }, "")
+        ;/
+    ;/
+
     # Only to be called from a boolean variable
     /; bool_from (Variable v, ~CompData data, {}uint8 landing_pad)
         ;int sz = v.norm_size()
@@ -1293,7 +1345,7 @@
             "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
             "\ttest ", get_reg(4, sz), ", ", get_reg(4, sz), "\n",
             "\tmov ", self.norm_loc(1), ", 1\n",
-            "\tjnz ", skip_pad, "\n",
+            "\tjnz ", landing_pad, "\n",
             "\tmov ", self.norm_loc(1), ", 0\n",
             landing_pad, ":\n"
         }, "")
@@ -1311,11 +1363,12 @@
         ;self.location = new_reg
     ;/
 
+    # EVERYTHING SOUTH OF HERE NEEDS TO BE RE-DONE
+
     /; ref (Variable to_ref, ~CompData data)
         ;int l = len (to_ref.data_type.ptr_chain)
         /; if (to_ref.is_ref())
-            ;to_ref.data_type.ptr_chain{l - 1} = PTYPE.POINTER
-            ;self.set(to_ref, data)
+            ;self.set_raw(to_ref, data)
         ;; else if (to_ref.loc_type !== LOCATION.REGISTER && to_ref.loc_type !== LOCATION.LITERAL)
             ;data`.csec = string_join( {
                 data`.csec,
@@ -1351,28 +1404,30 @@
         ;out.data_type = out.data_type.members{i}.data_type
         ;out.data_type.ptr_chain.append(PTYPE.REFERENCE)
         
-        ;data`.csec = string_join( {
-            data`.csec,
-            "\tadd rsi, ", int_to_string(accum), "\n"
-        }, "")
+	/; if (accum > 0)
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tadd rsi, ", int_to_string(accum), "\n"
+            }, "")
+	;/
 
         ;return out
     ;/
 
     /; index (Variable i, ~CompData data) [Variable]
-        ;int sz = self.el_size()
+	;int sz = self.el_size()
         ;log_debug(string_add("Index starting: ", self.sprint()))
         ;Variable out = self.strip_refs(data)
-
+        
         ;int opc = len (out.data_type.ptr_chain)
 
         /; if (opc == 0 || (out.is_ref() && opc == 1))
             ;log_err(string_add("Unable to index a type if it is not a pointer or array ", out.sprint()))
         ;/
 
-        ;Variable ind = {"#index", {8, "void", "", {PTYPE.POINTER}, {}}, 3, LOCATION.REGISTER}
-        ;ind.set(i, data)
-        ;ind.mul({"#mul", {8, "uint", "", {}, {}}, sz, LOCATION.LITERAL}, data)
+        ;Variable ind = {"#index", {8, "void", {PTYPE.POINTER}, {}, 0}, 3, LOCATION.REGISTER}
+	;ind.set(i, data)
+        ;ind.mul({"#mul", {8, "uint", {}, {}, 0}, sz, LOCATION.LITERAL}, data)
 
         /; if (out.is_ref())
             ;data`.csec = string_join( {
@@ -1405,7 +1460,7 @@
 ;/
 
 ;struct Scope {
-    int num, c,
+    int num, c, tmp,
     ~Scope parent,
     {}uint8 name,
     {}Variable vars,
@@ -1627,7 +1682,7 @@
         ;cf = string_add(cf, int_to_string(self.num))
         ;self.num++
 
-        ;return {0, 0, ~self, cf, {}, self.r}
+        ;return {0, 0, 0, ~self, cf, {}, self.r}
     ;/
 
     /; get_continue (uint i) [{}uint8]
@@ -1665,6 +1720,29 @@
         ;/
         ;log_debug(string_add("Created new variable ", new.sprint()))
         ;self.vars.append(new)
+    ;/
+
+    /; new_tmp_var (Type t, ~CompData out) [Variable]
+        ;Variable new = {"##tmp", t, 0, 0}
+        ;new.loc_type = LOCATION.STACK
+        ;new.location = self.get_stack() + self.tmp + new.norm_size()
+        ;self.tmp = self.tmp + new.norm_size()
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\tsub rsp, ", int_to_string(new.norm_size()), "\n"
+        }, "")
+        ;log_debug(string_add("Created tmp variable ", new.sprint()))
+        ;return new
+    ;/
+
+    /; clear_tmp (~CompData out)
+        ;log_debug(string_add("Cleared tmp: ", int_to_string(self.tmp)))
+
+        /; if (self.tmp > 0)
+            ;out`.csec = string_add(out`.csec, string_add("\tadd rsp, ", int_to_string(self.tmp)))
+            ;out`.csec.append('\n')
+            ;self.tmp = 0
+        ;/
     ;/
 
     /; find_var ({}{}uint8 artifact, ~Module current) [Variable]
@@ -2727,7 +2805,7 @@
 ;/
 
 # Evaluates dot chains, indexing, and calls
-/; _eval_dot (~{}Token tok, ~int start, int max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; _eval_dot (~{}Token tok, ~int start, int max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, ~int layer) [Variable]
     ;Variable wk = first_match(tok, start, max, current, scope)
 
     /; if (start` !< max)
@@ -2750,6 +2828,7 @@
         ;start` = start` + 2
     ;/
     
+    ;layer` = layer` + 1
     /; loop (start` < max) [start`++]
         /; if (tok`{start`}.cmp("`"))
             ;log_debug("Loop deref")
@@ -2766,25 +2845,33 @@
             ;/
         ;; else if (tok`{start`}.cmp("{"))
             ;log_debug("Index!")
-            ;Variable i = _eval_value(tok, start` + 1, find_closing(tok, start), out, mov, current, scope, t, alt)
+            ;Variable i = _eval_value(tok, start` + 1, find_closing(tok, start), out, mov, current, scope, t, layer)
             ;log_debug(i.sprint())
             ;wk = wk.index(i, out)
             ;log_debug(wk.sprint())
             ;start` = find_closing(tok, start)
         ;; else if (tok`{start` + 1}.cmp("(") && tok`{start`}.type_is(TOKEN.DEFWORD))
             ;log_debug("Call")
-            # Pre-flight check
-            ;CompData trash = {"", "", ""}
-            ;_setup_call(tok, start`, wk, ~trash, mov, current, scope)
-            # Actually do call
-            ;Function to_call = _setup_call(tok, start`, wk, out, ~trash, current, scope)
+            
+	    ## Pre-flight check
+            #;CompData trash = {"", "", ""}
+            #;_setup_call(tok, start`, wk, ~trash, mov, current, scope)
+            
+	    # Actually do call
+            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, scope)
             ;wk = _perform_call(to_call, out)
             ;start`++
             ;start` = find_closing(tok, start)
         ;/
     ;/
-
-    /; if (alt)
+    ;layer` = layer` - 1
+     
+    /; if (layer` > 1)
+        ;log_debug("Dot tmp variable generated")
+        ;Variable tt = scope`.new_tmp_var(wk.data_type, out)
+        ;tt.set_raw(wk, out)
+        ;wk = tt
+    ;; else if (layer` == 1)
         ;wk.move_register(2, out)
     ;; else
         ;wk.move_register(1, out)
@@ -2838,7 +2925,7 @@
     ;return start
 ;/
 
-/; _eval_composite (~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; _eval_composite (~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, ~int layer) [Variable]
     ;{}uint8 l = scope`.next_const()
     /; if (start == max - 1)
         ;out`.dsec = string_join( {
@@ -2865,7 +2952,7 @@
 
         ;int ind = 0
         /; loop (start < max) [start = next_non_nl(tok, start + 1)]
-            ;Variable v = _eval_value(tok, start, element_end(tok, start, max), out, mov, current, scope, t, alt)
+            ;Variable v = _eval_value(tok, start, element_end(tok, start, max), out, mov, current, scope, t, layer)
             /; if (v.loc_type == LOCATION.LITERAL)
                 ;out_text = string_join( {
                     out_text,
@@ -2883,7 +2970,7 @@
     ;/
 ;/
 
-/; _eval_value(~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool alt) [Variable]
+/; _eval_value(~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, ~int layer) [Variable]
     /; if (start == max - 1)
         /; if (tok`{start}.type_is(TOKEN.LITERAL))
             ;{}uint8 l = current`.full_path()
@@ -2909,49 +2996,59 @@
     ;/
 
     /; if (tok`{start}.cmp("("))
-        ;return _eval_value(tok, start + 1, find_closing(tok, ~start), out, mov, current, scope, t, alt)
+        ;return _eval_value(tok, start + 1, find_closing(tok, ~start), out, mov, current, scope, t, layer)
     ;/
 
     /; if (pa !< 0 && pr < 2)
         /; if (tok`{pa}.cmp("{") && pa == first)
             ;log_debug("Composite")
-            ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, alt)
+            ;return _eval_composite(tok, pa + 1, find_closing(tok, ~pa), out, current, scope, t, layer)
         ;/
     ;/
 
     /; if (pr < 2)
         ;log_debug("Dot _eval_value")
-        ;tnsl.io.println(alt)
-        ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, alt)
+        ;tnsl.io.println(layer`)
+        ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, layer)
     ;/
 
-    ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
-    /; if (alt)
-        ;wk.location = 2
-    ;/
-
+    ;layer` = layer` + 1
     ;Variable s1, s2
     /; if (first == start)
-        ;s1 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
+        ;s1 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, layer)
     ;; else if (first == max - 1)
-        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, layer)
     ;; else
         /; if (tok`{first}.cmp("="))
-            ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, alt)
-            ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, !alt)
-            ;t = s1.data_type
-        ;; else
-            ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, alt)
-            ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, !alt)
+            ;layer` = layer` - 1
         ;/
-        ;log_debug(string_add("Calculated s2 as ", s2.name))
-    ;/
+        ;int l2 = layer` + 1
+        
+        ;s1 = _eval_value(tok, start, first, out, mov, current, scope, t, layer)
+        ;t = s1.data_type
+	;t.strip_refs()
+        ;s2 = _eval_value(tok, first + 1, max, out, mov, current, scope, t, ~l2)
+        
+        /; if (tok`{first}.cmp("="))
+            ;layer` = layer` + 1
+        ;/
 
-    ;log_debug(string_add("Calculated s2 as ", s1.name))
+        ;log_debug(string_add("Calculated s2 as ", s2.sprint()))
+    ;/
+    ;layer` = layer` - 1
+
+    ;log_debug(string_add("Calculated s1 as ", s1.sprint()))
 
     /; if (tok`{first}.cmp("="))
-        ;s1.set(s2, out)
+	;s1.set(s2, out)
         ;return s1
+    ;/
+ 
+    ;Variable wk = {"#wk", t, 1, LOCATION.REGISTER}
+    /; if (layer` > 1)
+        ;wk = scope`.new_tmp_var(t, out)
+    ;; else if (layer` == 1)
+        ;wk.location = 2
     ;/
 
     ;log_debug(string_join( {
@@ -3040,8 +3137,9 @@
     ;return wk
 ;/
 
-# ALWAYS put the value in rax
+# ALWAYS put the value in rax on save
 /; eval_value (~{}Token tok, ~int cur, ~CompData out, mov, ~Module current, ~Scope scope, Type t, bool save) [Variable]
+    ;log_debug("Evaling!")
     ;int end = cur`
     /; loop (end < len tok`) [end++]
         /; if (tok`{end}.type_is(TOKEN.SEPARATOR) || tok`{end}.cmp(";/") || tok`{end}.cmp("]") || tok`{end}.cmp(")"))
@@ -3050,7 +3148,13 @@
             ;end = find_closing(tok, ~end)
         ;/
     ;/
-    ;Variable val = _eval_value(tok, cur`, end, out, mov, current, scope, t, false)
+    ;CompData tmp = {"", "", ""}
+    ;int level = 0
+    ;_eval_value(tok, cur`, end, ~tmp, mov, current, scope, t, ~level)
+    ;scope`.clear_tmp(~tmp)
+    ;Variable val = _eval_value(tok, cur`, end, out, ~tmp, current, scope, t, ~level)
+    ;log_debug("c")
+    ;scope`.clear_tmp(out)
     ;cur` = end
     /; if (save)
         ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
@@ -3302,7 +3406,7 @@
 ;/
 
 /; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
-    ;Scope root = {0, 0, 0, "", {}, false}
+    ;Scope root = {0, 0, 0, 0, "", {}, false}
     ;int max = find_closing(tok, cur)
     ;bool m = false, returned = false
     ;Type ret = NO_TYPE

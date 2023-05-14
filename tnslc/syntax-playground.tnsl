@@ -25,6 +25,8 @@
 ;/
 
 ## END TEST 1
+##
+## Thoughts: this is much better.
 
 ## TEST 2 - get '.' augment auto de-references pointers
 
@@ -67,3 +69,24 @@ struct b {
 ;/
 
 ## END TEST 2
+##
+## Thoughts: not sure, the . operator could become a little too ambiguous if this is added
+
+## Test 3: using [] for array indexing instead of {}
+
+:include "tnsl"
+:using "tnsl"
+
+/; main ({}String args) [int]
+    int i = len args
+    String first = args[0]
+
+    {}int list = {0, 1, 2, 3}
+    i = list[2]
+
+    return i
+;/
+
+## End test 3
+##
+## Thoughts: I'm not sure weather I like it better or not.

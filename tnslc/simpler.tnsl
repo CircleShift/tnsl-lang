@@ -27,18 +27,13 @@ struct Test {
     # asm "mov r8, rdi"
     # asm "mov r9, rsi"
 
-    Test m
-    ~int j = ~m.i
-    ~~int i = ~j
-    i{0}{1} = 3
 
     /; if (argc > 8)
         argc = 90
     ;/
 
-    m.i = argc
 
     # return 3
-    return m.wamba()
+    return str1{1}
 ;/
 
