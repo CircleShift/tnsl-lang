@@ -1,14 +1,15 @@
 asm "extern malloc"
 asm "extern realloc"
 asm "extern free"
+asm "extern printf"
 
 /; _alloc (uint size) [~void]
     ~void out
     # Mov size into proper register, and set all extras to zero
-    asm "mov rdi, rax"
-    asm "mov rsi, 0"
+    asm "mov rcx, rax"
     asm "mov rdx, 0"
-    asm "mov rcx, 0"
+    asm "mov rdi, 0"
+    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     asm "mov r10, 0"
@@ -22,10 +23,10 @@ asm "extern free"
 /; _realloc (~void ptr, uint new_size) [~void]
     ~void out
     # Mov ptr and new size into proper registers, and set all extras to zero
-    asm "mov rdi, rax"
-    asm "mov rsi, rbx"
-    asm "mov rdx, 0"
-    asm "mov rcx, 0"
+    asm "mov rcx, rax"
+    asm "mov rdx, rbx"
+    asm "mov rdi, 0"
+    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     asm "mov r10, 0"
@@ -39,15 +40,29 @@ asm "extern free"
 
 /; _delete (~void ptr)
     # setup call by clearing most values
-    asm "mov rdi, rax"
-    asm "mov rsi, 0"
+    asm "mov rcx, rax"
     asm "mov rdx, 0"
-    asm "mov rcx, 0"
+    asm "mov rdi, 0"
+    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     asm "mov r10, 0"
     # do call
     asm "call free"
+    # there's no more to do 'cause free returns nothing 
+;/
+
+/; _printf (~void str)
+    # setup call by clearing most values
+    asm "mov rcx, rax"
+    asm "mov rdx, 0"
+    asm "mov rdi, 0"
+    asm "mov rsi, 0"
+    asm "mov r8, 0"
+    asm "mov r9, 0"
+    asm "mov r10, 0"
+    # do call
+    asm "call printf"
     # there's no more to do 'cause free returns nothing 
 ;/
 

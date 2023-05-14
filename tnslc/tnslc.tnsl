@@ -1225,19 +1225,13 @@
                 ;op = string_add("i", op)
             ;/
 
-            /; if (self.loc_type !== LOCATION.REGISTER && v.loc_type !== LOCATION.REGISTER)
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\t", op, " ", self.norm_loc(sz), v.norm_loc(sz), "\n"
-                }, "")
-            ;; else
-                ;data`.csec = string_join( {
-                    data`.csec,
-                    "\tmov ", get_reg(0, sz), ", ", v.norm_loc(sz), "\n",
-                    "\t", op, " ", self.norm_loc(sz), "\n",
-                    "\tmov ", self.norm_loc(sz), ", ", get_reg(keep, sz), "\n"
-                }, "")
-            ;/
+            ;data`.csec = string_join( {
+                data`.csec,
+                "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n",
+                "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
+                "\t", op, " ", get_reg(3, sz), "\n",
+                "\tmov ", self.norm_loc(sz), ", ", get_reg(keep, sz), "\n"
+            }, "")
         ;/
     ;/
 
@@ -1565,6 +1559,25 @@
         ;return out
     ;/
 
+    /; get_full_tmp_stack [int]
+        ;int out = self.tmp
+        /; if (self.is_cf())
+            ;out = out + self.parent`.get_full_tmp_stack()
+        ;/
+
+        /; loop (int i = 0; i < len (self.vars)) [i++]
+            /; if (self.vars{i}.loc_type == LOCATION.STACK)
+                ;out = out + self.vars{i}.norm_size()
+            ;/
+        ;/
+        
+        /; if (!(self.is_cf()) && !(self.r))
+            ;return out + 72
+        ;/
+
+        ;return out
+    ;/
+
     /; next_loc (Type t) [int]
         /; if (is_primitive(t.name) !< 0 || len (t.ptr_chain) > 0)
             ;log_debug("Next reg")
@@ -1725,7 +1738,7 @@
     /; new_tmp_var (Type t, ~CompData out) [Variable]
         ;Variable new = {"##tmp", t, 0, 0}
         ;new.loc_type = LOCATION.STACK
-        ;new.location = self.get_stack() + self.tmp + new.norm_size()
+        ;new.location = self.get_full_tmp_stack() + self.tmp + new.norm_size()
         ;self.tmp = self.tmp + new.norm_size()
         ;out`.csec = string_join( {
             out`.csec,
@@ -2666,7 +2679,7 @@
 ;/
 
 # FIXME: should set up the call by eval of all params
-/; _setup_call (~{}Token tok, int start, Variable base, ~CompData out, mov, ~Module current, ~Scope scope) [Function]
+/; _setup_call (~{}Token tok, int start, Variable base, ~CompData out, mov, ~Module current, ~Scope scope, ~int layer) [Function]
     ;{}uint8 name = tok`{start}.data
     ;start++
     ;int max = find_closing(tok, ~start)
@@ -2693,7 +2706,7 @@
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
         
         /; if (!(ctmp.is_prim()) || regs > 5)
-            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, true)
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, layer)
             ;out`.csec = string_join( {
                 out`.csec,
                 "\tsub rsp, ", int_to_string(ctmp.norm_size()), "\n"
@@ -2721,7 +2734,7 @@
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
 
         /; if (ctmp.is_prim() && regs < 6)
-            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, true)
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, layer)
             
             ;out`.csec = string_join( {
                 out`.csec,
@@ -2853,13 +2866,47 @@
         ;; else if (tok`{start` + 1}.cmp("(") && tok`{start`}.type_is(TOKEN.DEFWORD))
             ;log_debug("Call")
             
-	    ## Pre-flight check
-            #;CompData trash = {"", "", ""}
-            #;_setup_call(tok, start`, wk, ~trash, mov, current, scope)
+            ## Pre-flight check
+            # ;CompData trash = {"", "", ""}
+            # ;_setup_call(tok, start`, wk, ~trash, mov, current, scope)
             
-	    # Actually do call
-            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, scope)
+            # Actually do call
+            
+
+            /; if (layer` > 1)
+                ;out`.csec = string_join({
+                    out`.csec,
+                    "\tpush rbx\n"
+                } , "")
+                ;scope`.tmp = scope`.tmp + 8
+            ;; if (layer` > 2)
+                ;out`.csec = string_join({
+                    out`.csec,
+                    "\tpush rcx\n"
+                } , "")
+                ;scope`.tmp = scope`.tmp + 8
+            ;/
+
+            ;int lfc = 0
+            ;Scope call_sc = scope`.new_sub_cf("call")
+            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, ~call_sc, ~lfc)
             ;wk = _perform_call(to_call, out)
+            ;call_sc.clear_tmp(out)
+
+            /; if (layer` > 2)
+                ;out`.csec = string_join({
+                    out`.csec,
+                    "\tpop rcx\n"
+                } , "")
+                ;scope`.tmp = scope`.tmp - 8
+            ;; if (layer` > 1)
+                ;out`.csec = string_join({
+                    out`.csec,
+                    "\tpop rbx\n"
+                } , "")
+                ;scope`.tmp = scope`.tmp - 8
+            ;/
+
             ;start`++
             ;start` = find_closing(tok, start)
         ;/
@@ -3400,7 +3447,7 @@
     /; if (cf.is_cf())
         ;out`.csec = string_join( {
             out`.csec,
-            "\t", cf.parent`.scope_end_label(), ":\n"
+            cf.parent`.scope_end_label(), ":\n"
         }, "")
     ;/
 ;/
@@ -3642,7 +3689,7 @@
         /; if (tok{i}.cmp(":"))
             ;log_debug("INCLUDE")
             /; if (tok{i + 2}.type_is(TOKEN.LITERAL))
-                ;CompData tmp = compile_file_pass_one(f.relative(unquote_str(tok{i + 2}.data)), current)
+                ;compile_file_pass_one(f.relative(unquote_str(tok{i + 2}.data)), current)
                 ;i = i + 2
             ;/
             ;continue
