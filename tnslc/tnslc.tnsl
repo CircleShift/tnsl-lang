@@ -3510,6 +3510,10 @@
         ;l = string_add(l, root.name)
         ;root.name = l
 
+        ;log_debug("----------------------------")
+        ;log_debug(string_add("START OF BLOCK: ", l))
+        ;log_debug("----------------------------")
+
         /; if (current`.exp)
             ;out`.hsec = string_add(out`.hsec, "global ")
             ;out`.hsec = string_add(out`.hsec, l)

@@ -7,12 +7,8 @@ struct CallMe {
         return a + b + self.a + self.b
     ;/
 
-    /; call_three (int a, b, c) [int]
-        return self.call_two(a, b) + self.call_two(a, b) + c
-    ;/
-
     /; call_four (int a, b, c, d) [int]
-        return self.call_three(a, b, c) + self.call_three(b, c, d)
+        return self.call_two(a + b, b * c + d) + self.call_two(a * b + c, c + d)
     ;/
 
 ;/
@@ -21,5 +17,5 @@ struct CallMe {
     CallMe cm
     cm.a = 0
     cm.b = 0
-    return cm.call_four(2, 0, 0, 1)
+    return cm.call_four(0, 2, 2, 0)
 ;/

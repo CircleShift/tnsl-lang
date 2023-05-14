@@ -3,10 +3,15 @@ asm "extern realloc"
 asm "extern free"
 asm "extern printf"
 
+{}uint8 _alert = "Alert!"
+uint _stop = 0
+
 /; _alloc (uint size) [~void]
     ~void out
     # Mov size into proper register, and set all extras to zero
-    asm "mov rcx, rax"
+    asm "mov rax, 0"
+    asm "mov rbx, 0"
+    asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov rdi, 0"
     asm "mov rsi, 0"
@@ -23,8 +28,10 @@ asm "extern printf"
 /; _realloc (~void ptr, uint new_size) [~void]
     ~void out
     # Mov ptr and new size into proper registers, and set all extras to zero
-    asm "mov rcx, rax"
-    asm "mov rdx, rbx"
+    asm "mov rax, 0"
+    asm "mov rbx, 0"
+    asm "mov rcx, r8"
+    asm "mov rdx, r9"
     asm "mov rdi, 0"
     asm "mov rsi, 0"
     asm "mov r8, 0"
@@ -40,6 +47,8 @@ asm "extern printf"
 
 /; _delete (~void ptr)
     # setup call by clearing most values
+    asm "mov rax, 0"
+    asm "mov rbx, 0"
     asm "mov rcx, rax"
     asm "mov rdx, 0"
     asm "mov rdi, 0"
@@ -66,45 +75,51 @@ asm "extern printf"
     # there's no more to do 'cause free returns nothing 
 ;/
 
+/; print_alert
+    _printf(~_alert{0})
+;/
+
 struct Vector {
     uint
         el_size,
         num_el,
         dat_size,
-    ~void dat
+    ~uint8 dat
 }
 
 /; method Vector
 
     /; resize (uint num_el)
         self.dat_size = num_el
-        _realloc(self.dat, num_el * self.el_size)
+        self.dat = _realloc(self.dat, num_el * self.el_size)
     ;/
 
-    /; get (uint i) [~void]
+    /; get (uint i) [~uint8]
         /; if (i !< self.num_el)
             return self.dat
         ;/
         return self.dat + (i * self.el_size)
     ;/
 
-    /; set (uint i, ~void data)
-        ~void index = self.get(i)
-        /; loop (i = 0; i < self.el_size) [index = index + 1; data = data + 1; i++]
-            index = data
+    /; set (uint i, ~uint8 data)
+        ~uint8 index = self.get(i)
+        /; loop (i = 0; i < self.el_size) [i++]
+            index` = data`
+            index++
+            data++
         ;/
     ;/
 
-    /; push (~void data)
-        self.num_el++
-        self.set(self.num_el - 1, data)
+    /; push (~uint8 data)
+        self.set(self.num_el, data)
+        self.num_el = self.num_el + 1
         /; if (self.num_el !< self.dat_size)
-            self.resize(2*self.dat_size)
+            self.resize(2 * self.dat_size)
         ;/
     ;/
 
     /; pop
-        self.num_el--
+        self.num_el = self.num_el - 1
         /; if (self.num_el !== 0 && self.num_el < self.dat_size / 4)
             self.resize(self.dat_size / 2)
         ;/
