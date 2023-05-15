@@ -10,6 +10,9 @@ Under the folder `spec` is the [TNSL language specification](./spec/README.md). 
 	Current specification version:
 	0.0.1
 
+	Current tnslc version:
+	0.0.2
+
 ## libtnsl
 
 An implimentation of the TNSL standard library.  Dual licenced under the CDDL 1.0 and BSD 3-clause licences.
@@ -38,7 +41,7 @@ It is reccommended that if you are going to clone this repository and attempt to
 
 	Specification:    incomplete
 	libtnsl:          incomplete
-	tnslc:            incomplete
+	tnslc:            in progress
 
 ## Credits
 
