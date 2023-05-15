@@ -1281,7 +1281,7 @@
 	    ;log_debug("Full struct set")
 	    ;log_debug(self.sprint())
 	    ;log_debug(v.sprint())
-            /; if (self.is_ref())
+            /; if (self.is_ref() && self.loc_type == LOCATION.STACK)
                 ;data`.csec = string_join( {
                     data`.csec,
                     "\tmov rdi, ", self.norm_loc(8), "\n"
@@ -1293,7 +1293,7 @@
                 }, "")
             ;/
 
-            /; if (v.is_ref())
+            /; if (v.is_ref() && v.loc_type == LOCATION.STACK)
                 ;data`.csec = string_join( {
                     data`.csec,
                     "\tmov rsi, ", v.norm_loc(8), "\n"
@@ -1326,13 +1326,13 @@
             }, "")
         ;; else
             ;{}uint8 p1 = self.norm_loc(sz)
-	    ;{}uint8 p2 = v.norm_loc(sz)
+            ;{}uint8 p2 = v.norm_loc(sz)
 
-	    /; if (self.loc_type == LOCATION.REGISTER)
-	        ;p1 = get_reg(self.location, 8)
-	    ;; if (v.loc_type == LOCATION.REGISTER)
-	        ;p2 = get_reg(v.location, 8)
-	    ;/
+            /; if (self.loc_type == LOCATION.REGISTER)
+                ;p1 = get_reg(self.location, 8)
+            ;; if (v.loc_type == LOCATION.REGISTER)
+                ;p2 = get_reg(v.location, 8)
+            ;/
 
             ;data`.csec = string_join( {
                 data`.csec,
@@ -1610,7 +1610,7 @@
                 ;self.vars{i}.loc_type = LOCATION.REGISTER
                 ;out`.csec = string_join( {
                     out`.csec,
-                    "\tmov ", get_reg(loc, 8), ", ", get_reg(loc - 8, 8), "\n"
+                    "\tmov ", get_reg(loc, 8), ", ", get_reg(loc - 8, 8), "\n\n"
                 }, "")
             ;/
         ;/
@@ -1621,7 +1621,7 @@
         ;/
 
         ;{}uint8 moves = string_join( {
-            "\tlea rsi, [rbp]\n"
+            "\tlea rsi, [rbp + 8]\n\n"
         }, "")
         
         # Move extra variables
@@ -1634,24 +1634,17 @@
                 /; if (len (self.vars{i}.data_type.ptr_chain) > 0)
                     ;moves = string_join( {
                         moves,
-                        "\tmov rdi, qword [rsi]\n",
-                        "\tmov qword [rbp - ", int_to_string(accum), "], rdi\n",
-                        "\tadd rsi, 8\n"
-                    }, "")
-                ;; else if (self.vars{i}.is_prim())
-                    ;moves = string_join( {
-                        moves,
-                        "\tmov ", get_reg(5, sz), ", ", mov_by_size(sz), "[rsi]\n",
-                        "\tmov ", mov_by_size(sz), "[rbp - ", int_to_string(accum), "], ", get_reg(5, sz),"\n",
-                        "\tadd rsi, ", int_to_string(sz), "\n"
+                        "\tsub rsp, 8\n",
+                        "\tlea rdi, qword [rbp - ", int_to_string(accum), "]\n",
+                        "\tmovsq\n\n"
                     }, "")
                 ;; else
                     ;moves = string_join( {
                         moves,
+                        "\tsub rsp, ", int_to_string(sz), "\n",
                         "\tlea rdi, [rbp - ", int_to_string(accum), "]\n",
                         "\tmov rcx, ", int_to_string(sz), "\n",
-                        "\tmovsb\n",
-                        "\tadd rsi, ", int_to_string(sz), "\n"
+                        "\trep movsb\n"
                     }, "")
                 ;/
             ;/
@@ -1664,11 +1657,7 @@
     
     /; end_scope (~CompData out)
         /; if (!(self.r))
-        ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
-        ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
-
             ;{}uint8 outro = "\tlea rsp, [rbp - 72]\n\tpop r15\n\tpop r14\n\tpop r13\n\tpop r12\n\tpop r11\n\tpop r10\n\tpop r9\n\tpop r8\n\tpop rbp\n"
-
             ;out`.csec = string_add(out`.csec, outro)
         ;/
     ;/
@@ -2719,11 +2708,13 @@
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
         
         /; if (!(ctmp.is_prim()) || regs > 5)
-            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, layer)
+            ;int layer = 0
+            ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, ~layer)
             ;out`.csec = string_join( {
                 out`.csec,
                 "\tsub rsp, ", int_to_string(ctmp.norm_size()), "\n"
             }, "")
+            ;scope`.tmp = scope`.tmp + ctmp.norm_size()
             ;ctmp.set(val, out)
             ;start = _param_end(tok, start) + 1
         ;; else
@@ -2906,7 +2897,7 @@
                 } , "")
                 ;scope`.tmp = scope`.tmp + 8
             ;/
-
+            
             ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, scope)
             ;wk = _perform_call(to_call, scope, out)
 
@@ -3234,8 +3225,22 @@
     ;scope`.clear_tmp(out)
     ;cur` = end
     /; if (save)
+        /; if (!(val.is_prim()))
+            ;t.ptr_chain.append(PTYPE.REFERENCE)
+        ;/
+
         ;Variable set = {"#tmp", t, 0, LOCATION.REGISTER}
-        ;set.set(val, out)
+
+        /; if (!(val.is_prim()) && set.is_ref())
+            ;set.data_type.ptr_chain = { PTYPE.POINTER }
+            ;set.ref(val, out)
+            ;set.data_type.ptr_chain = { PTYPE.REFERENCE }
+        ;; else if (set.is_ref())
+            ;set.set_raw(val, out)
+        ;; else
+            ;set.set(val, out)
+        ;/
+        
         ;return val
     ;/
     ;return { "", NO_TYPE, 0, 0 }
