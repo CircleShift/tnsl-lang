@@ -2,17 +2,17 @@
 {}uint8 str1 = "abcd"
 
 struct Stress {
-    int i
+    int i, j, k
 }
 
 struct Test {
-    Stress s
+    ~Stress s
 }
 
-/; s_call () [Stress]
-    Stress a
-    a.i = 1
-    return a
+/; s_call (Test t)
+    t.s`.i = 1
+    t.s`.j = 1 + t.s`.i
+    t.s`.k = t.s`.j + 1
 ;/
 
 /; main (int argc, ~~uint argv) [int]
@@ -24,11 +24,11 @@ struct Test {
     Stress test
     Test stress
 
-    test.i = 1
+    stress.s = ~test
 
-    stress.s = s_call()
+    s_call(stress)
 
     # return 3
-    return stress.s.i
+    return stress.s`.k
 ;/
 

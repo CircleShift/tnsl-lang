@@ -1408,12 +1408,12 @@
         ;out.data_type = out.data_type.members{i}.data_type
         ;out.data_type.ptr_chain.append(PTYPE.REFERENCE)
         
-	/; if (accum > 0)
+        /; if (accum > 0)
             ;data`.csec = string_join( {
                 data`.csec,
                 "\tadd rsi, ", int_to_string(accum), "\n"
             }, "")
-	;/
+        ;/
 
         ;return out
     ;/
@@ -2696,18 +2696,18 @@
         ;f = base.data_type.mod`.find_function( {name} )
     ;/
     ;Variable ctmp = {"#ctmp", NO_TYPE, 0-1, LOCATION.REGISTER}
-
+    ;int old_start = start
     /; loop (int i = 0; i < len (f.inputs)) [i++]
         ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
         ;t.ptr_chain = f.inputs{i}.ptr_chain
         ;ctmp.data_type = t
 
         /; if (ctmp.is_ref())
-            ;ctmp.data_type.ptr_chain{len (ctmp.data_type.ptr_chain)} = PTYPE.POINTER
+            ;ctmp.data_type.ptr_chain{len (ctmp.data_type.ptr_chain) - 1} = PTYPE.POINTER
         ;/
         ;ctmp.data_type.ptr_chain.append(PTYPE.REFERENCE)
         
-        /; if (!(ctmp.is_prim()) || regs > 5)
+        /; if (!(ctmp.is_prim()) || regs !< 6)
             ;int layer = 0
             ;Variable val = _eval_value(tok, start, _param_end(tok, start), out, mov, current, scope, t, ~layer)
             ;out`.csec = string_join( {
@@ -2716,17 +2716,17 @@
             }, "")
             ;scope`.tmp = scope`.tmp + ctmp.norm_size()
             ;ctmp.set(val, out)
-            ;start = _param_end(tok, start) + 1
         ;; else
             ;regs++
         ;/
+        ;start = _param_end(tok, start) + 1
     ;/
 
     ;int regs = 1
     /; if (string_equate(base.name, ""))
         ;regs = 0
     ;/
-
+    ;start = old_start
     /; loop (int i = 0; i < len (f.inputs)) [i++]
         ;Type t = f.mod`.find_type(string_split(f.inputs{i}.name, '.'))`
         ;t.ptr_chain = f.inputs{i}.ptr_chain
@@ -2751,10 +2751,10 @@
 
             ;ctmp.set(val, out)
             ;regs++
-            ;start = _param_end(tok, start) + 1
         ;; else if (regs == 6)
             ;break
         ;/
+        ;start = _param_end(tok, start) + 1
     ;/
 
     /; if (f.is_method())
@@ -2843,7 +2843,7 @@
             ;wk = wk.member(tok`{start` + 1}.data, out)
             ;start` = start` + 2
         ;/
-    ;; if (tok`{start`}.cmp("("))
+    ;; else if (tok`{start`}.cmp("("))
         ;start` = start` - 1
     ;; else if (tok`{start`}.cmp("`"))
         ;log_debug("Pre loop deref")
@@ -2898,8 +2898,10 @@
                 ;scope`.tmp = scope`.tmp + 8
             ;/
             
-            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, scope)
-            ;wk = _perform_call(to_call, scope, out)
+            ;Scope call_sc = scope`.new_sub_cf("call")
+            ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, ~call_sc)
+            ;wk = _perform_call(to_call, ~call_sc, out)
+            ;call_sc.clear_tmp(out)
 
             /; if (layer` > 2)
                 ;out`.csec = string_join({

@@ -1,0 +1,8 @@
+:include "c_wrap.tnsl"
+
+{}uint8 hello = "Hello World!\n\0"
+
+/; main [int]
+    _printf(~hello{0})
+    return 0
+;/
