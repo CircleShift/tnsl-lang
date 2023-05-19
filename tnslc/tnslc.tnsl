@@ -7,7 +7,7 @@
 # 1 - Info (default)
 # 2 - Debugging information (useful for me, probably less for you)
 # 3 - Also logs the state changes of the log itself
-;{}uint8 log_level = "2"
+;{}uint8 log_level = "1"
 ;{}uint8 log_mode = "single"
 
 /; log_state({}uint8 new_state)
@@ -1928,13 +1928,18 @@
     ;/
 
     /; _find_def ({}{}uint8 artifact, int r) [Variable]
+        ;log_debug(string_add("Finding def: ", artifact{r}))
+        ;log_debug(string_join(artifact, "."))
         /; if (len artifact !> r)
             ;return {"", NO_TYPE, 0, 0}
         ;/
 
         /; if (len artifact - 1 > r)
+            ;log_debug("loopin")
+            ;{}uint8 e_name = string_add("__#", artifact{r})
+            ;{}uint8 m_name = string_add("_#", artifact{r})
             /; loop (int i = 0; i < len (self.sub)) [i++]
-                /; if (string_equate(artifact{r}, self.sub{i}.name))
+                /; if (string_equate(artifact{r}, self.sub{i}.name) || string_equate(e_name, self.sub{i}.name) || string_equate(m_name, self.sub{i}.name))
                     ;log_debug(string_add("Artifact: ", artifact{r}))
                     ;return self.sub{i}._find_def(artifact, r + 1)
                 ;/
@@ -1964,6 +1969,7 @@
     ;/
 
     /; find_def ({}{}uint8 artifact) [Variable]
+        ;log_debug("Finding def...")
         ;return self._find_def(artifact, 0)
     ;/
 
@@ -2463,6 +2469,10 @@
             ;cur`++
         ;/
     ;/
+
+    ;log_debug(string_join( {
+        "Adding enum ", name, " of type ", et.name
+    }, ""))
 
     /; if (string_equate(et.name, ""))
         ;et = Primitives{3}
@@ -3036,6 +3046,7 @@
 ;/
 
 /; _eval_value(~{}Token tok, int start, max, ~CompData out, mov, ~Module current, ~Scope scope, Type t, ~int layer) [Variable]
+    ;log_vis(".")
     /; if (start == max - 1)
         /; if (tok`{start}.type_is(TOKEN.LITERAL))
             ;{}uint8 l = current`.full_path()
@@ -3073,7 +3084,6 @@
 
     /; if (pr < 2)
         ;log_debug("Dot _eval_value")
-        ;tnsl.io.println(layer`)
         ;return _eval_dot(tok, ~start, max, out, mov, current, scope, t, layer)
     ;/
 
@@ -3649,6 +3659,7 @@
     /; if (len name == 0)
         ;log_err(string_add("Did not find name for module or pethod block. ", tok`{cur`}.sprint()))
     ;/
+    ;log_debug(string_add("Generating module ", name))
 
     ;~Module new = find_or_create(name, current, exp)
     
@@ -3675,7 +3686,7 @@
 
 # Second pass on a module
 # Generates code and calls compile_file_second_pass if an include happens
-/; module_pass_two (~{}Token tok, ~int cur, ~Module current, ~CompData out, Path f)
+/; module_pass_two (~{}Token tok, ~int cur, ~Module current, ~CompData out)
     ;int max = find_closing(tok, cur)
     /; loop (cur`++; cur` < len tok`) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.DEFWORD))
@@ -3700,7 +3711,7 @@
         ;; else if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
             ;log_debug("Mod block")
             /; if (tok`{cur` + 1}.cmp("export") || tok`{cur` + 1}.cmp("module"))
-                ;module_pass_two(tok, cur, current, out, f)
+                ;module_pass_two(tok, cur, current, out)
             ;; else
                 ;compile_block(tok, cur, current, out)
             ;/
@@ -3822,7 +3833,7 @@
         ;; else if (tok`{i}.cmp("/;") || tok`{i}.cmp(";;"))
             ;log_debug("Root block")
             /; if (tok`{i + 1}.cmp("export") || tok`{i + 1}.cmp("module"))
-                ;module_pass_two(tok, ~i, current, ~out, f)
+                ;module_pass_two(tok, ~i, current, ~out)
             ;; else
                 ;compile_block(tok, ~i, current, ~out)
             ;/

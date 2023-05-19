@@ -1,6 +1,6 @@
 :include "c_wrap.tnsl"
 
-{}uint8 star = "hello.tnsl\0"
+{}uint8 star = "*\0"
 {}uint8 space = " \0"
 {}uint8 new_line = "\n\0"
 

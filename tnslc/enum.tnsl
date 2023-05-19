@@ -4,6 +4,10 @@ enum TEST_ENUM [int] {
     i = 0
 }
 
+/; module m
+    int i = 0
+;/
+
 /; main [int]
-    return TEST_ENUM.i
+    return TEST_ENUM.i + m.i
 ;/
