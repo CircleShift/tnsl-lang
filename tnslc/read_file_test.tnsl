@@ -1,22 +1,11 @@
 :include "c_wrap.tnsl"
 
-{}uint8 star = "hello.tnsl\0"
-{}uint8 space = " \0"
-{}uint8 new_line = "\n\0"
-
-/; print_triangle (int argc)
-    /; loop (int i = 0; i < argc) [i++]
-        /; loop (int j = 0; j < argc - i) [j++]
-            _printf(~space{0})
-        ;/
-        /; loop (int j = 0; j < 1 + 2*i) [j++]
-            _printf(~star{0})
-        ;/
-        _printf(~new_line{0})
-    ;/
-;/
+{}uint8 usage_msg = "Usage: read_file.exe [file to read] [file to write]\n\0"
+{}uint8 print_one = "\0\0"
+{}uint8 nl = "\n\0"
 
 /; main (int argc, ~~uint8 argv) [int]
+
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
     # update their positions here or else tnsl will have garbage values in r8 and r9
     asm "mov r8, rcx"
@@ -26,8 +15,26 @@
     # simply comment out the bove asm, and uncomment the below lines
     # asm "mov r8, rdi"
     # asm "mov r9, rsi"
+
+    /; if (argc < 2)
+        _printf(~usage_msg{0})
+        return 1
+    ;/
+
+    _printf(argv{1})
+    _printf(~nl{0})
+
+    ~void write_handle = _create_file(argv{1})
+
+    _print_num(~_dec{0}, write_handle)
+
+    int ln = cstr_len(argv{1})
     
-    print_triangle(argc)
-    
+    /; loop (int i = 0; i < ln) [i++]
+        _write_byte(write_handle, ~argv{1}{i})
+    ;/
+
+    _close_file(write_handle)
+
     return 0
 ;/

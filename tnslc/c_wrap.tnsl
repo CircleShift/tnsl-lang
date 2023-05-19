@@ -1,7 +1,14 @@
+# Must be included at the top of the file
 asm "extern malloc"
 asm "extern realloc"
 asm "extern free"
+
 asm "extern printf"
+
+asm "extern CreateFileA"
+asm "extern ReadFile"
+asm "extern WriteFile"
+asm "extern CloseHandle"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
@@ -9,15 +16,10 @@ asm "extern printf"
 /; _alloc (uint size) [~void]
     ~void out
     # Mov size into proper register, and set all extras to zero
-    asm "mov rax, 0"
-    asm "mov rbx, 0"
     asm "mov rcx, r8"
     asm "mov rdx, 0"
-    asm "mov rdi, 0"
-    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-    asm "mov r10, 0"
     asm "call malloc"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially, and we have a uint in r8)
@@ -28,15 +30,10 @@ asm "extern printf"
 /; _realloc (~void ptr, uint new_size) [~void]
     ~void out
     # Mov ptr and new size into proper registers, and set all extras to zero
-    asm "mov rax, 0"
-    asm "mov rbx, 0"
     asm "mov rcx, r8"
     asm "mov rdx, r9"
-    asm "mov rdi, 0"
-    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-    asm "mov r10, 0"
     # Do call
     asm "call realloc"
     # Set out to the returned value
@@ -47,15 +44,10 @@ asm "extern printf"
 
 /; _delete (~void ptr)
     # setup call by clearing most values
-    asm "mov rax, 0"
-    asm "mov rbx, 0"
     asm "mov rcx, rax"
     asm "mov rdx, 0"
-    asm "mov rdi, 0"
-    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-    asm "mov r10, 0"
     # do call
     asm "call free"
     # there's no more to do 'cause free returns nothing 
@@ -65,11 +57,8 @@ asm "extern printf"
     # setup call by clearing most values
     asm "mov rcx, rax"
     asm "mov rdx, 0"
-    asm "mov rdi, 0"
-    asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-    asm "mov r10, 0"
     # do call
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
@@ -83,13 +72,139 @@ asm "extern printf"
     asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-    asm "mov r10, 0"
     # do call
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
+;/
+
+
+# Create file for writing (overwrite)
+/; _create_file (~void name) [~void]
+    ~void out
+
+    asm "mov rcx, r8" # lpFileName
+    asm "mov rdx, 3"  # dwDesiredAccess
+    asm "shl rdx, 30" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
+    asm "mov r8, 0"   # dwShareMode
+    asm "mov r9, 0"   # lpSecurityAttributes
+
+    asm "push qword 0"   # hTemplateFile
+    asm "push qword 128" # dwFlagsAndAttributes (NORMAL_FILE = 128)
+    asm "push qword 2"   # dwCreationDisposition (CREATE_ALWAYS = 2)
+
+    # Shadow space
+    asm "push r9"
+    asm "push r8"
+    asm "push rdx"
+    asm "push rcx"
+
+    # Do call
+    asm "call CreateFileA"
+
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially. We have a ptr in r8)
+    asm "mov r9, rax"
+
+    return out
+;/
+
+# Open file for reading or writing (no overwrite)
+/; _open_file (~void name) [~void]
+    ~void out
+
+    asm "mov rcx, r8" # lpFileName
+    asm "mov rdx, 3"  # dwDesiredAccess
+    asm "shl rdx, 30" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
+    asm "mov r8, 0"   # dwShareMode
+    asm "mov r9, 0"   # lpSecurityAttributes
+
+    asm "push qword 0"   # hTemplateFile
+    asm "push qword 128" # dwFlagsAndAttributes (NORMAL_FILE = 128)
+    asm "push qword 2"   # dwCreationDisposition (CREATE_ALWAYS = 2)
+
+    # Shadow space
+    asm "push r9"
+    asm "push r8"
+    asm "push rdx"
+    asm "push rcx"
+
+    # Do call
+    asm "call CreateFileA"
+
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
+    asm "mov r10, rax"
+
+    return out
+;/
+
+/; _close_file (~void handle)
+    asm "mov rcx, r8" # handle
+    asm "mov rdx, 0"
+    asm "mov r8, 0"
+    asm "mov r9, 0"
+
+    # Shadow space
+    asm "push r9"
+    asm "push r8"
+    asm "push rdx"
+    asm "push rcx"
+
+    asm "call CloseHandle"
+
+    asm "add rsp, 32"
+;/
+
+/; _read_byte (~void handle, ~uint8 byte) [bool]
+    bool out
+
+    asm "mov rcx, r8" # handle
+    asm "mov rdx, r9" # buffer
+    asm "mov r8, 1"   # one byte
+    asm "mov r9, 0"
+    asm "push qword 0"
+
+    # Shadow space
+    asm "push r9"
+    asm "push r8"
+    asm "push rdx"
+    asm "push rcx"
+
+    asm "call ReadFile"
+
+    asm "mov r10, rax"
+
+    return out
+;/
+
+/; _write_byte (~void handle, ~uint8 byte) [bool]
+    bool out
+
+    asm "mov rcx, r8" # handle
+    asm "mov rdx, r9" # buffer
+    asm "mov r8, 1"   # one byte
+    asm "mov r9, 0"
+    asm "push qword 0"
+
+    # Shadow space
+    asm "push r9"
+    asm "push r8"
+    asm "push rdx"
+    asm "push rcx"
+
+    asm "call WriteFile"
+
+    asm "mov r10, rax"
+
+    return out
 ;/
 
 /; print_alert
     _printf(~_alert{0})
 ;/
 
+/; cstr_len (~uint8 cstr) [int]
+    int i = 0
+    /; loop (cstr{i} !== 0) [i++] ;/
+    return i
+;/

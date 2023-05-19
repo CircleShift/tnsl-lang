@@ -1,0 +1,9 @@
+# to get working
+
+enum TEST_ENUM [int] {
+    i = 0
+}
+
+/; main [int]
+    return TEST_ENUM.i
+;/
