@@ -1697,24 +1697,66 @@
         ;return {0, 0, 0, ~self, cf, {}, self.r}
     ;/
 
-    /; get_continue (uint i) [{}uint8]
+    /; br (uint i, ~CompData out)
+        /; if (i == 0)
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tjmp ", self.scope_end_label(), "\n"
+            }, "")
+            ;return
+        ;/
+
         ;~Scope top = ~self
-        /; loop (i > 0 || top`.cf_type(""))
-            ;top = top`.parent
-            /; if (!(top`.cf_type("")))
-                ;i = i - 1
+        ;~Scope sco = ~self
+        ;int seen = 0
+        /; loop (seen !> i)
+            /; if (top`.parent`.is_cf())
+                ;top = top`.parent
+                /; if (top`.cf_type("wrap"))
+                    ;sco = top
+                    ;seen++
+                ;/
+            ;; else
+                ;break
             ;/
         ;/
+
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\tjmp ", sco`.scope_end_label(), "\n"
+        }, "")
     ;/
 
-    /; get_break (uint i) [{}uint8]
+    /; cont (uint i, ~CompData out)
+        /; if (i == 0)
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tjmp ", self.scope_rep_label(), "\n"
+            }, "")
+            ;return
+        ;/
+
         ;~Scope top = ~self
-        /; loop (i > 0 || top`.cf_type(""))
-            ;top = top`.parent
-            /; if (!(top`.cf_type("")))
-                ;i = i - 1
+        ;~Scope sco = ~self
+        ;int seen = 0
+        /; loop (seen !> i)
+            /; if (top`.parent`.is_cf())
+                ;top = top`.parent
+                /; if (top`.cf_type("wrap"))
+                    /; if (top`.parent`.is_cf())
+                        ;sco = top`.parent
+                    ;/
+                    ;seen++
+                ;/
+            ;; else
+                ;break
             ;/
         ;/
+
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\tjmp ", sco`.scope_rep_label(), "\n"
+        }, "")
     ;/
 
     /; new_var (Type t, {}uint8 name, ~CompData out)
@@ -3303,7 +3345,7 @@
 ;/
 
 
-/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, mov, ~Scope parent) [{}uint8]
+/; statement_list(~{}Token tok, int start, end, ~Module current, ~CompData out, mov, ~Scope parent) [int]
     ;log_debug("Statement list!")
     ;int b = -1
     ;CompData carry = {"", "", ""}
@@ -3330,14 +3372,9 @@
         ;/
     ;/
 
-    ;{}uint str = ""
-
-    /; if (b > 0)
-        ;str = int_to_string(b)
-    ;/
-
-    ;return str
+    ;return b
 ;/
+
 
 # FIXME:
 # Need to impl:
@@ -3348,57 +3385,40 @@
     ;Scope cf = parent`.new_sub_cf("wrap")
     
     ;CompData outro = {"", "", ""}
-    ;{}uint8 condition = ""
+    ;int condition = 0 - 1
 
     /; loop (cur`++; cur` < max) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
-            /; if (tok`{cur` + 1}.cmp("if"))
-                ;cf = parent`.new_sub_cf("elif")
-                ;cur`++
+            /; if (tok`{cur`}.cmp("else"))
+                ;log_err("Invalid else!!!")
             ;; else
                 ;cf = cf.new_sub_cf(tok`{cur`}.data)
             ;/
         ;; else if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
             ;int psl = find_closing(tok, cur)
-            /; if (tok`{cur`}.cmp("["))
-                ;outro.csec = string_add(cf.scope_rep_label(), ":\n")
-                ;{}uint8 tmp = statement_list(tok, cur`, psl, current, ~outro, mov, ~cf)
-
-                /; if (cf.cf_type("loop"))
-                    /; if (len (tmp) == 0 && len (condition) > 0)
-                        /; if (len (condition) > 0)
-                            ;int tmps = string_to_int(condition)
-                            ;eval_value(tok, ~tmps, ~outro, mov, current, ~cf, {1, "bool", "", {}, {}}, true)
-                        ;; else
-                            ;outro.csec = string_join( {
-                                outro.csec,
-                                "\tjmp ", cf.scope_start_label(), "\n"
-                            }, "")
-                        ;/
-                    ;/
-
-                    /; if (len (tmp) > 0 || len(condition) > 0)
-                        ;outro.csec = string_join( {
-                            outro.csec,
-                            "\ttest al, al\n",
-                            "\tjnz ", cf.scope_start_label(), "\n",
-                            "\tjmp ", cf.scope_end_label(), "\n"
-                        }, "")
-                    ;/
-                ;/
+            ;int tmp = statement_list(tok, cur`, psl, current, ~outro, mov, ~cf)
+            /; if (tmp < 0 && condition !< 0)
+                ;tmp = condition
+                ;Type t = {1, "bool", "_bool", {}, {}}
+                ;eval_value(tok, ~tmp, ~outro, mov, current, ~cf, t, true)
             ;; else
-                ;condition = statement_list(tok, cur`, psl, current, out, mov, ~cf)
-                /; if (len (condition) == 0)
+                ;condition = tmp
+            ;/
+
+            /; if (tok`{cur`}.cmp("(") && condition !< 0)
+                ;out`.add(outro)
+                ;outro = {"", "", ""}
+                /; if (cf.cf_type("if"))
                     ;out`.csec = string_join( {
                         out`.csec,
-                        "\tjmp ", cf.scope_start_label(), "\n"
+                        "\ttest al, al\n",
+                        "\tjz ", cf.scope_start_label(), "\n"
                     }, "")
                 ;; else
                     ;out`.csec = string_join( {
                         out`.csec,
                         "\ttest al, al\n",
-                        "\tjnz ", cf.scope_start_label(), "\n",
-                        "\tjmp ", cf.scope_end_label(), "\n"
+                        "\tjz ", cf.scope_end_label(), "\n"
                     }, "")
                 ;/
             ;/
@@ -3408,23 +3428,102 @@
         ;/
     ;/
 
-    ;out`.csec = string_join( {
-        out`.csec,
-        cf.scope_start_label(), ":\n"
-    }, "")
-    
-    /; if (tok`{cur`}.cmp("\n"))
-        ;cur` = next_non_nl(tok, cur` + 1)
+    /; if (cf.cf_type("loop"))
+        ;out`.csec = string_join( {
+            out`.csec,
+            cf.scope_start_label(), ":\n"
+        }, "")
     ;/
+    
+    ;cur` = next_non_nl(tok, cur`)
 
     ;bool returned = false
     /; loop (cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
-        /; if (tok`{cur`}.cmp("/;") || tok`{cur`}.cmp(";;"))
+        /; if (tok`{cur`}.cmp("/;"))
             ;log_debug("Block in block")
             ;_compile_block(tok, cur, current, out, mov, ~cf, ret)
 
-            /; if (tok`{cur`}.cmp(";;"))
-                ;cur` = cur` - 1
+            /; loop (tok`{cur`}.cmp(";;"))
+                ;_compile_block(tok, cur, current, out, mov, ~cf, ret)
+            ;/
+        ;; else if (tok`{cur`}.cmp(";;") || (tok`{cur`}.cmp(";/") && tok`{next_non_nl(tok, cur` + 1)}.cmp("/;")))
+            /; if (tok`{cur`}.cmp(";/"))
+                ;cur`++
+            ;/
+
+            /; if ((cf.cf_type("if") || cf.cf_type("elif")) && tok`{next_non_nl(tok, cur` + 1)}.cmp("else"))
+                # FIFIFIFIFIFIFIFIFIFFI
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    cf.scope_end_label(), ":\n"
+                }, "")
+
+                /; if (len (outro.csec) > 0)
+                    ;out`.add(outro)
+                ;/
+
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    "\tjmp ", cf.parent`.scope_end_label(), "\n",
+                    cf.scope_rep_label(), ":\n"
+                }, "")
+
+                /; if (len (outro.csec) > 0)
+                    ;out`.add(outro)
+                ;/
+
+                ;out`.csec = string_join( {
+                    out`.csec,
+                    cf.scope_start_label(), ":\n"
+                }, "")
+
+                ;outro = {"", "", ""}
+                ;condition = -1
+
+                /; if (tok`{next_non_nl(tok, cur` + 1)}.cmp("if"))
+                    ;cf = cf.parent`.new_sub_cf("elif")
+                    /; loop (cur`++; cur` < max) [cur`++]
+                        /; if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
+                            ;int psl = find_closing(tok, cur)
+                            ;int tmp = statement_list(tok, cur`, psl, current, ~outro, mov, ~cf)
+                            /; if (tmp < 0 && condition !< 0)
+                                ;tmp = condition
+                                ;Type t = {1, "bool", "_bool", {}, {}}
+                                ;eval_value(tok, ~tmp, ~outro, mov, current, ~cf, t, true)
+                            ;; else
+                                ;condition = tmp
+                            ;/
+
+                            /; if (tok`{cur`}.cmp("(") && condition !< 0)
+                                ;out`.add(outro)
+                                ;outro = {"", "", ""}
+                                ;out`.csec = string_join( {
+                                    out`.csec,
+                                    "\ttest al, al\n",
+                                    "\tjz ", cf.scope_start_label(), "\n"
+                                }, "")
+                            ;/
+                            ;cur` = psl
+                        ;; else
+                            ;break
+                        ;/
+                    ;/
+
+                    ;cur` = next_non_nl(tok, cur`)
+                ;; else
+                    ;cf = cf.parent`.new_sub_cf("else")
+                ;/
+                # FIFIFIFIFIFIFIFIFIFFI# FIFIFIFIFIFIFIFIFIFFI# FIFIFIFIFIFIFIFIFIFFI
+            ;; else
+                /;if (tok`{cur`}.cmp(";;"))
+                    ;cur`--
+                ;; else
+                    /; loop (!(tok`{cur`}.cmp(";/")))
+                        ;cur`--
+                    ;/
+                    ;cur`--
+                ;/
+                ;returned = true
             ;/
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
@@ -3446,6 +3545,24 @@
                 ;out`.csec.append('\t')
                 ;out`.csec = string_add(out`.csec, unquote_str(tok`{cur`}.data))
                 ;out`.csec.append('\n')
+            ;; else if (tok`{cur`}.cmp("break"))
+                /; if (tok`{cur` + 1}.type_is(TOKEN.LITERAL))
+                    ;cf.br(string_to_int(tok`{cur` + 1}.data), out)
+                    ;cur`++
+                ;; else if (cf.cf_type("if") || cf.cf_type("else"))
+                    ;cf.br(1, out)
+                ;; else
+                    ;cf.br(0, out)
+                ;/
+            ;; else if (tok`{cur`}.cmp("continue"))
+                /; if (tok`{cur` + 1}.type_is(TOKEN.LITERAL))
+                    ;cf.cont(string_to_int(tok`{cur` + 1}.data), out)
+                    ;cur`++
+                ;; else if (cf.cf_type("if") || cf.cf_type("else"))
+                    ;cf.cont(1, out)
+                ;; else
+                    ;cf.cont(0, out)
+                ;/
             ;; else
                 ;log_err(string_add("Keyword not impl: ", tok`{cur`}.data))
             ;/
@@ -3457,47 +3574,62 @@
             ;eval_value(tok, cur, out, mov, current, ~cf, NO_TYPE, false)
         ;/
     ;/
+
     ;log_debug("Passing gauntlet 2")
 
-    /; if (len (outro.csec) > 0)
-        ;out`.add(outro)
-    ;; else
+    /; if (cf.cf_type("loop"))
         ;out`.csec = string_join( {
             out`.csec,
             cf.scope_rep_label(), ":\n"
         }, "")
 
-        /; if (cf.cf_type("loop"))
-            /; if (len (condition) > 0)
-                ;int tmps = string_to_int(condition)
-                ;eval_value(tok, ~tmps, out, mov, current, ~cf, {1, "bool", "", {}, {}}, true)
-                ;out`.csec = string_join( {
-                    out`.csec,
-                    "\ttest al, al\n",
-                    "\tjnz ", cf.scope_start_label(), "\n",
-                    "\tjmp ", cf.scope_end_label(), "\n"
-                }, "")
-            ;; else
-                ;out`.csec = string_join( {
-                    out`.csec,
-                    "\tjmp ", cf.scope_start_label(), "\n"
-                }, "")
-            ;/
+        /; if (len (outro.csec) > 0)
+            ;out`.add(outro)
         ;/
-    ;/
 
-    ;out`.csec = string_join( {
-        out`.csec,
-        cf.scope_end_label(), ":\n"
-    }, "")
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\ttest al, al\n",
+            "\tjnz ", cf.scope_start_label(), "\n",
+            cf.scope_end_label(), ":\n"
+        }, "")
+    ;; else
+        ;out`.csec = string_join( {
+            out`.csec,
+            cf.scope_end_label(), ":\n"
+        }, "")
+
+        /; if (len (outro.csec) > 0)
+            ;out`.add(outro)
+        ;/
+
+        ;out`.csec = string_join( {
+            out`.csec,
+            "\tjmp ", cf.parent`.scope_end_label(), "\n",
+            cf.scope_rep_label(), ":\n"
+        }, "")
+
+        /; if (len (outro.csec) > 0)
+            ;out`.add(outro)
+        ;/
+
+        ;out`.csec = string_join( {
+            out`.csec,
+            cf.scope_start_label(), ":\n"
+        }, "")
+    ;/
 
     /; if (cf.is_cf())
         ;out`.csec = string_join( {
             out`.csec,
+            cf.parent`.scope_rep_label(), ":\n",
             cf.parent`.scope_end_label(), ":\n"
         }, "")
     ;/
 ;/
+
+
+
 
 /; compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out)
     ;Scope root = {0, 0, 0, 0, "", {}, false}
