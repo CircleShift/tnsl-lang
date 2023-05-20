@@ -1698,18 +1698,10 @@
     ;/
 
     /; br (uint i, ~CompData out)
-        /; if (i == 0)
-            ;out`.csec = string_join( {
-                out`.csec,
-                "\tjmp ", self.scope_end_label(), "\n"
-            }, "")
-            ;return
-        ;/
-
         ;~Scope top = ~self
         ;~Scope sco = ~self
         ;int seen = 0
-        /; loop (seen !> i)
+        /; loop (seen !> i && i > 0)
             /; if (top`.parent`.is_cf())
                 ;top = top`.parent
                 /; if (top`.cf_type("wrap"))
@@ -1725,21 +1717,14 @@
             out`.csec,
             "\tjmp ", sco`.scope_end_label(), "\n"
         }, "")
+        
     ;/
 
     /; cont (uint i, ~CompData out)
-        /; if (i == 0)
-            ;out`.csec = string_join( {
-                out`.csec,
-                "\tjmp ", self.scope_rep_label(), "\n"
-            }, "")
-            ;return
-        ;/
-
         ;~Scope top = ~self
         ;~Scope sco = ~self
         ;int seen = 0
-        /; loop (seen !> i)
+        /; loop (seen !> i && i > 0)
             /; if (top`.parent`.is_cf())
                 ;top = top`.parent
                 /; if (top`.cf_type("wrap"))
@@ -2561,7 +2546,7 @@
         ;return "]"
     ;; else if (d.cmp("{"))
         ;return "}"
-    ;; else if (d.cmp("/;"))
+    ;; else if (d.cmp("/;") || d.cmp(";;"))
         ;return ";/"
     ;/
     ;log_err(string_add("Error, unrecognized delim: ", d.data))
@@ -3381,13 +3366,12 @@
 # cf block scoping and contextual keywords such as
 # continue, break, and return
 /; _compile_block (~{}Token tok, ~int cur, ~Module current, ~CompData out, mov, ~Scope parent, Type ret)
-    ;int max = find_closing(tok, cur)
     ;Scope cf = parent`.new_sub_cf("wrap")
     
     ;CompData outro = {"", "", ""}
     ;int condition = 0 - 1
 
-    /; loop (cur`++; cur` < max) [cur`++]
+    /; loop (cur`++; cur` < len (tok`)) [cur`++]
         /; if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("else"))
                 ;log_err("Invalid else!!!")
@@ -3438,7 +3422,7 @@
     ;cur` = next_non_nl(tok, cur`)
 
     ;bool returned = false
-    /; loop (cur` < max && !returned) [cur` = next_non_nl(tok, cur` + 1)]
+    /; loop (cur` < len (tok`) && !returned) [cur` = next_non_nl(tok, cur` + 1)]
         /; if (tok`{cur`}.cmp("/;"))
             ;log_debug("Block in block")
             ;_compile_block(tok, cur, current, out, mov, ~cf, ret)
@@ -3452,7 +3436,7 @@
             ;/
 
             /; if ((cf.cf_type("if") || cf.cf_type("elif")) && tok`{next_non_nl(tok, cur` + 1)}.cmp("else"))
-                # FIFIFIFIFIFIFIFIFIFFI
+                ;cur` = next_non_nl(tok, cur` + 1)
                 ;out`.csec = string_join( {
                     out`.csec,
                     cf.scope_end_label(), ":\n"
@@ -3481,8 +3465,9 @@
                 ;condition = -1
 
                 /; if (tok`{next_non_nl(tok, cur` + 1)}.cmp("if"))
+                    ;cur` = next_non_nl(tok, cur` + 1)
                     ;cf = cf.parent`.new_sub_cf("elif")
-                    /; loop (cur`++; cur` < max) [cur`++]
+                    /; loop (cur` < len (tok`)) [cur`++]
                         /; if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
                             ;int psl = find_closing(tok, cur)
                             ;int tmp = statement_list(tok, cur`, psl, current, ~outro, mov, ~cf)
@@ -3513,25 +3498,22 @@
                 ;; else
                     ;cf = cf.parent`.new_sub_cf("else")
                 ;/
-                # FIFIFIFIFIFIFIFIFIFFI# FIFIFIFIFIFIFIFIFIFFI# FIFIFIFIFIFIFIFIFIFFI
             ;; else
-                /;if (tok`{cur`}.cmp(";;"))
-                    ;cur`--
-                ;; else
-                    /; loop (!(tok`{cur`}.cmp(";/")))
-                        ;cur`--
-                    ;/
+                /; loop (!(tok`{cur`}.cmp(";/") || tok`{cur`}.cmp(";;")))
                     ;cur`--
                 ;/
+                ;cur`--
                 ;returned = true
             ;/
+        ;; else if (tok`{cur`}.cmp(";/"))
+            ;cur`--
+            ;returned = true
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
                 ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
                 ;cf.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
-                ;returned = true
             ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
                 /; if (!(cf.r))
                     ;log_err("Unable to perform a raw return from a non-raw block.")
@@ -3539,7 +3521,6 @@
                 ;cur` = cur` + 2
                 ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
-                ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
                 ;cur`++
                 ;out`.csec.append('\t')
@@ -3549,7 +3530,7 @@
                 /; if (tok`{cur` + 1}.type_is(TOKEN.LITERAL))
                     ;cf.br(string_to_int(tok`{cur` + 1}.data), out)
                     ;cur`++
-                ;; else if (cf.cf_type("if") || cf.cf_type("else"))
+                ;; else if (cf.cf_type("if") || cf.cf_type("elif") || cf.cf_type("else"))
                     ;cf.br(1, out)
                 ;; else
                     ;cf.br(0, out)
