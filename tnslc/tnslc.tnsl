@@ -7,7 +7,7 @@
 # 1 - Info (default)
 # 2 - Debugging information (useful for me, probably less for you)
 # 3 - Also logs the state changes of the log itself
-;{}uint8 log_level = "1"
+;{}uint8 log_level = "2"
 ;{}uint8 log_mode = "single"
 
 /; log_state({}uint8 new_state)
@@ -3471,9 +3471,10 @@
                 }, "")
 
                 ;outro = {"", "", ""}
-                ;condition = -1
+                ;condition = 0 - 1
 
                 /; if (tok`{next_non_nl(tok, cur` + 1)}.cmp("if"))
+                    ;cur` = next_non_nl(tok, cur` + 1)
                     ;cur` = next_non_nl(tok, cur` + 1)
                     ;cf = cf.parent`.new_sub_cf("elif")
                     /; loop (cur` < len (tok`)) [cur`++]
@@ -3504,6 +3505,7 @@
                     ;/
 
                     ;cur` = next_non_nl(tok, cur`)
+                    ;cur`--
                 ;; else
                     ;cf = cf.parent`.new_sub_cf("else")
                 ;/
