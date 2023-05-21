@@ -5,3 +5,6 @@ tint
 *.out
 *.obj
 *.exe
+
+**/build/
+
