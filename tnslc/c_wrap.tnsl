@@ -83,9 +83,9 @@ asm "extern CloseHandle"
     ~void out
 
     asm "mov rcx, r8" # lpFileName
-    asm "mov rdx, 3"  # dwDesiredAccess
-    asm "shl rdx, 30" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
-    asm "mov r8, 0"   # dwShareMode
+    asm "mov rdx, 1"  # dwDesiredAccess
+    asm "shl rdx, 28" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
+    asm "mov r8, 3"   # dwShareMode
     asm "mov r9, 0"   # lpSecurityAttributes
 
     asm "push qword 0"   # hTemplateFile
@@ -113,14 +113,14 @@ asm "extern CloseHandle"
     ~void out
 
     asm "mov rcx, r8" # lpFileName
-    asm "mov rdx, 3"  # dwDesiredAccess
-    asm "shl rdx, 30" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
-    asm "mov r8, 0"   # dwShareMode
+    asm "mov rdx, 1"  # dwDesiredAccess
+    asm "shl rdx, 28" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
+    asm "mov r8, 3"   # dwShareMode
     asm "mov r9, 0"   # lpSecurityAttributes
 
     asm "push qword 0"   # hTemplateFile
     asm "push qword 128" # dwFlagsAndAttributes (NORMAL_FILE = 128)
-    asm "push qword 2"   # dwCreationDisposition (CREATE_ALWAYS = 2)
+    asm "push qword 3"   # dwCreationDisposition (OPEN_EXISTING = 3)
 
     # Shadow space
     asm "push r9"
@@ -133,7 +133,7 @@ asm "extern CloseHandle"
 
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
-    asm "mov r10, rax"
+    asm "mov r9, rax"
 
     return out
 ;/
@@ -155,13 +155,13 @@ asm "extern CloseHandle"
     asm "add rsp, 32"
 ;/
 
-/; _read_byte (~void handle, ~uint8 byte) [bool]
-    bool out
+/; _read_byte (~void handle, ~uint8 byte, ~int read) [int]
+    int out
 
     asm "mov rcx, r8" # handle
     asm "mov rdx, r9" # buffer
     asm "mov r8, 1"   # one byte
-    asm "mov r9, 0"
+    asm "mov r9, r10" # read bytes buffer
     asm "push qword 0"
 
     # Shadow space
@@ -172,13 +172,13 @@ asm "extern CloseHandle"
 
     asm "call ReadFile"
 
-    asm "mov r10, rax"
+    asm "mov r11, rax"
 
     return out
 ;/
 
-/; _write_byte (~void handle, ~uint8 byte) [bool]
-    bool out
+/; _write_byte (~void handle, ~uint8 byte) [int]
+    int out
 
     asm "mov rcx, r8" # handle
     asm "mov rdx, r9" # buffer
@@ -201,10 +201,4 @@ asm "extern CloseHandle"
 
 /; print_alert
     _printf(~_alert{0})
-;/
-
-/; cstr_len (~uint8 cstr) [int]
-    int i = 0
-    /; loop (cstr{i} !== 0) [i++] ;/
-    return i
 ;/

@@ -1,6 +1,8 @@
 :include "c_wrap.tnsl"
+:include "utils.tnsl"
 
 {}uint8 usage_msg = "Usage: read_file.exe [file to read] [file to write]\n\0"
+{}uint8 ok_msg = "Ok!\n\0"
 {}uint8 print_one = "\0\0"
 {}uint8 nl = "\n\0"
 
@@ -19,6 +21,8 @@
     /; if (argc < 2)
         _printf(~usage_msg{0})
         return 1
+    ;; else
+        _printf(~ok_msg{0})
     ;/
 
     _printf(argv{1})
