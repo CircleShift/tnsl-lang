@@ -3181,7 +3181,7 @@
     /; if (pr == 7)
         ;wk.set(s1, out)
         ;wk.cmp(s2, out)
-        ;wk.data_type = {1, "bool", "_bool", {}, {}}
+        ;wk.data_type = {1, "bool", {}, {}, 0}
 
         ;wk.set(literal_variable("true", "", out), out)
         ;{}uint8 l = scope`.next_const()
@@ -3197,6 +3197,18 @@
         }, "")
 
         ;return wk
+    ;; else if (pr == 8)
+        # TODO: First convert non-boolean values to boolean
+        /; if (tok`{first}.cmp("&&"))
+            ;wk.set(s1, out)
+            ;wk.and(s2, out)
+        ;; else if (tok`{first}.cmp("||"))
+            ;wk.set(s1, out)
+            ;wk.or(s2, out)
+        ;; else if (tok`{first}.cmp("^^"))
+            ;wk.set(s1, out)
+            ;wk.xor(s2, out)
+        ;/
     ;/
 
     /; if (tok`{first}.cmp("+"))
@@ -3211,16 +3223,13 @@
         ;wk.sub(s2, out)
     ;; else if (tok`{first}.cmp("|"))
         ;wk.set(s1, out)
-        ;wk.mul(s2, out)
+        ;wk.or(s2, out)
     ;; else if (tok`{first}.cmp("&"))
         ;wk.set(s1, out)
-        ;wk.mul(s2, out)
+        ;wk.and(s2, out)
     ;; else if (tok`{first}.cmp("^"))
         ;wk.set(s1, out)
-        ;wk.mul(s2, out)
-    ;; else if (tok`{first}.cmp("*"))
-        ;wk.set(s1, out)
-        ;wk.mul(s2, out)
+        ;wk.xor(s2, out)
     ;; else if (tok`{first}.cmp("*"))
         ;wk.set(s1, out)
         ;wk.mul(s2, out)
