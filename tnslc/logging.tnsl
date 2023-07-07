@@ -1,0 +1,65 @@
+##
+## LOG UTILITIES
+##
+
+# Log levels:
+# 0 - Visual queues and errors only
+# 1 - Info (default)
+# 2 - Debugging information (useful for me, probably less for you)
+# 3 - Also logs the state changes of the log itself
+int log_level = 2
+int log_mode = 1
+
+{}uint8 _log_print_one = "\0\0"
+{}uint8 _log_nl = "\n\0"
+{}uint8 _log_prefix = "[TNSLC] [%d] \0"
+
+/; log_state(int new_state)
+    /; if (new_state !== log_mode)
+        _printf(~_log_nl{0})
+    ;/
+    
+    log_mode = new_state
+;/
+
+/; log_err (~uint8 msg)
+    log_state(0)
+    _print_num(~_log_prefix{0}, log_mode)
+    _printf(msg)
+    _printf(~_log_nl{0})
+;/
+
+/; log_info (~uint8 msg)
+    /; if (log_level > 0)
+        log_state(1)
+        _print_num(~_log_prefix{0}, log_mode)
+        _printf(msg)
+        _printf(~_log_nl{0})
+    ;/
+;/
+
+/; log_vis (~uint8 msg)
+    log_state(0)
+    _printf(msg)
+;/
+
+/; log_debug (~uint8 msg)
+    /; if (log_level > 1)
+        log_state(2)
+        _print_num(~_log_prefix{0}, log_mode)
+        _printf(msg)
+        _printf(~_log_nl{0})
+    ;/
+;/
+
+# bypass logging framework (mostly for in-place debugging)
+
+/; log_one (uint8 c)
+    _log_print_one{0} = c
+    _printf(~_log_print_one{0})
+;/
+
+/; log_one_nl (uint8 c)
+    log_one(c)
+    _printf(~_log_nl{0})
+;/

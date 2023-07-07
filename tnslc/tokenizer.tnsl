@@ -1,0 +1,215 @@
+# All single reserved characters
+{}uint8 MULTI_PARENS = "/;:#"
+{}uint8 PARENS = "()[]{}"
+{}uint8 SEPS = "\n;:,"
+{}uint8 RESERVED = "`~!%^&*()-+=[]{}|;:/?<>.,"
+{}uint8 AUGMENTS = "=~!<>&|^+-*/%`."
+
+{}uint8 WHITESPACE = " \r\n\t"
+
+# All lists of keywords are comma delim because the compiler does not yet support arrays of strings
+{}uint8 CSV_AUGMENTS = "++,--,==,!==,&&,||,^^,<==,>==,!>,!<,~=,`=,%=,^=,&=,*=,!=,|=,/=,<<,>>,!&,!|,!^,len,is"
+
+{}uint8 CSV_KEYWORDS = "if,else,loop,continue,break,return,method,struct,enum,interface,export,module,const,static,volatile,raw,extends,override,asm"
+
+{}uint8 CSV_KEYTYPES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,comp32,comp64,comp,vect,bool,type,void"
+
+# Types of tokens
+enum TOKEN_TYPE [uint] {
+    SEPARATOR = 0,
+    DELIMITER = 1,
+    AUGMENT = 2,
+    KEYTYPE = 3,
+    KEYWORD = 4,
+    LITERAL = 5,
+    DEFWORD = 6
+}
+
+# Token structure represents a single token in the program
+struct Token {
+    uint 
+        _type,
+        line,
+        column,
+    ~uint8
+        data
+}
+
+# Shortcut methods on the token struct
+/; method Token
+    
+    # Initialize the data buffer
+    /; start
+        self.data = _alloc(1)
+        self.data{0} = 0
+    ;/
+
+    # Append a character to the end of the token
+    /; append (uint8 ch)
+        int ln = cstr_len(self.data)
+        self.data = _realloc(self.data, ln + 2)
+        self.data{ln} = ch
+        self.data{ln + 1} = 0
+    ;/
+
+    # Remove the last character from this token
+    /; pop
+        int ln = cstr_len(self.data)
+        self.data = _realloc(self.data, ln)
+        self.data{ln - 1} = 0
+    ;/
+
+    # Copy another token to this token
+    /; copy (Token other)
+        self._type = other._type
+        self.line = other.line
+        self.column = other.column
+
+        self.data = _alloc(cstr_len(other.data) + 1)
+
+        cstr_copy(other.data, self.data)
+    ;/
+
+    # Delete the memory associated with this token
+    /; _del
+        _delete(self.data)
+    ;/
+
+    # length of the string that this token encodes
+    /; _len [int]
+        return cstr_len(self.data)
+    ;/
+;/
+
+{}uint8 tkn_ok = "OK \0", tkn_no = "NO \0", tkn_nl = "\n\0"
+
+/; print_token (Token tok, ~void file_out)
+    /; if (in_csv(~CSV_KEYWORDS, tok.data) == true)
+        write_to_file(file_out, ~tkn_ok{0})
+    ;; else
+        write_to_file(file_out, ~tkn_no{0})
+    ;/
+    write_to_file(file_out, tok.data)
+    write_to_file(file_out, ~tkn_nl{0})
+;/
+
+# Returns true if the character is whitespace
+/; is_whitespace(uint8 c) [bool]
+    return contains_char(~WHITESPACE, c)
+;/
+
+
+# Returns true if the character is reserved
+/; is_reserved (uint8 c) [bool]
+    return contains_char(~RESERVED, c)
+;/
+
+# Returns true if the token is a valid reserved token
+/; tok_reserved (Token tok) [bool]
+    log_one_nl('i')
+    /; if (tok._len() == 1)
+        return is_reserved(tok.data{0})
+    ;; else if (tok._len() == 2)
+        bool a = contains_char(~MULTI_PARENS, tok.data{0})
+        bool b = contains_char(~MULTI_PARENS, tok.data{1})
+        return a && b
+    ;/
+
+    return in_csv(~CSV_AUGMENTS, tok.data)
+;/
+
+# Returns true if the token is a valid literal value
+/; tok_literal (Token tok) [bool]
+    # TODO: implement literals
+    return false
+;/
+
+/; get_tok_type(Token tok) [uint]
+    log_one_nl('h')
+    /; if (tok_reserved(tok) == true)
+        /; if (tok._len() > 1)
+            bool a = contains_char(~MULTI_PARENS, tok.data{0})
+            bool b = contains_char(~MULTI_PARENS, tok.data{1})
+            /; if (a && b)
+                return TOKEN_TYPE.DELIMITER
+            ;/
+            return TOKEN_TYPE.AUGMENT
+        ;; else if (contains_char(~PARENS, tok.data{0}))
+            return TOKEN_TYPE.DELIMITER
+        ;; else if (contains_char(~SEPS, tok.data{0}))
+            return TOKEN_TYPE.SEPARATOR
+        ;; else if (contains_char(~AUGMENTS, tok.data{0}))
+            return TOKEN_TYPE.AUGMENT
+        ;/
+    ;; else if (tok_literal(tok) == true)
+        return TOKEN_TYPE.LITERAL
+    ;/
+
+    return TOKEN_TYPE.DEFWORD
+;/
+
+
+/; break_token(Token tok, uint8 c) [bool]
+    log_one('g')
+    log_one(' ')
+    log_one_nl(c)
+    # return true
+    uint type_before = get_tok_type(tok)
+    tok.append(c)
+    uint type_after = get_tok_type(tok)
+    tok.pop()
+    log_one_nl('g')
+    bool a = type_before !== TOKEN_TYPE.DEFWORD && type_after == TOKEN_TYPE.DEFWORD
+    bool b = type_after !== TOKEN_TYPE.LITERAL && is_whitespace(c) == true
+    return a || b
+;/
+
+/; tokenize_file (~void file_in, file_out)
+
+    Token tmp
+    tmp.start()
+
+    uint8 buf = 0
+    int read_count = 0
+    # Start reading at beginning of file
+    _read_byte(file_in, ~buf, ~read_count)
+    # Read loop.
+    /; loop (_read_byte(file_in, ~buf, ~read_count))
+        /; if (read_count == 0)
+            break
+        ;/
+        log_one_nl('b')
+        # /; if (break_token(tmp, buf) == true)
+        #     log_one_nl('c')
+        #     /; if (tmp._len() > 0)
+        #         log_one_nl('d')
+        #         print_token(tmp, file_out)
+        #     ;/
+        #     
+        #     tmp._del()
+        #     tmp.start()
+# 
+        #     /; if (is_whitespace(buf) == false)
+        #         log_one_nl('e')
+        #         tmp.append(buf)
+        #     ;; else if (buf == WHITESPACE{2})
+        #         log_one_nl('f')
+        #         tmp.append(WHITESPACE{2})
+        #         print_token(tmp, file_out)
+        #         tmp._del()
+        #         tmp.start()
+        #     ;/
+        #     log_one_nl('c')
+        # ;; else
+            tmp.append(buf)
+        # ;/
+        log_one_nl('b')
+        read_count = 0
+    ;/
+
+    /; if (tmp._len() > 0)
+        print_token(tmp, file_out)
+    ;/
+
+    tmp._del()
+;/

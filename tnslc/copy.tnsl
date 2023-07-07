@@ -1,0 +1,41 @@
+:include "c_wrap.tnsl"
+:include "vector.tnsl"
+:include "utils.tnsl"
+
+
+{}uint8 wrong_args = "Usage: copy [from] [to]"
+{}uint8 write_one = "\0\n\0"
+
+# Proof of concept copy program
+/; main (int argc, ~~uint8 argv) [int]
+    asm "mov r8, rcx"
+    asm "mov r9, rdx"
+
+    /; if (argc < 3)
+        _printf(~wrong_args{0})
+        return 1
+    ;/
+
+    ~void read_handle = _open_file(argv{1})
+    ~void write_handle = _create_file(argv{2})
+
+    _print_num(~_dec{0}, read_handle)
+    _print_num(~_dec{0}, write_handle)
+
+    uint8 buf = 0
+    int read_count = 0
+    int tries = 0
+    _read_byte(read_handle, ~buf, ~read_count)
+    /; loop (_read_byte(read_handle, ~buf, ~read_count))
+        /; if (read_count == 0)
+            break
+        ;/
+        _write_byte(write_handle, ~buf)
+        read_count = 0
+    ;/
+
+    _close_file(read_handle)
+    _close_file(write_handle)
+
+    return 0
+;/

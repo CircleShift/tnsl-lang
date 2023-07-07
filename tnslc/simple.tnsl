@@ -1,19 +1,7 @@
+:include "c_wrap.tnsl"
+:include "logging.tnsl"
 
-{}uint8 str1 = "abcd"
-
-struct Stress {
-    int i, j, k
-}
-
-struct Test {
-    ~Stress s
-}
-
-/; s_call (Test t)
-    t.s`.i = 1
-    t.s`.j = 1 + t.s`.i
-    t.s`.k = t.s`.j + 1
-;/
+{}uint8 eee = "eee\0"
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
@@ -21,14 +9,10 @@ struct Test {
     asm "mov r8, rcx"
     asm "mov r9, rdx"
 
-    Stress test
-    Test stress
-
-    stress.s = ~test
-
-    s_call(stress)
-
-    # return 3
-    return stress.s`.k
+    log_err(~eee{0})
+    log_info(~eee{0})
+    log_debug(~eee{0})
+    
+    return 0
 ;/
 

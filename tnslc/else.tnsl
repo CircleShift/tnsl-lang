@@ -1,13 +1,19 @@
-/; main [int]
+{}uint8 a = "asdf", b = "asdf\0"
 
-    int i = 1
+{}uint8 csv_pr = ",\0"
+
+/; cstr_len (~void cstr, int add) [int]
+    int i = 0
+    /; loop (cstr{i} !== 0) [i++] ;/
+    return i + add
+;/
 
 
-    /; if (i == 3)
-        i = 1
-    ;; else if (i == 1)
-        i = 10
-    ;/
 
-    return i
+/; main (int argc, ~~uint8 argv) [int]
+
+    uint8 bub = 0
+    cstr_len(~b{0}, bub)
+
+    return 0
 ;/

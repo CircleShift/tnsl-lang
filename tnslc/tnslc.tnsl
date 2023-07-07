@@ -7,7 +7,7 @@
 # 1 - Info (default)
 # 2 - Debugging information (useful for me, probably less for you)
 # 3 - Also logs the state changes of the log itself
-;{}uint8 log_level = "2"
+;{}uint8 log_level = "1"
 ;{}uint8 log_mode = "single"
 
 /; log_state({}uint8 new_state)
@@ -151,6 +151,8 @@
         ;return 0
     ;; else if (cmp == '\'')
         ;return '\''
+    ;; else if (cmp == '"')
+        ;return '"'
     ;/
 ;/
 
@@ -523,12 +525,15 @@
 /; is_num_literal ({}uint8 str) [bool]
     /; if (len str < 1)
         ;return false
-    ;; if (len str == 1 && str{0} == '.')
-        ;return false
+    ;/
+
+    ;int i = 0
+    /; if ((str{i} == '-' || str{i} == '.') && len str > 1)
+        ;i++
     ;/
 
     ;bool dec = false
-    /; loop (int i = 0; i < len str) [i++]
+    /; loop (i < len str) [i++]
         /; if (str{i} == '.')
             /; if (!dec)
                 ;dec = true
@@ -567,9 +572,11 @@
 ;/
 
 /; break_token (Token current, uint8 to_append) [bool]
-    /; if (is_literal(current.data))
-        ;current.data.append(to_append)
-        ;return !(is_literal(current.data))
+    ;{}uint8 data = current.data
+    ;data.append(to_append)
+
+    /; if (is_literal(current.data) || is_literal(data))
+        ;return !(is_literal(data))
     ;/
 
     /; if (is_whitespace(to_append) || current.cmp("\n"))
@@ -578,7 +585,7 @@
 
     /; if (is_reserved(current.data))
         /; if (is_reserved({to_append}))
-            ;current.data.append(to_append)
+            ;current.data = data
             ;return gen_type(current) == TOKEN.DEFWORD
         ;/
         ;return true
@@ -1021,6 +1028,10 @@
         ;; if (!(to_match.is_prim()) || (len(to_match.data_type.ptr_chain) > 0 && !(to_match.is_ref())))
             ;return to_match
         ;/
+
+        /; loop (out.is_ref())
+            ;out.data_type.ptr_chain = strip_int(out.data_type.ptr_chain)
+        ;/
         
         ;{}uint8 mov = "mov"
         
@@ -1048,7 +1059,8 @@
             ;v.norm_op(op, sz, self, data)
         ;; else
             ;v = self.match_types(v, data)
-	    /; if ((self.is_ref() || self.loc_type == LOCATION.STACK) && (v.is_ref() || v.loc_type == LOCATION.STACK))
+
+            /; if ((self.is_ref() || self.loc_type == LOCATION.STACK || self.loc_type == LOCATION.LABEL) && (v.is_ref() || v.loc_type == LOCATION.STACK || v.loc_type == LOCATION.LABEL))
                 ;data`.csec = string_join( {
                     data`.csec,
                     "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
@@ -1067,6 +1079,14 @@
         ;int s = len (self.data_type.ptr_chain)
         /; if (s > 0)
             ;return self.data_type.ptr_chain{s - 1} == PTYPE.REFERENCE
+        ;/
+        ;return false
+    ;/
+
+    /; is_arr [bool]
+        ;int s = len (self.data_type.ptr_chain)
+        /; if (s > 0)
+            ;return self.data_type.ptr_chain{s - 1} == PTYPE.ARRAY
         ;/
         ;return false
     ;/
@@ -1271,16 +1291,16 @@
 
     # Todo: Make sure this works well.
     /; set (Variable v, ~CompData data)	
-	;int sz = self.norm_size()
+	    ;int sz = self.norm_size()
         ;v = self.match_types(v, data)
         /; if (self.loc_type == LOCATION.LITERAL && v.loc_type == LOCATION.LITERAL)
             ;self.location = v.location
         ;; else if (self.is_prim())
-	    ;self.norm_op("mov", self.norm_size(), v, data)
+	        ;self.norm_op("mov", self.norm_size(), v, data)
         ;; else
-	    ;log_debug("Full struct set")
-	    ;log_debug(self.sprint())
-	    ;log_debug(v.sprint())
+	        ;log_debug("Full struct set")
+	        ;log_debug(self.sprint())
+	        ;log_debug(v.sprint())
             /; if (self.is_ref() && self.loc_type == LOCATION.STACK)
                 ;data`.csec = string_join( {
                     data`.csec,
@@ -1433,7 +1453,7 @@
 	    ;ind.set(i, data)
         ;ind.mul({"#mul", {8, "uint", {}, {}, 0}, sz, LOCATION.LITERAL}, data)
 
-        /; if (out.is_ref())
+        /; if (out.is_ref() || out.is_arr())
             ;data`.csec = string_join( {
                 data`.csec,
                 "\tadd rsi, 8\n"
@@ -2938,6 +2958,8 @@
             ;Scope call_sc = scope`.new_sub_cf("call")
             ;Function to_call = _setup_call(tok, start`, wk, out, mov, current, ~call_sc)
             ;wk = _perform_call(to_call, ~call_sc, out)
+            ;log_debug(to_call.sprint())
+            ;log_debug(wk.sprint())
             ;call_sc.clear_tmp(out)
 
             /; if (layer` > 2)
@@ -2970,8 +2992,13 @@
             ;tt = scope`.new_tmp_var(wk.data_type, out)
         ;/
         
-        ;tt.set_raw(wk, out)
-        ;tt.data_type = wk.data_type
+        /; if (len (wk.data_type.ptr_chain) > 0)
+            ;tt.set_raw(wk, out)
+            ;tt.data_type = wk.data_type
+        ;; else
+            ;tt.set(wk, out)
+        ;/
+        
         ;wk = tt
     ;; else if (layer` == 1)
         ;wk.move_register(2, out)
@@ -3441,7 +3468,7 @@
             ;/
         ;; else if (tok`{cur`}.cmp(";;") || (tok`{cur`}.cmp(";/") && tok`{next_non_nl(tok, cur` + 1)}.cmp("/;")))
             /; if (tok`{cur`}.cmp(";/"))
-                ;cur`++
+                ;cur` = next_non_nl(tok, cur` + 1)
             ;/
 
             /; if ((cf.cf_type("if") || cf.cf_type("elif")) && tok`{next_non_nl(tok, cur` + 1)}.cmp("else"))

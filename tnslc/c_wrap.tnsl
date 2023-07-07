@@ -15,11 +15,14 @@ asm "extern CloseHandle"
 
 /; _alloc (uint size) [~void]
     ~void out
+
     # Mov size into proper register, and set all extras to zero
     asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
+
+    asm "sub rsp, 32"
     asm "call malloc"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially, and we have a uint in r8)
@@ -29,12 +32,14 @@ asm "extern CloseHandle"
 
 /; _realloc (~void ptr, uint new_size) [~void]
     ~void out
+
     # Mov ptr and new size into proper registers, and set all extras to zero
     asm "mov rcx, r8"
     asm "mov rdx, r9"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # Do call
+    asm "sub rsp, 32"
     asm "call realloc"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
@@ -43,36 +48,45 @@ asm "extern CloseHandle"
 ;/
 
 /; _delete (~void ptr)
+
     # setup call by clearing most values
-    asm "mov rcx, rax"
+    asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
+    asm "sub rsp, 32"
     asm "call free"
     # there's no more to do 'cause free returns nothing 
 ;/
 
 /; _printf (~void str)
+
     # setup call by clearing most values
-    asm "mov rcx, rax"
+    asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
 ;/
 
 /; _print_num (~void str, int num)
+
     # setup call by clearing most values
-    asm "mov rcx, rax"
-    asm "mov rdx, rbx"
+    asm "mov rcx, r8"
+    asm "mov rdx, r9"
     asm "mov rdi, 0"
     asm "mov rsi, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
+    asm "sub rsp, 32"
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
 ;/
@@ -139,6 +153,7 @@ asm "extern CloseHandle"
 ;/
 
 /; _close_file (~void handle)
+
     asm "mov rcx, r8" # handle
     asm "mov rdx, 0"
     asm "mov r8, 0"

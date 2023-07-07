@@ -1,11 +1,11 @@
 # to get working
 
 enum TEST_ENUM [int] {
-    i = 0
+    i = 1
 }
 
 /; module m
-    int i = 0
+    int i = 1
 ;/
 
 /; main [int]

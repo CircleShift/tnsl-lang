@@ -1,89 +1,19 @@
 :include "c_wrap.tnsl"
+:include "logging.tnsl"
 :include "vector.tnsl"
 :include "utils.tnsl"
+:include "tokenizer.tnsl"
 
-enum TOKEN_TYPE [int] {
-    DEFWORD = 0
-}
-
-struct Token {
-    int line, ch, _type,
-    ~uint8 data
-}
-
-/; method Token
-    /; init
-        self.data = _alloc(1)
-        self.data{0} = 0
-    ;/
-
-    /; data_len [int]
-        return cstr_len(self.data)
-    ;/
-
-    /; append (uint8 ch)
-        int l = self.data_len()
-        self.data = _realloc(self.data, self.data_len() + 1)
-        self.data{l + 1} = 0
-        self.data{l} = ch
-    ;/
-
-    /; pop
-        int l = self.data_len()
-        self.data = _realloc(self.data, l - 1)
-        self.data{l - 1} = 0
-    ;/
-
-    /; clear
-        _delete(self.data)
-    ;/
-
-    /; eq (~Token t) [bool]
-        return cstr_eq(self.data, t`.data)
-    ;/
-;/
-
-/; tokenize (~void file) [Vector]
-    Vector out
-    out.start(32)
-
-
-
-    return out
-;/
-
-{}uint8 wrong_args = "Usage: copy [from] [to]"
-{}uint8 write_one = "\0\n\0"
-
-# Proof of concept copy program
 /; main (int argc, ~~uint8 argv) [int]
     asm "mov r8, rcx"
     asm "mov r9, rdx"
 
-    /; if (argc < 3)
-        _printf(~wrong_args{0})
-        return 1
-    ;/
-
-    ~void read_handle = _open_file(argv{1})
+    ~void open_handle = _open_file(argv{1})
     ~void write_handle = _create_file(argv{2})
-
-    _print_num(~_dec{0}, read_handle)
-    _print_num(~_dec{0}, write_handle)
-
-    uint8 buf = 0
-    int read_count = 0
-    int tries = 0
-    _read_byte(read_handle, ~buf, ~read_count)
-    /; loop (_read_byte(read_handle, ~buf, ~read_count))
-        /; if (read_count == 0)
-            break
-        ;/
-        _write_byte(write_handle, ~buf)
-        read_count = 0
-    ;/
-
-    _close_file(read_handle)
+    log_one_nl('a')
+    tokenize_file(open_handle, write_handle)
+    log_one_nl('a')
+    _close_file(open_handle)
     _close_file(write_handle)
 
     return 0
