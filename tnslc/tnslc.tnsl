@@ -1258,8 +1258,11 @@
             ;data`.csec = string_join( {
                 data`.csec,
                 "\tmov ", get_reg(0, sz), ", ", self.norm_loc(sz), "\n",
-                "\tmov ", get_reg(3, sz), ", ", v.norm_loc(sz), "\n",
-                "\t", op, " ", get_reg(3, sz), "\n",
+                "\txor rdx, rdx\n",
+                "\tpush rsi\n",
+                "\tmov ", get_reg(4, sz), ", ", v.norm_loc(sz), "\n",
+                "\t", op, " ", get_reg(4, sz), "\n",
+                "\tpop rsi\n",
                 "\tmov ", self.norm_loc(sz), ", ", get_reg(keep, sz), "\n"
             }, "")
         ;/
@@ -1784,7 +1787,7 @@
     /; new_tmp_var (Type t, ~CompData out) [Variable]
         ;Variable new = {"##tmp", t, 0, 0}
         ;new.loc_type = LOCATION.STACK
-        ;new.location = self.get_full_tmp_stack() + self.tmp + new.norm_size()
+        ;new.location = self.get_full_tmp_stack() + new.norm_size()
         ;self.tmp = self.tmp + new.norm_size()
         ;out`.csec = string_join( {
             out`.csec,

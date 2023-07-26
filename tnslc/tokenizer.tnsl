@@ -141,6 +141,10 @@ struct Token {
         ;; else if (contains_char(~AUGMENTS, tok.data{0}))
             return TOKEN_TYPE.AUGMENT
         ;/
+    ;; else if (in_csv(~CSV_KEYWORDS, tok.data))
+        return TOKEN_TYPE.KEYWORD
+    ;; else if (in_csv(~CSV_KEYTYPES, tok.data))
+        return TOKEN_TYPE.KEYTYPE
     ;; else if (tok_literal(tok) == true)
         return TOKEN_TYPE.LITERAL
     ;/
@@ -158,9 +162,17 @@ struct Token {
     tok.append(c)
     uint type_after = get_tok_type(tok)
     tok.pop()
-    log_one_nl('g')
-    bool a = type_before !== TOKEN_TYPE.DEFWORD && type_after == TOKEN_TYPE.DEFWORD
+    log_one('g')
+    bool a = type_before !== TOKEN_TYPE.DEFWORD && type_before != TOKEN_TYPE.KEYTYPE && type_before != TOKEN_TYPE.KEYWORD && type_after == TOKEN_TYPE.DEFWORD
+    log_one(' ')
+    log_one('[')
+    log_one(a)
+    log_one(']')
     bool b = type_after !== TOKEN_TYPE.LITERAL && is_whitespace(c) == true
+    log_one(' ')
+    log_one('[')
+    log_one(b)
+    log_one_nl(']')
     return a || b
 ;/
 
@@ -178,31 +190,41 @@ struct Token {
         /; if (read_count == 0)
             break
         ;/
+
         log_one_nl('b')
-        # /; if (break_token(tmp, buf) == true)
-        #     log_one_nl('c')
-        #     /; if (tmp._len() > 0)
-        #         log_one_nl('d')
-        #         print_token(tmp, file_out)
-        #     ;/
-        #     
-        #     tmp._del()
-        #     tmp.start()
-# 
-        #     /; if (is_whitespace(buf) == false)
-        #         log_one_nl('e')
-        #         tmp.append(buf)
-        #     ;; else if (buf == WHITESPACE{2})
-        #         log_one_nl('f')
-        #         tmp.append(WHITESPACE{2})
-        #         print_token(tmp, file_out)
-        #         tmp._del()
-        #         tmp.start()
-        #     ;/
-        #     log_one_nl('c')
-        # ;; else
+        
+        /; if (buf == '#')
+            /; loop (_read_byte(file_in, ~buf, ~read_count))
+                /; if (buf == '\n' || read_count == 0)
+                    break
+                ;/
+            ;/
+
+        ;; else if (break_token(tmp, buf) == true)
+            log_one_nl('c')
+            /; if (tmp._len() > 0)
+                log_one_nl('d')
+                print_token(tmp, file_out)
+            ;/
+            tmp._del()
+            tmp.start()
+            /; if (is_whitespace(buf) == false)
+                log_one_nl('e')
+                tmp.append(buf)
+            ;; else if (buf == WHITESPACE{2})
+                log_one_nl('f')
+                tmp.append(WHITESPACE{2})
+                print_token(tmp, file_out)
+                tmp._del()
+                tmp.start()
+            ;/
+            log_one_nl('c')
+
+        ;; else
             tmp.append(buf)
-        # ;/
+
+        ;/
+
         log_one_nl('b')
         read_count = 0
     ;/

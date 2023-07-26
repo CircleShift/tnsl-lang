@@ -10,7 +10,9 @@ struct Vector {
 
     /; resize (uint num_el)
         self.dat_size = num_el
+        _print_num(~_ptr{0}, ~self.dat)
         self.dat = _realloc(self.dat, num_el * self.el_size)
+        _print_num(~_ptr{0}, ~self.dat)
     ;/
 
     /; get (uint i) [~uint8]
@@ -39,9 +41,11 @@ struct Vector {
 
     /; pop
         self.num_el--
-        /; if (self.num_el !== 0 && self.num_el < self.dat_size / 4)
+        /; if (self.num_el > 0 && self.num_el < self.dat_size / 4)
             self.resize(self.dat_size / 2)
-        ;/
+        ;; else if (self.num_el < 0)
+			self.num_el = 0
+		;/
     ;/
 
     /; remove (int index)

@@ -1,7 +1,20 @@
-:include "c_wrap.tnsl"
-:include "logging.tnsl"
+# testing file to try to reproduce bugs as best as possible
 
-{}uint8 eee = "eee\0"
+# 8x4 bytes
+struct AddressError {
+    uint a, b, c, d
+}
+
+/; method AddressError
+    /; if_check [bool]
+        /; if (self.a < 0 && self.b !< self.d / 4)
+            return true
+        ;; else if (self.c == 0)
+            return false
+        ;/
+        return self.d != 1
+    ;/
+;/
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
@@ -9,9 +22,12 @@
     asm "mov r8, rcx"
     asm "mov r9, rdx"
 
-    log_err(~eee{0})
-    log_info(~eee{0})
-    log_debug(~eee{0})
+    AddressError ae
+    ae.a = ae.b = ae.c = ae.d = 0
+
+    /; if (ae.if_check())
+        return 1
+    ;/
     
     return 0
 ;/

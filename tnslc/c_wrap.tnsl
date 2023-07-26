@@ -12,17 +12,24 @@ asm "extern CloseHandle"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
+{}uint8 _ptr = "%p\n\0"
 
 /; _alloc (uint size) [~void]
     ~void out
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 32"
+    
     # Mov size into proper register, and set all extras to zero
     asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
-
-    asm "sub rsp, 32"
+    
     asm "call malloc"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially, and we have a uint in r8)
@@ -33,13 +40,19 @@ asm "extern CloseHandle"
 /; _realloc (~void ptr, uint new_size) [~void]
     ~void out
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 32"
+    
     # Mov ptr and new size into proper registers, and set all extras to zero
     asm "mov rcx, r8"
     asm "mov rdx, r9"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # Do call
-    asm "sub rsp, 32"
     asm "call realloc"
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
@@ -49,35 +62,57 @@ asm "extern CloseHandle"
 
 /; _delete (~void ptr)
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 32"
+    
     # setup call by clearing most values
     asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
-    asm "sub rsp, 32"
     asm "call free"
     # there's no more to do 'cause free returns nothing 
 ;/
 
 /; _printf (~void str)
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
+    
     # setup call by clearing most values
     asm "mov rcx, r8"
     asm "mov rdx, 0"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
-    asm "push qword 0"
-    asm "push qword 0"
-    asm "push qword 0"
-    asm "push qword 0"
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
 ;/
 
 /; _print_num (~void str, int num)
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
+    asm "push qword 0"
+    
     # setup call by clearing most values
     asm "mov rcx, r8"
     asm "mov rdx, r9"
@@ -86,7 +121,6 @@ asm "extern CloseHandle"
     asm "mov r8, 0"
     asm "mov r9, 0"
     # do call
-    asm "sub rsp, 32"
     asm "call printf"
     # there's no more to do 'cause printf returns nothing 
 ;/
@@ -95,6 +129,12 @@ asm "extern CloseHandle"
 # Create file for writing (overwrite)
 /; _create_file (~void name) [~void]
     ~void out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
 
     asm "mov rcx, r8" # lpFileName
     asm "mov rdx, 1"  # dwDesiredAccess
@@ -126,6 +166,12 @@ asm "extern CloseHandle"
 /; _open_file (~void name) [~void]
     ~void out
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+
     asm "mov rcx, r8" # lpFileName
     asm "mov rdx, 1"  # dwDesiredAccess
     asm "shl rdx, 28" # (GENERIC_READ 1 << 31 | GENERIC_WRITE 1 << 30)
@@ -154,6 +200,12 @@ asm "extern CloseHandle"
 
 /; _close_file (~void handle)
 
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+
     asm "mov rcx, r8" # handle
     asm "mov rdx, 0"
     asm "mov r8, 0"
@@ -172,6 +224,12 @@ asm "extern CloseHandle"
 
 /; _read_byte (~void handle, ~uint8 byte, ~int read) [int]
     int out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
 
     asm "mov rcx, r8" # handle
     asm "mov rdx, r9" # buffer
@@ -194,6 +252,12 @@ asm "extern CloseHandle"
 
 /; _write_byte (~void handle, ~uint8 byte) [int]
     int out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 32"
+    asm "div rcx"
+    asm "sub rsp, rdx"
 
     asm "mov rcx, r8" # handle
     asm "mov rdx, r9" # buffer

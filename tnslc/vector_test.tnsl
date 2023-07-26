@@ -14,15 +14,22 @@
 
     Vector vec
     vec.start(1)
-    uint8 a = _alert{0}
-    vec.push(~a)
-    vec.push(~a)
-    a = _alert{len _alert - 2}
-    vec.push(~a)
-    a = 0
-    vec.push(~a)
-    _printf(vec.get(0))
-    _printf(vec.get(0))
+	
+    uint8 buf = 0
+	/; loop (int i = 0; i < 20) [i++]
+		buf = 'A' + i
+		vec.push(~buf)
+	;/
+	
+	buf = 0
+	vec.push(~buf)
+	
+	_printf(vec.dat)
+	
+	/; loop (int i = 0; i < 21) [i++]
+		vec.pop()
+	;/
+	
     vec.clean()
     return 0
 ;/
