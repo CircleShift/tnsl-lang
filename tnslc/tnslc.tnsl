@@ -2908,7 +2908,7 @@
     ;; else if (tok`{start`}.cmp("`"))
         ;log_debug("Pre loop deref")
         ;wk = wk.deref(out)
-        ;start` = start` + 2
+        ;start` = start` + 1
     ;/
     
     ;layer` = layer` + 1
@@ -3552,7 +3552,9 @@
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
+                /; if (ret.s > 0)
+                    ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
+                ;/
                 ;cf.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
             ;; else if (tok`{cur`}.cmp("raw") && tok`{cur` + 1}.cmp("return"))
@@ -3560,7 +3562,9 @@
                     ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
-                ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
+                /; if (ret.s > 0)
+                    ;eval_value(tok, cur, out, mov, current, ~cf, ret, true)
+                ;/
                 ;out`.csec = string_add(out`.csec, "\tret\n")
             ;; else if (tok`{cur`}.cmp("asm"))
                 ;cur`++
@@ -3743,7 +3747,9 @@
         ;; else if (tok`{cur`}.type_is(TOKEN.KEYWORD))
             /; if (tok`{cur`}.cmp("return"))
                 ;cur`++
-                ;eval_value(tok, cur, out, out, current, ~root, ret, true)
+                /; if (ret.s > 0)
+                    ;eval_value(tok, cur, out, out, current, ~root, ret, true)
+                ;/
                 ;root.end_scope(out)
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
@@ -3752,7 +3758,9 @@
                     ;log_err("Unable to perform a raw return from a non-raw block.")
                 ;/
                 ;cur` = cur` + 2
-                ;eval_value(tok, cur, out, out, current, ~root, ret, true)
+                /; if (ret.s > 0)
+                    ;eval_value(tok, cur, out, out, current, ~root, ret, true)
+                ;/
                 ;out`.csec = string_add(out`.csec, "\tret\n")
                 ;returned = true
             ;; else if (tok`{cur`}.cmp("asm"))
