@@ -55,7 +55,6 @@ struct Token {
     # Remove the last character from this token
     /; pop
         int ln = cstr_len(self.data)
-        self.data = _realloc(self.data, ln)
         self.data{ln - 1} = 0
     ;/
 
@@ -72,7 +71,7 @@ struct Token {
 
     # Delete the memory associated with this token
     /; _del
-        _delete(self.data)
+        _realloc(self.data, 0)
     ;/
 
     # length of the string that this token encodes
@@ -106,13 +105,10 @@ struct Token {
 
 # Returns true if the token is a valid reserved token
 /; tok_reserved (Token tok) [bool]
-    log_one_nl('i')
     /; if (tok._len() == 1)
         return is_reserved(tok.data{0})
     ;; else if (tok._len() == 2)
-        bool a = contains_char(~MULTI_PARENS, tok.data{0})
-        bool b = contains_char(~MULTI_PARENS, tok.data{1})
-        return a && b
+        return contains_char(~MULTI_PARENS, tok.data{0}) && contains_char(~MULTI_PARENS, tok.data{1})
     ;/
 
     return in_csv(~CSV_AUGMENTS, tok.data)
@@ -125,25 +121,22 @@ struct Token {
 ;/
 
 /; get_tok_type(Token tok) [uint]
-    log_one_nl('h')
     /; if (tok_reserved(tok) == true)
         /; if (tok._len() > 1)
-            bool a = contains_char(~MULTI_PARENS, tok.data{0})
-            bool b = contains_char(~MULTI_PARENS, tok.data{1})
-            /; if (a && b)
+            /; if (contains_char(~MULTI_PARENS, tok.data{0}) && contains_char(~MULTI_PARENS, tok.data{1}))
                 return TOKEN_TYPE.DELIMITER
             ;/
             return TOKEN_TYPE.AUGMENT
-        ;; else if (contains_char(~PARENS, tok.data{0}))
+        ;; else if (contains_char(~PARENS, tok.data{0}) == true)
             return TOKEN_TYPE.DELIMITER
-        ;; else if (contains_char(~SEPS, tok.data{0}))
+        ;; else if (contains_char(~SEPS, tok.data{0}) == true)
             return TOKEN_TYPE.SEPARATOR
-        ;; else if (contains_char(~AUGMENTS, tok.data{0}))
+        ;; else if (contains_char(~AUGMENTS, tok.data{0}) == true)
             return TOKEN_TYPE.AUGMENT
         ;/
-    ;; else if (in_csv(~CSV_KEYWORDS, tok.data))
+    ;; else if (in_csv(~CSV_KEYWORDS, tok.data) == true)
         return TOKEN_TYPE.KEYWORD
-    ;; else if (in_csv(~CSV_KEYTYPES, tok.data))
+    ;; else if (in_csv(~CSV_KEYTYPES, tok.data) == true)
         return TOKEN_TYPE.KEYTYPE
     ;; else if (tok_literal(tok) == true)
         return TOKEN_TYPE.LITERAL
@@ -153,27 +146,14 @@ struct Token {
 ;/
 
 
-/; break_token(Token tok, uint8 c) [bool]
-    log_one('g')
-    log_one(' ')
-    log_one_nl(c)
+/; break_token(~Token tok, uint8 c) [bool]
     # return true
-    uint type_before = get_tok_type(tok)
-    tok.append(c)
-    uint type_after = get_tok_type(tok)
-    tok.pop()
-    log_one('g')
-    bool a = type_before !== TOKEN_TYPE.DEFWORD && type_before != TOKEN_TYPE.KEYTYPE && type_before != TOKEN_TYPE.KEYWORD && type_after == TOKEN_TYPE.DEFWORD
-    log_one(' ')
-    log_one('[')
-    log_one(a)
-    log_one(']')
-    bool b = type_after !== TOKEN_TYPE.LITERAL && is_whitespace(c) == true
-    log_one(' ')
-    log_one('[')
-    log_one(b)
-    log_one_nl(']')
-    return a || b
+    uint type_before = get_tok_type(tok`)
+    tok`.append(c)
+    uint type_after = get_tok_type(tok`)
+    tok`.pop()
+    bool a = true
+    return a
 ;/
 
 /; tokenize_file (~void file_in, file_out)
@@ -191,7 +171,6 @@ struct Token {
             break
         ;/
 
-        log_one_nl('b')
         
         /; if (buf == '#')
             /; loop (_read_byte(file_in, ~buf, ~read_count))
@@ -200,32 +179,26 @@ struct Token {
                 ;/
             ;/
 
-        ;; else if (break_token(tmp, buf) == true)
-            log_one_nl('c')
+        ;; else if (break_token(~tmp, buf) == true)
             /; if (tmp._len() > 0)
-                log_one_nl('d')
                 print_token(tmp, file_out)
             ;/
             tmp._del()
             tmp.start()
             /; if (is_whitespace(buf) == false)
-                log_one_nl('e')
                 tmp.append(buf)
             ;; else if (buf == WHITESPACE{2})
-                log_one_nl('f')
                 tmp.append(WHITESPACE{2})
                 print_token(tmp, file_out)
                 tmp._del()
                 tmp.start()
             ;/
-            log_one_nl('c')
 
         ;; else
             tmp.append(buf)
 
         ;/
 
-        log_one_nl('b')
         read_count = 0
     ;/
 
@@ -234,4 +207,91 @@ struct Token {
     ;/
 
     tmp._del()
+;/
+
+{}uint8 w_SEP = "SEPARATOR\n\0"
+{}uint8 w_DEL = "DELIMITER\n\0"
+{}uint8 w_AUG = "AUGMENT\n\0"
+{}uint8 w_KTP = "KEYTYPE\n\0"
+{}uint8 w_KWD = "KEYWORD\n\0"
+{}uint8 w_LIT = "LITERAL\n\0"
+{}uint8 w_DEF = "DEFWORD\n\0"
+
+/; print_tok_type(uint tt)
+
+    ~uint8 ptr = ~w_DEF{0}
+
+    /; if (tt == TOKEN_TYPE.SEPARATOR)
+        ptr = ~w_SEP{0}
+    ;; else if (tt == TOKEN_TYPE.DELIMITER)
+        ptr = ~w_DEL{0}
+    ;; else if (tt == TOKEN_TYPE.AUGMENT)
+        ptr = ~w_AUG{0}
+    ;; else if (tt == TOKEN_TYPE.KEYTYPE)
+        ptr = ~w_KTP{0}
+    ;; else if (tt == TOKEN_TYPE.KEYWORD)
+        ptr = ~w_KWD{0}
+    ;; else if (tt == TOKEN_TYPE.LITERAL)
+        ptr = ~w_LIT{0}
+    ;; else if (tt == TOKEN_TYPE.DEFWORD)
+        ptr = ~w_DEF{0}
+    ;/
+
+    _printf(ptr)
+
+;/
+
+{}uint8 test_multi = "/;\0"
+{}uint8 test_paren = "(\0"
+{}uint8 test_seps = ",\0"
+{}uint8 test_aug = ".\0"
+{}uint8 test_maug = "++\0"
+{}uint8 test_mkw = "if\0"
+{}uint8 test_mkt = "bool\0"
+{}uint8 test_def = "main\0"
+{}uint8 space = " \0"
+
+/; tests
+    Token tk
+
+    # Delimiter
+    tk.data = ~test_multi{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_paren{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_seps{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_aug{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_maug{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_mkw{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_mkt{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
+
+    tk.data = ~test_def{0}
+    _printf(tk.data)
+    _printf(~space{0})
+    print_tok_type(get_tok_type(tk))
 ;/

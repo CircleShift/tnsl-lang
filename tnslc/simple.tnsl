@@ -1,34 +1,36 @@
-# testing file to try to reproduce bugs as best as possible
+# No longer simple
+:include "c_wrap.tnsl"
 
-# 8x4 bytes
-struct AddressError {
-    uint a, b, c, d
+enum LOL [int] {
+    A = 1,
+    B = 2,
+    C = 4
 }
 
-/; method AddressError
-    /; if_check [bool]
-        /; if (self.a < 0 && self.b !< self.d / 4)
-            return true
-        ;; else if (self.c == 0)
-            return false
-        ;/
-        return self.d != 1
-    ;/
+struct Lolbert {
+    int a, b, c,
+
+    ~uint8 stuff
+}
+
+/; lolbert1 (~Lolbert l, uint8 check) [bool]
+    return l`.a == check
 ;/
 
-/; main (int argc, ~~uint argv) [int]
-    # On windows, the first two arguments are passed in RCX and RDX, so we need to
-    # update their positions here or else tnsl will have garbage values in r8 and r9
-    asm "mov r8, rcx"
-    asm "mov r9, rdx"
 
-    AddressError ae
-    ae.a = ae.b = ae.c = ae.d = 0
+/; main [int]
+    Lolbert lol
+    lol.a = 1
+    lol.b = 4
+    lol.c = 3
+    lol.stuff = _alloc(2)
+    lol.stuff{0} = 2
+    lol.stuff{1} = 1
 
-    /; if (ae.if_check())
-        return 1
+    /; if (lolbert1(~lol, lol.stuff{1}) && lolbert1(~lol, lol.stuff{0}))
+        _delete(lol.stuff)
+        return lol.a + lol.b
     ;/
-    
+    _delete(lol.stuff)
     return 0
 ;/
-
