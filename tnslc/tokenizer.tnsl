@@ -80,16 +80,16 @@ struct Token {
     ;/
 ;/
 
-{}uint8 tkn_ok = "OK \0", tkn_no = "NO \0", tkn_nl = "\n\0"
+{}uint8 tkn_st = "{ \0", tkn_nd = " }\n\0", tkn_sp = " \0"
 
 /; print_token (Token tok, ~void file_out)
-    /; if (in_csv(~CSV_KEYWORDS, tok.data) == true)
-        write_to_file(file_out, ~tkn_ok{0})
-    ;; else
-        write_to_file(file_out, ~tkn_no{0})
-    ;/
+    write_to_file(file_out, ~tkn_st{0})
+    
+    write_to_file(file_out, print_tok_type(tok))
+    write_to_file(file_out, ~tkn_sp{0})
     write_to_file(file_out, tok.data)
-    write_to_file(file_out, ~tkn_nl{0})
+
+    write_to_file(file_out, ~tkn_nd{0})
 ;/
 
 # Returns true if the character is whitespace
@@ -114,10 +114,31 @@ struct Token {
     return in_csv(~CSV_AUGMENTS, tok.data)
 ;/
 
-# Returns true if the token is a valid literal value
-/; tok_literal (Token tok) [bool]
-    # TODO: implement literals
-    return false
+# True if the token is a valid number (integer or float)
+/; is_numeric_literal(Token tok) [bool]
+    /; if (tok._len() < 1)
+        return false
+    ;; else if (tok.data{0} < '0' || tok.data{0} > '9')
+        return false
+    ;/
+
+    bool non_dec = false
+    /; if (tok._len() > 1 && tok.data{0} == '0')
+        non_dec = tok.data{1} > '9'
+        # TODO: non_dec not impl
+    ;/
+
+    bool dec_seen = false
+
+    /; loop (int i = 0; i < tok._len()) [i++]
+        /; if (dec_seen == false && tok.data{i} == '.')
+            dec_seen = true
+        ;; else if (tok.data{i} < '0' || tok.data{i} > '9')
+            return false
+        ;/
+    ;/
+
+    return true
 ;/
 
 /; get_tok_type(Token tok) [uint]
@@ -138,7 +159,7 @@ struct Token {
         return TOKEN_TYPE.KEYWORD
     ;; else if (in_csv(~CSV_KEYTYPES, tok.data) == true)
         return TOKEN_TYPE.KEYTYPE
-    ;; else if (tok_literal(tok) == true)
+    ;; else if (is_numeric_literal(tok) == true)
         return TOKEN_TYPE.LITERAL
     ;/
 
@@ -147,56 +168,105 @@ struct Token {
 
 
 /; break_token(~Token tok, uint8 c) [bool]
-    # return true
     uint type_before = get_tok_type(tok`)
     tok`.append(c)
     uint type_after = get_tok_type(tok`)
     tok`.pop()
-    bool a = true
-    return a
+
+    bool a = is_whitespace(c) && type_after !== TOKEN_TYPE.LITERAL
+    bool b = is_reserved(c) && type_before == TOKEN_TYPE.DEFWORD
+    bool c = type_before !== TOKEN_TYPE.DEFWORD && type_after == TOKEN_TYPE.DEFWORD
+
+    return a || b || c
 ;/
+
 
 /; tokenize_file (~void file_in, file_out)
 
     Token tmp
     tmp.start()
+    tmp.line = 1
+    tmp.column = 1
 
     uint8 buf = 0
     int read_count = 0
+    int line = 1
+    int column = 1
     # Start reading at beginning of file
     _read_byte(file_in, ~buf, ~read_count)
     # Read loop.
-    /; loop (_read_byte(file_in, ~buf, ~read_count))
+    /; loop (_read_byte(file_in, ~buf, ~read_count)) [column++]
         /; if (read_count == 0)
             break
         ;/
-
         
         /; if (buf == '#')
+
+            # Handle comment
             /; loop (_read_byte(file_in, ~buf, ~read_count))
                 /; if (buf == '\n' || read_count == 0)
                     break
                 ;/
             ;/
 
+        ;; else if (buf == '\'' || buf == '"')
+
+            # Handle char/string literal
+            uint8 first = buf
+            tmp._type = TOKEN_TYPE.LITERAL
+            tmp.append(buf)
+            /; loop (_read_byte(file_in, ~buf, ~read_count))
+                /; if (buf == '\\')
+                    tmp.append(buf)
+                    read_count = 0
+                    _read_byte(file_in, ~buf, ~read_count)
+                    column++
+                    tmp.append(buf)
+                ;; else if (buf == first)
+                    tmp.append(buf)
+                    break
+                ;; else
+                    tmp.append(buf)
+                ;/
+
+                /; if (buf == '\n')
+                    line++
+                    column = 1
+                ;; else
+                    column++
+                ;/
+
+                read_count = 0
+            ;/
+            print_token(tmp, file_out)
+            tmp._del()
+            tmp.start()
+
         ;; else if (break_token(~tmp, buf) == true)
+
+            # Handle token break
             /; if (tmp._len() > 0)
+                tmp._type = get_tok_type(tmp)
                 print_token(tmp, file_out)
             ;/
             tmp._del()
             tmp.start()
+            tmp.line = line
+            tmp.column = column
             /; if (is_whitespace(buf) == false)
                 tmp.append(buf)
-            ;; else if (buf == WHITESPACE{2})
-                tmp.append(WHITESPACE{2})
-                print_token(tmp, file_out)
-                tmp._del()
-                tmp.start()
             ;/
 
-        ;; else
+        ;; else if (is_whitespace(buf) == false)
+
+            # Add non-whitespace
             tmp.append(buf)
 
+        ;/
+
+        /; if (buf == '\n')
+            line++
+            column = 0
         ;/
 
         read_count = 0
@@ -209,15 +279,15 @@ struct Token {
     tmp._del()
 ;/
 
-{}uint8 w_SEP = "SEPARATOR\n\0"
-{}uint8 w_DEL = "DELIMITER\n\0"
-{}uint8 w_AUG = "AUGMENT\n\0"
-{}uint8 w_KTP = "KEYTYPE\n\0"
-{}uint8 w_KWD = "KEYWORD\n\0"
-{}uint8 w_LIT = "LITERAL\n\0"
-{}uint8 w_DEF = "DEFWORD\n\0"
+{}uint8 w_SEP = "SEPARATOR\0"
+{}uint8 w_DEL = "DELIMITER\0"
+{}uint8 w_AUG = "AUGMENT\0"
+{}uint8 w_KTP = "KEYTYPE\0"
+{}uint8 w_KWD = "KEYWORD\0"
+{}uint8 w_LIT = "LITERAL\0"
+{}uint8 w_DEF = "DEFWORD\0"
 
-/; print_tok_type(uint tt)
+/; print_tok_type(uint tt) [~uint8]
 
     ~uint8 ptr = ~w_DEF{0}
 
@@ -237,61 +307,7 @@ struct Token {
         ptr = ~w_DEF{0}
     ;/
 
-    _printf(ptr)
+    return ptr
 
 ;/
 
-{}uint8 test_multi = "/;\0"
-{}uint8 test_paren = "(\0"
-{}uint8 test_seps = ",\0"
-{}uint8 test_aug = ".\0"
-{}uint8 test_maug = "++\0"
-{}uint8 test_mkw = "if\0"
-{}uint8 test_mkt = "bool\0"
-{}uint8 test_def = "main\0"
-{}uint8 space = " \0"
-
-/; tests
-    Token tk
-
-    # Delimiter
-    tk.data = ~test_multi{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_paren{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_seps{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_aug{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_maug{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_mkw{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_mkt{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-
-    tk.data = ~test_def{0}
-    _printf(tk.data)
-    _printf(~space{0})
-    print_tok_type(get_tok_type(tk))
-;/
