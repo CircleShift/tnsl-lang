@@ -180,6 +180,40 @@ struct Token {
     return a || b || c
 ;/
 
+/; str_char_literal(uint8 start, ~Token tmp, ~void file_in)
+    uint read_count = 0
+    uint8 buf = 0
+    
+    tmp`._type = TOKEN_TYPE.LITERAL
+    tmp`.append(buf)
+    /; loop (_read_byte(file_in, ~buf, ~read_count))
+        /; if (read_count == 0)
+                break
+        ;/
+        
+        /; if (buf == '\\')
+            tmp`.append(buf)
+            read_count = 0
+            _read_byte(file_in, ~buf, ~read_count)
+            column++
+            tmp`.append(buf)
+        ;; else if (buf == start)
+            tmp`.append(buf)
+            break
+        ;; else
+            tmp`.append(buf)
+        ;/
+
+        /; if (buf == '\n')
+            line++
+            column = 1
+        ;; else
+            column++
+        ;/
+
+        read_count = 0
+    ;/
+;/
 
 /; tokenize_file (~void file_in, file_out)
 
@@ -212,32 +246,8 @@ struct Token {
         ;; else if (buf == '\'' || buf == '"')
 
             # Handle char/string literal
-            uint8 first = buf
-            tmp._type = TOKEN_TYPE.LITERAL
-            tmp.append(buf)
-            /; loop (_read_byte(file_in, ~buf, ~read_count))
-                /; if (buf == '\\')
-                    tmp.append(buf)
-                    read_count = 0
-                    _read_byte(file_in, ~buf, ~read_count)
-                    column++
-                    tmp.append(buf)
-                ;; else if (buf == first)
-                    tmp.append(buf)
-                    break
-                ;; else
-                    tmp.append(buf)
-                ;/
-
-                /; if (buf == '\n')
-                    line++
-                    column = 1
-                ;; else
-                    column++
-                ;/
-
-                read_count = 0
-            ;/
+            str_char_literal(buf, ~tmp, file_in)
+            
             print_token(tmp, file_out)
             tmp._del()
             tmp.start()
