@@ -108,10 +108,12 @@ struct Token {
     /; if (tok._len() == 1)
         return is_reserved(tok.data{0})
     ;; else if (tok._len() == 2)
-        return contains_char(~MULTI_PARENS, tok.data{0}) && contains_char(~MULTI_PARENS, tok.data{1})
-    ;/
+        /; if (contains_char(~MULTI_PARENS, tok.data{0}) && contains_char(~MULTI_PARENS, tok.data{1}))
+            return true
+        ;/
+   ;/
 
-    return in_csv(~CSV_AUGMENTS, tok.data)
+    return is_reserved(tok.data{0}) && in_csv(~CSV_AUGMENTS, tok.data)
 ;/
 
 # True if the token is a valid number (integer or float)
@@ -174,8 +176,8 @@ struct Token {
     tok`.pop()
 
     bool a = is_whitespace(c) && type_after !== TOKEN_TYPE.LITERAL
-    bool b = is_reserved(c) && type_before == TOKEN_TYPE.DEFWORD
-    bool c = type_before !== TOKEN_TYPE.DEFWORD && type_after == TOKEN_TYPE.DEFWORD
+    bool b = is_reserved(c) && type_after == TOKEN_TYPE.DEFWORD
+    bool c = type_before == TOKEN_TYPE.LITERAL && type_after == TOKEN_TYPE.DEFWORD
 
     return a || b || c
 ;/
@@ -198,31 +200,24 @@ struct Token {
     tmp._type = TOKEN_TYPE.LITERAL
     tmp.append(buf)
     read_count = 0
-    log_one_nl(first)
 
     /; loop
         _read_byte(file_in, ~buf, ~read_count)
-        log_one_nl(buf)
-        log_num_nl(read_count)
 
         /; if (read_count == 0)
-            log_one_nl('b')
             break
         ;/
 
         /; if (buf == '\\')
-            log_one_nl('c')
             tmp.append(buf)
             read_count = 0
             _read_byte(file_in, ~buf, ~read_count)
             column`++
             tmp.append(buf)
         ;; else if (buf == first)
-            log_one_nl('d')
             tmp.append(buf)
             break
         ;; else
-            log_one_nl('e')
             tmp.append(buf)
         ;/
 
@@ -265,6 +260,14 @@ struct Token {
             line++
 
         ;; else if (buf == '\'' || buf == '"')
+
+            # Don't rope the last token into this
+            /; if (tmp._len() > 0)
+                tmp._type = get_tok_type(tmp)
+                print_token(tmp, file_out)
+                tmp._del()
+                tmp.start()
+            ;/
 
             # Handle char/string literal
             tmp = handle_str(file_in, tmp, ~line, ~column, buf)
