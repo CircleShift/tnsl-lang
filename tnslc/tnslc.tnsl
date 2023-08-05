@@ -3417,20 +3417,17 @@
             ;; else
                 ;cf = cf.new_sub_cf(tok`{cur`}.data)
             ;/
-        ;; else if (tok`{cur`}.cmp("(") || tok`{cur`}.cmp("["))
+        ;; else if (tok`{cur`}.cmp("("))
             ;int psl = find_closing(tok, cur)
-            ;int tmp = statement_list(tok, cur`, psl, current, ~outro, mov, ~cf)
-            /; if (tmp < 0 && condition !< 0)
-                ;tmp = condition
+            ;int tmp = statement_list(tok, cur`, psl, current, out, mov, ~cf)
+
+            /; if (tmp !< 0 && condition < 0 && cf.cf_type("if") == false)
+                ;condition = tmp
                 ;Type t = {1, "bool", "_bool", {}, {}}
                 ;eval_value(tok, ~tmp, ~outro, mov, current, ~cf, t, true)
-            ;; else
-                ;condition = tmp
             ;/
 
-            /; if (tok`{cur`}.cmp("(") && condition !< 0)
-                ;out`.add(outro)
-                ;outro = {"", "", ""}
+            /; if (tmp !< 0)
                 /; if (cf.cf_type("if"))
                     ;out`.csec = string_join( {
                         out`.csec,
@@ -3445,6 +3442,20 @@
                     }, "")
                 ;/
             ;/
+
+            ;cur` = psl
+        ;; else if (tok`{cur`}.cmp("["))
+            ;CompData t_outro = {"", "", ""}
+            ;int psl = find_closing(tok, cur)
+            ;int tmp = statement_list(tok, cur`, psl, current, ~t_outro, mov, ~cf)
+            
+            /; if (tmp < 0 && condition !< 0)
+                ;t_outro.add(outro)
+                ;outro = t_outro
+            ;; else
+                ;outro = t_outro
+            ;/
+            
             ;cur` = psl
         ;; else
             ;break
@@ -3613,12 +3624,21 @@
             ;out`.add(outro)
         ;/
 
-        ;out`.csec = string_join( {
-            out`.csec,
-            "\ttest al, al\n",
-            "\tjnz ", cf.scope_start_label(), "\n",
-            cf.scope_end_label(), ":\n"
-        }, "")
+        /; if (condition !< 0)
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\ttest al, al\n",
+                "\tjnz ", cf.scope_start_label(), "\n",
+                cf.scope_end_label(), ":\n"
+            }, "")
+        ;; else
+            ;out`.csec = string_join( {
+                out`.csec,
+                "\tjmp ", cf.scope_start_label(), "\n",
+                cf.scope_end_label(), ":\n"
+            }, "")
+        ;/
+        
     ;; else
         ;out`.csec = string_join( {
             out`.csec,

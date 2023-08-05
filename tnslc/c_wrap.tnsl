@@ -222,7 +222,7 @@ asm "extern CloseHandle"
     asm "add rsp, 32"
 ;/
 
-/; _read_byte (~void handle, ~uint8 byte, ~int read) [int]
+/; _read_byte (~void handle, ~uint8 byte, ~int read) [bool]
     int out
 
     asm "mov rax, rsp"

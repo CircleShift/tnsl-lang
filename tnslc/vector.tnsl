@@ -56,6 +56,17 @@ struct Vector {
         self.pop()
     ;/
 
+    /; copy (Vector v)
+        self.dat_size = v.dat_size
+        self.num_el = v.num_el
+        self.el_size = v.el_size
+        self.dat = _alloc(self.dat_size * self.el_size)
+        
+        /; loop (int i = 0; i < self.num_el) [i++]
+            self.set(i, v.dat + i * self.el_size)
+        ;/
+    ;/
+
     /; start (int el_size)
         self.num_el = 0
         self.el_size = el_size
@@ -63,7 +74,11 @@ struct Vector {
         self.dat = _alloc(self.el_size)
     ;/
 
-    /; clean
+    /; _len [uint]
+        return self.num_el
+    ;/
+
+    /; _del
         self.num_el = 0
         self.el_size = 0
         self.dat_size = 0

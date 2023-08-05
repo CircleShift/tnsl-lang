@@ -15,8 +15,9 @@
     Vector vec
     vec.start(1)
 	
+    int mx = 100
     uint8 buf = 0
-	/; loop (int i = 0; i < 20) [i++]
+	/; loop (int i = 0; i < mx) [i++]
 		buf = 'A' + i
 		vec.push(~buf)
 	;/
@@ -26,10 +27,10 @@
 	
 	_printf(vec.dat)
 	
-	/; loop (int i = 0; i < 21) [i++]
+	/; loop (int i = 0; i < mx + 1) [i++]
 		vec.pop()
 	;/
 	
-    vec.clean()
+    vec._del()
     return 0
 ;/

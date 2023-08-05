@@ -180,39 +180,63 @@ struct Token {
     return a || b || c
 ;/
 
-/; str_char_literal(uint8 start, ~Token tmp, ~void file_in)
-    uint read_count = 0
+/; handle_comment (~void file_in)
     uint8 buf = 0
-    
-    tmp`._type = TOKEN_TYPE.LITERAL
-    tmp`.append(buf)
-    /; loop (_read_byte(file_in, ~buf, ~read_count))
-        /; if (read_count == 0)
-                break
+    int read_count = 0
+    /; loop
+        _read_byte(file_in, ~buf, ~read_count)
+        /; if (buf == '\n' || read_count == 0)
+            break
         ;/
-        
+        read_count = 0
+    ;/
+;/
+
+/; handle_str (~void file_in, Token tmp, ~int line, column, uint8 first) [Token]
+    uint8 buf = first
+    int read_count = 0
+    tmp._type = TOKEN_TYPE.LITERAL
+    tmp.append(buf)
+    read_count = 0
+    log_one_nl(first)
+
+    /; loop
+        _read_byte(file_in, ~buf, ~read_count)
+        log_one_nl(buf)
+        log_num_nl(read_count)
+
+        /; if (read_count == 0)
+            log_one_nl('b')
+            break
+        ;/
+
         /; if (buf == '\\')
-            tmp`.append(buf)
+            log_one_nl('c')
+            tmp.append(buf)
             read_count = 0
             _read_byte(file_in, ~buf, ~read_count)
-            column++
-            tmp`.append(buf)
-        ;; else if (buf == start)
-            tmp`.append(buf)
+            column`++
+            tmp.append(buf)
+        ;; else if (buf == first)
+            log_one_nl('d')
+            tmp.append(buf)
             break
         ;; else
-            tmp`.append(buf)
+            log_one_nl('e')
+            tmp.append(buf)
         ;/
 
         /; if (buf == '\n')
-            line++
-            column = 1
+            line`++
+            column` = 1
         ;; else
-            column++
+            column`++
         ;/
 
         read_count = 0
     ;/
+
+    return tmp
 ;/
 
 /; tokenize_file (~void file_in, file_out)
@@ -226,10 +250,10 @@ struct Token {
     int read_count = 0
     int line = 1
     int column = 1
-    # Start reading at beginning of file
-    _read_byte(file_in, ~buf, ~read_count)
+
     # Read loop.
-    /; loop (_read_byte(file_in, ~buf, ~read_count)) [column++]
+    /; loop [column++]
+        _read_byte(file_in, ~buf, ~read_count)
         /; if (read_count == 0)
             break
         ;/
@@ -237,20 +261,19 @@ struct Token {
         /; if (buf == '#')
 
             # Handle comment
-            /; loop (_read_byte(file_in, ~buf, ~read_count))
-                /; if (buf == '\n' || read_count == 0)
-                    break
-                ;/
-            ;/
+            handle_comment(file_in)
+            line++
 
         ;; else if (buf == '\'' || buf == '"')
 
             # Handle char/string literal
-            str_char_literal(buf, ~tmp, file_in)
-            
+            tmp = handle_str(file_in, tmp, ~line, ~column, buf)
+
             print_token(tmp, file_out)
             tmp._del()
             tmp.start()
+            tmp.line = line
+            tmp.column = column
 
         ;; else if (break_token(~tmp, buf) == true)
 

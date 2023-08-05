@@ -1,6 +1,5 @@
 :include "c_wrap.tnsl"
-:include "vector.tnsl"
-:include "utils.tnsl"
+# :include "utils.tnsl"
 
 
 {}uint8 wrong_args = "Usage: copy [from] [to]"
@@ -25,8 +24,8 @@
     uint8 buf = 0
     int read_count = 0
     int tries = 0
-    _read_byte(read_handle, ~buf, ~read_count)
-    /; loop (_read_byte(read_handle, ~buf, ~read_count))
+    /; loop
+        _read_byte(read_handle, ~buf, ~read_count)
         /; if (read_count == 0)
             break
         ;/

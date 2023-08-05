@@ -63,3 +63,8 @@ int log_mode = 1
     log_one(c)
     _printf(~_log_nl{0})
 ;/
+
+/; log_num_nl (int i)
+    _print_num(~_dec{0}, i)
+    _printf(~_log_nl{0})
+;/
