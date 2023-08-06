@@ -241,7 +241,13 @@ struct Token {
     return tmp
 ;/
 
-/; tokenize_file (~void file_in, file_out)
+{}uint8 w_tkn_gen = "%d Tokens generated from file.\n\0"
+
+/; tokenize_file (~void file_in, file_out) [Vector]
+    # This vector is going to store all of our tokens as we generate them
+    Vector out_vect
+    # The size of a token struct is 3 uint + pointer = 4*8 = 32 bytes
+    out_vect.start(32)
 
     Token tmp
     tmp.start()
@@ -271,16 +277,14 @@ struct Token {
             # Don't rope the last token into this
             /; if (tmp._len() > 0)
                 tmp._type = get_tok_type(tmp)
-                print_token(tmp, file_out)
-                tmp._del()
+                out_vect.push(~tmp)
                 tmp.start()
             ;/
 
             # Handle char/string literal
             tmp = handle_str(file_in, tmp, ~line, ~column, buf)
 
-            print_token(tmp, file_out)
-            tmp._del()
+            out_vect.push(~tmp)
             tmp.start()
             tmp.line = line
             tmp.column = column
@@ -290,10 +294,10 @@ struct Token {
             # Handle token break
             /; if (tmp._len() > 0)
                 tmp._type = get_tok_type(tmp)
-                print_token(tmp, file_out)
+                out_vect.push(~tmp)
+                tmp.start()
             ;/
-            tmp._del()
-            tmp.start()
+
             tmp.line = line
             tmp.column = column
             /; if (is_whitespace(buf) == false)
@@ -316,10 +320,13 @@ struct Token {
     ;/
 
     /; if (tmp._len() > 0)
-        print_token(tmp, file_out)
+        tmp._type = get_tok_type(tmp)
+        out_vect.push(~tmp)
     ;/
 
-    tmp._del()
+    _print_num(~w_tkn_gen{0}, out_vect._len())
+    
+    return out_vect
 ;/
 
 {}uint8 w_SEP = "SEPARATOR\0"

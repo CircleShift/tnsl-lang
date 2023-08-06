@@ -71,6 +71,16 @@
     return false
 ;/
 
+/; cstr_contains (~uint8 cstr, uint8 c) [bool]
+    int j = cstr_len(cstr)
+    /; loop (int i = 0; i < j) [i++]
+        /; if (cstr{i} == c)
+            return true
+        ;/
+    ;/
+    return false
+;/
+
 /; write_to_file(~void file, ~uint8 string)
     int ln = cstr_len(string)
     /; loop (int i = 0; i < ln) [i++]

@@ -10,9 +10,7 @@ struct Vector {
 
     /; resize (uint num_el)
         self.dat_size = num_el
-        _print_num(~_ptr{0}, ~self.dat)
         self.dat = _realloc(self.dat, num_el * self.el_size)
-        _print_num(~_ptr{0}, ~self.dat)
     ;/
 
     /; get (uint i) [~uint8]
@@ -64,6 +62,12 @@ struct Vector {
         
         /; loop (int i = 0; i < self.num_el) [i++]
             self.set(i, v.dat + i * self.el_size)
+        ;/
+    ;/
+    
+    /; add (Vector v)
+        /; loop (int i = 0; i < v._len()) [i++]
+            self.push(v.get(i))
         ;/
     ;/
 

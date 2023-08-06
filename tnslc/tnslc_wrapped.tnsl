@@ -3,6 +3,7 @@
 :include "vector.tnsl"
 :include "utils.tnsl"
 :include "tokenizer.tnsl"
+# :include "compiler.tnsl"
 
 /; main (int argc, ~~uint8 argv) [int]
     asm "mov r8, rcx"
@@ -11,7 +12,10 @@
     ~void open_handle = _open_file(argv{1})
     ~void write_handle = _create_file(argv{2})
     log_one_nl('a')
-    tokenize_file(open_handle, write_handle)
+
+    Vector tokens = tokenize_file(open_handle, write_handle)
+    # TODO: do compilation
+
     log_one_nl('a')
     _close_file(open_handle)
     _close_file(write_handle)
