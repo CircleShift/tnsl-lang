@@ -113,7 +113,7 @@ struct Token {
         ;/
    ;/
 
-    return is_reserved(tok.data{0}) && in_csv(~CSV_AUGMENTS, tok.data)
+    return in_csv(~CSV_AUGMENTS, tok.data)
 ;/
 
 # True if the token is a valid number (integer or float)
@@ -176,7 +176,14 @@ struct Token {
     tok`.pop()
 
     bool a = is_whitespace(c) && type_after !== TOKEN_TYPE.LITERAL
-    bool b = is_reserved(c) && type_after == TOKEN_TYPE.DEFWORD
+    
+    bool b = false
+    /; if (is_reserved(c) == true)
+        b = type_after == TOKEN_TYPE.DEFWORD
+    ;; else if (tok`._len() > 0)
+        b = is_reserved(tok`.data{0})
+    ;/
+    
     bool c = type_before == TOKEN_TYPE.LITERAL && type_after == TOKEN_TYPE.DEFWORD
 
     return a || b || c
