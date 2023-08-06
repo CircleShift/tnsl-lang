@@ -1,0 +1,119 @@
+# This file meant as a test suite for tokenizers of the language.
+# Obviously these lines should not appear, as they are comments
+
+# Each actual line will have a comment before it, showing what type of
+# token the tokenizer should output.  This file is non-exhaustive, but
+# should represent a variety of cases.
+
+# Delimiter, delimiter
+/;;/
+
+# Delimiter
+/;#;/
+
+# All of the following should register as augment
+~
+`
+!
+%
+&
+&&
+*
+-
++
+=
+==
+!==
+|
+||
+/
+?
+>
+<
+<==
+>==
+!<
+!>
+^
+^^
+!&
+!|
+!^
+
+# Literals
+0.0
+1
+4
+2
+"1"
+"
+String with new lines
+"
+'\''
+"\""
+"\\\""
+'\\'
+
+# might be changed, but for now will output augment, literal
+.0
+
+# Should be three delimiters
+/;
+;;
+;/
+
+# Keywords
+if
+else
+loop
+continue
+break
+return
+method
+struct
+enum
+interface
+export
+module
+const
+static
+volatile
+raw
+extends
+override
+asm
+
+# Built-in Types
+
+uint8
+uint16
+uint32
+uint64
+uint
+int8
+int16
+int32
+int64
+int
+float32
+float64
+float
+bool
+type
+void
+
+# optional
+comp64
+comp
+vect
+
+# separators
+;
+:
+,
+
+# main function example
+
+/; main(int argc, ~~uint8 argv)[int]
+    return 0
+;/
