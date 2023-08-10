@@ -45,38 +45,85 @@ struct Path {
 /; method Path
     /; start (~uint8 path)
         self.split_path = _alloc(8)
-        self.split_path{0} = _alloc(1)
-        self.path_count = 1
-        
-        int i = 0
-        int j = cstr_len(path)
-
-        /; loop (i < j) [i++]
-            /; if (path{i} == '\\' || path{i} == '/')
-
-            ;/
-        ;/ 
+        self.path_count = 0
+        self.relative_file(path)
     ;/
 
     /; copy [Path]
         Path out
-        out.start(self.full_path())
-    ;/
-
-    /; sub_folder (~uint8 sub)
-        ~uint8 file_name
+        ~uint8 f_pth = self.full_path()
+        out.start(f_pth)
+        _delete(f_pth)
+        return out
     ;/
     
-    /; relative_file(~uint8 rel_pth) [Path]
+    /; relative_file(~uint8 rel_path)
+        # Assume the last string is the file name
+        /; if (self.path_count > 0)
+            int idx = self.path_count - 1
+            _delete(self.split_path{idx})
+            self.path_count--
+        ;/
 
+        ~uint8 n_ptr = _alloc(1)
+        n_ptr{0} = 0
+        int idx = self.path_count
+
+        /; loop (int i = 0; i < cstr_len(rel_path)) [i++]
+            /; if (rel_path{i} == '\\' || rel_path{i} == '/')
+                /; if (cstr_len(n_ptr) > 0)
+                    self.path_count++
+                    idx = self.path_count
+                    self.split_path = _realloc(self.split_path, idx * 8)
+                    self.split_path{idx - 1} = n_ptr
+
+                    n_ptr = _alloc(1)
+                    n_ptr{0} = 0
+                ;/
+            ;; else
+                idx = cstr_len(n_ptr)
+                n_ptr = _realloc(n_ptr, idx + 2)
+                n_ptr{idx} = rel_path{i}
+                n_ptr{idx + 1} = 0
+            ;/
+        ;/
+
+        /; if (cstr_len(n_ptr) > 0)
+            self.path_count++
+            idx = self.path_count
+            self.split_path = _realloc(self.split_path, idx * 8)
+            self.split_path{idx - 1} = n_ptr
+        ;/
     ;/
 
     /; full_path [~uint8]
         ~uint8 pth = _alloc(1)
+        pth{0} = 0
 
-        /; loop (pth)
+        /; loop (int i = 0; i < self.path_count) [i++]
+            ~uint8 w_ptr = self.split_path{i}
+            
+            int old_len = cstr_len(pth)
+            int new_len = cstr_len(w_ptr) + old_len
+            
 
+            /; if (i < self.path_count - 1)
+                pth = _alloc(new_len + 2)
+                pth{new_len} = '/'
+                pth{new_len + 1} = 0
+                old_len++
+                new_len++
+            ;; else
+                pth = _alloc(new_len + 1)
+                pth{new_len} = 0
+            ;/
+
+            /; loop (int j = 0; j < new_len - old_len) [j++]
+                pth{old_len + j} = w_ptr{j}
+            ;/
         ;/
+
+        return pth
     ;/
 
     /; open_read [~void]
@@ -102,174 +149,6 @@ struct Path {
     ;/
 ;/
 
-
-#
-# Actual compiler code -- here be dragons
-#
-
-# Types of pointers the compiler may generate or work with
-enum PTR_TYPE [uint] {
-    POINTER = 0,
-    REFERENCE = 1,
-    ARRAY = 2
-}
-
-# Represents a type of a variable
-struct Type {
-    int
-        s,          # size of type (bytes)
-        p_ct,       # ptr_chain count
-        m_ct,       # member count
-    ~uint8
-        name,       # name of the type
-    ~uint
-        ptr_chain,  # for every pointer augment on the type, give it an extra PTR_TYPE in the chain
-    ~Variable
-        members,    # member variables (their types and names)
-    ~Module
-        mod         # the methods (if any) that are associated with this type
-}
-
-/; method Type
-    /; start
-
-    ;/
-
-    /; size [int]
-        /; loop (int i = 0; i < self.p_ct) [i++]
-            /; if (self.ptr_chain{i} == PTR_TYPE.REFERENCE)
-                return 8
-            ;/
-        ;/
-        return self.s
-    ;/
-
-    /; _del
-        _delete(self.name)
-        _delete(self.ptr_chain)
-        _delete(self.members)
-        _delete(self.mod)
-    ;/
-;/
-
-/; NO_TYPE [Type]
-    Type t
-    t.s = 0
-    t.name = 0
-    t.ptr_chain = 0
-    t.members = 0
-    t.mod = 0
-    return t
-;/
-
-/; is_primitive (~uint8 name)
-
-;/
-
-# Location type represents the type of memory
-# that the variable is stored in
-enum LOCATION [uint] {
-    REGISTER = 0,
-    STACK = 1,
-    LABEL = 2,
-    LITERAL = 3
-}
-
-# The Big Kahuna
-struct Variable {
-    ~uint8
-        name,
-    Type
-        _type,
-    uint
-        location, # Actual location.  If literal, the literal value. 
-                  # If register, corrosponds to a register name.
-                  # If stack, represents the offset from the base pointer
-                  # Ignore if label.
-        loc_type
-}
-
-# I hate c-like strings.  Hopefully once I'm done with this
-# language I'll have something that doesn't use them
-
-
-# This part sucks ass
-/; method Variable
-
-;/
-
-# Scopes
-struct Scope {
-    int
-        num,
-        c,    # Figure it out yourself
-        tmp,
-    ~Scope
-        parent,
-    ~uint8
-        name
-}
-
-/; method Scope
-
-;/
-
-struct Function {
-    ~uint8
-        name,
-    ~Type 
-        inputs,
-    Type
-        output,
-    ~Module mod
-}
-
-/; method Function
-
-;/
-
-struct Module {
-    ~Module
-        parent,
-    bool
-        exp,       # Export functions or not
-    ~uint8
-        name,
-    ~Type
-        types,     # Types defined in this module
-    ~Variable
-        defs,      # Variables defined in this module
-    ~Function
-        functions, # Functions defined in this module
-    ~Module
-        sub        # Sub modules
-}
-
-/; method Module
-
-;/
-
-#
-# Actual compiler functions
-#
-
-# Used in the first pass
-/; get_type_P1
-
-;/
-
-/; get_type_P2
-
-;/
-
-/; get_artifact [~~uint8]
-
-;/
-
-/; is_call [bool]
-
-;/
-
-/; is_definition
+/; compile (Path in, out)
 
 ;/

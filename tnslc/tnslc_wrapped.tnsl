@@ -2,23 +2,33 @@
 :include "logging.tnsl"
 :include "vector.tnsl"
 :include "utils.tnsl"
-:include "tokenizer.tnsl"
-# :include "compiler.tnsl"
+# :include "tokenizer.tnsl"
+:include "compiler.tnsl"
+
+{}uint8 m_usage = "Usage: tnslc [file to compile] [output asm]\n\0"
 
 /; main (int argc, ~~uint8 argv) [int]
     asm "mov r8, rcx"
     asm "mov r9, rdx"
 
-    ~void open_handle = _open_file(argv{1})
-    ~void write_handle = _create_file(argv{2})
-    log_one_nl('a')
+    /; if (argc < 3)
+        _printf(~m_usage{0})
+        return 1
+    ;/
 
-    Vector tokens = tokenize_file(open_handle, write_handle)
-    # TODO: do compilation
+    Path in
+    Path out
 
-    log_one_nl('a')
-    _close_file(open_handle)
-    _close_file(write_handle)
+    in.start(argv{0})
+    out.start(argv{0})
+
+    in.relative_file(argv{1})
+    out.relative_file(argv{2})
+
+    compile(in, out)
+
+    in._del()
+    out._del()
 
     return 0
 ;/
