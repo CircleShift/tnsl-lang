@@ -71,6 +71,13 @@ struct Vector {
         ;/
     ;/
 
+    # [UNSAFE] ONLY USE FOR STRING VECTORS
+    /; add_str (~uint8 dat)
+        /; loop (int i = 0; dat{i} !== 0)
+            self.push(dat + i)
+        ;/
+    ;/
+
     /; start (int el_size)
         self.num_el = 0
         self.el_size = el_size

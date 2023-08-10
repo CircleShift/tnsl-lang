@@ -243,7 +243,7 @@ struct Token {
 
 {}uint8 w_tkn_gen = "%d Tokens generated from file.\n\0"
 
-/; tokenize_file (~void file_in, file_out) [Vector]
+/; tokenize_file (~void file_in) [Vector]
     # This vector is going to store all of our tokens as we generate them
     Vector out_vect
     # The size of a token struct is 3 uint + pointer = 4*8 = 32 bytes

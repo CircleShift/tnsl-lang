@@ -100,26 +100,25 @@ struct Path {
         ~uint8 pth = _alloc(1)
         pth{0} = 0
 
+        ~uint8 w_ptr = self.split_path{0}
+
         /; loop (int i = 0; i < self.path_count) [i++]
-            ~uint8 w_ptr = self.split_path{i}
-            
+            w_ptr = self.split_path{i}
             int old_len = cstr_len(pth)
-            int new_len = cstr_len(w_ptr) + old_len
+            int new_len = old_len + cstr_len(w_ptr)
             
+            pth = _realloc(pth, new_len + 1)
+            pth{new_len} = 0
+            
+
+            /; loop (int j = 0; j < cstr_len(w_ptr)) [j++]
+                pth{old_len + j} = w_ptr{j}
+            ;/
 
             /; if (i < self.path_count - 1)
                 pth = _realloc(pth, new_len + 2)
                 pth{new_len} = '/'
                 pth{new_len + 1} = 0
-                old_len++
-                new_len++
-            ;; else
-                pth = _realloc(pth, new_len + 1)
-                pth{new_len} = 0
-            ;/
-
-            /; loop (int j = 0; j < new_len - old_len) [j++]
-                pth{old_len + j} = w_ptr{j}
             ;/
         ;/
 
@@ -140,6 +139,12 @@ struct Path {
         return out
     ;/
 
+    /; print_all
+        /; loop (int i = 0; i < self.path_count) [i++]
+            _printf(self.split_path{i})
+        ;/
+    ;/
+
     /; _del
         /; loop (int i = 0; i < self.path_count) [i++]
             _delete(self.split_path{i})
@@ -149,10 +154,30 @@ struct Path {
     ;/
 ;/
 
-#
-#
-#
+########################################
+# Compiler functions - here be dragons #
+########################################
+
+/; compile_file (Path in) [CompData]
+    CompData out
+    out.start()
+
+
+
+    return out
+;/
 
 /; compile (Path in, out)
+    ~void fin = in.open_read()
+    Vector v = tokenize_file(fin)
+    _close_file(fin)
 
+    ~void fout = out.open_write()
+    /; loop (int i = 0; i < v.num_el) [i++]
+        ~Token t_ptr = v.get(i)
+        print_token(t_ptr`, fout)
+        t_ptr`._del()
+    ;/
+    v._del()
+    _close_file(fout)
 ;/

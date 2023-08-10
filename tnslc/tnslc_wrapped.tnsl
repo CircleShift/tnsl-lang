@@ -2,7 +2,7 @@
 :include "logging.tnsl"
 :include "vector.tnsl"
 :include "utils.tnsl"
-# :include "tokenizer.tnsl"
+:include "tokenizer.tnsl"
 :include "compiler.tnsl"
 
 {}uint8 m_usage = "Usage: tnslc [file to compile] [output asm]\n\0"
