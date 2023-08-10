@@ -108,13 +108,13 @@ struct Path {
             
 
             /; if (i < self.path_count - 1)
-                pth = _alloc(new_len + 2)
+                pth = _realloc(pth, new_len + 2)
                 pth{new_len} = '/'
                 pth{new_len + 1} = 0
                 old_len++
                 new_len++
             ;; else
-                pth = _alloc(new_len + 1)
+                pth = _realloc(pth, new_len + 1)
                 pth{new_len} = 0
             ;/
 
@@ -148,6 +148,10 @@ struct Path {
         _delete(self.split_path)
     ;/
 ;/
+
+#
+#
+#
 
 /; compile (Path in, out)
 
