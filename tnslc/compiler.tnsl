@@ -30,6 +30,18 @@ struct CompData {
         self.dsec._del()
         self.csec._del()
     ;/
+
+    /; write_file(~void fd)
+        uint8 z = 0
+
+        self.hsec.push(~z)
+        self.dsec.push(~z)
+        self.csec.push(~z)
+
+        write_to_file(fd, self.hsec.dat)
+        write_to_file(fd, self.dsec.dat)
+        write_to_file(fd, self.csec.dat)
+    ;/
 ;/
 
 # Path represents the actual path of a file
@@ -158,26 +170,132 @@ struct Path {
 # Compiler functions - here be dragons #
 ########################################
 
-/; compile_file (Path in) [CompData]
+enum POINTER_TYPE [uint8] {
+    POINTER = 0,
+    REFERENCE = 1,
+    ARRAY = 2
+}
+
+# 88 bytes long
+struct Type {
+    int s,
+    ~uint8 name,
+    Vector ptr_chain,
+    Vector members,
+    ~Module mod
+}
+
+/; method Type
+    /; start
+        self.ptr_chain.start(1)
+        # 136 is the size of one Variable struct
+        self.members.start(136)
+    ;/
+
+    /; _del
+        self.ptr_chain._del()
+        self.members._del()
+
+    ;/
+;/
+
+
+
+#############
+# Variables #
+#############
+
+# 136 bytes long
+struct Variable {
+    Vector name,
+    
+    Type data_type,
+
+    int location,
+        loc_type
+}
+
+/; method Variable
+
+;/
+
+
+
+###########
+# Modules #
+###########
+
+struct Module {
+    int i
+}
+
+/; method Module
+    /; start
+
+    ;/
+
+    /; _del
+
+    ;/
+;/
+
+/; base_loop_1 (Path in, Vector tokens, ~Module mod)
+
+;/
+
+/; base_loop_2 (Path in, Vector tokens, ~Module mod, ~CompData out)
+
+;/
+
+{}uint8 w_cstart = "Reading file: \0"
+{}uint8 w_nl = "\n\0"
+
+/; compile_file (Path in, ~Module mod) [CompData]
+    
+    ~uint8 pth = in.full_path()
+    _printf(~w_cstart{0})
+    _printf(pth)
+    _printf(~w_nl{0})
+    _delete(pth)
+
+    ~void fd = in.open_read()
+    Vector tokens = tokenize_file(fd)
+    _close_file(fd)
+
+    base_loop_1(in, tokens, mod)
+
     CompData out
     out.start()
 
-
+    base_loop_2(in, tokens, mod, ~out)
 
     return out
 ;/
 
+
+{}uint8 w_dsec = "\nsection .data\n\n\0"
+{}uint8 w_csec = "\nsection .text\n\n\0"
+
+{}uint8 w_compiled = "Compilation complete!  Writing file.\n\0"
+
 /; compile (Path in, out)
-    ~void fin = in.open_read()
-    Vector v = tokenize_file(fin)
-    _close_file(fin)
+    Module root
+    root.start()
+    CompData cd
+    cd = compile_file(in, ~root)
+    
+    _printf(~w_compiled{0})
+    
+    # Section headers for the asm
+    ~uint8 shed = ~w_dsec{0}
+    cd.hsec.add_str(shed)
+    shed = ~w_csec{0}
+    cd.dsec.add_str(shed)
 
     ~void fout = out.open_write()
-    /; loop (int i = 0; i < v.num_el) [i++]
-        ~Token t_ptr = v.get(i)
-        print_token(t_ptr`, fout)
-        t_ptr`._del()
-    ;/
-    v._del()
+    cd.write_file(fout)
     _close_file(fout)
+
+    root._del()
+    cd._del()
 ;/

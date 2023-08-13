@@ -73,7 +73,7 @@ struct Vector {
 
     # [UNSAFE] ONLY USE FOR STRING VECTORS
     /; add_str (~uint8 dat)
-        /; loop (int i = 0; dat{i} !== 0)
+        /; loop (int i = 0; dat{i} !== 0) [i++]
             self.push(dat + i)
         ;/
     ;/
