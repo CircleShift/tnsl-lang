@@ -32,15 +32,17 @@ struct CompData {
     ;/
 
     /; write_file(~void fd)
-        uint8 z = 0
+        /; loop (int i = 0; i < self.hsec.num_el) [i++]
+            _write_byte(fd, self.hsec.get(i))
+        ;/
+        
+        /; loop (int i = 0; i < self.dsec.num_el) [i++]
+            _write_byte(fd, self.dsec.get(i))
+        ;/
 
-        self.hsec.push(~z)
-        self.dsec.push(~z)
-        self.csec.push(~z)
-
-        write_to_file(fd, self.hsec.dat)
-        write_to_file(fd, self.dsec.dat)
-        write_to_file(fd, self.csec.dat)
+        /; loop (int i = 0; i < self.csec.num_el) [i++]
+            _write_byte(fd, self.csec.get(i))
+        ;/
     ;/
 ;/
 
