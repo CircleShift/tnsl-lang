@@ -1,3 +1,4 @@
+# 32 bytes long
 struct Vector {
     uint
         el_size,

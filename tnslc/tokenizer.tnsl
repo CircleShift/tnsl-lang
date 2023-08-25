@@ -113,7 +113,7 @@ struct Token {
         ;/
    ;/
 
-    return in_csv(~CSV_AUGMENTS, tok.data)
+    return in_csv(~CSV_AUGMENTS, tok.data) !< 0
 ;/
 
 # True if the token is a valid number (integer or float)
@@ -157,9 +157,9 @@ struct Token {
         ;; else if (contains_char(~AUGMENTS, tok.data{0}) == true)
             return TOKEN_TYPE.AUGMENT
         ;/
-    ;; else if (in_csv(~CSV_KEYWORDS, tok.data) == true)
+    ;; else if (in_csv(~CSV_KEYWORDS, tok.data) !< 0)
         return TOKEN_TYPE.KEYWORD
-    ;; else if (in_csv(~CSV_KEYTYPES, tok.data) == true)
+    ;; else if (in_csv(~CSV_KEYTYPES, tok.data) !< 0)
         return TOKEN_TYPE.KEYTYPE
     ;; else if (is_numeric_literal(tok) == true)
         return TOKEN_TYPE.LITERAL

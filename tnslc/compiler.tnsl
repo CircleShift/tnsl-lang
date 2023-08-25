@@ -190,26 +190,57 @@ struct Type {
 /; method Type
     /; start
         self.ptr_chain.start(1)
-        # 136 is the size of one Variable struct
-        self.members.start(136)
+        # 112 is the size of one Variable struct
+        self.members.start(112)
+        self.s = -1
+    ;/
+
+    /; copy [Type]
+        Type out
+        out.start()
+        out.name = self.name
+        out.mod = self.mod
+        out.s = self.s
+        return out
     ;/
 
     /; _del
         self.ptr_chain._del()
         self.members._del()
-
     ;/
 ;/
 
+{}uint8 CSV_PRIMITIVES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,comp32,comp64,comp,vect,bool,type,void"
+{}uint8 sizes = {1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 8, 4, 8, 8, 0, 1, 0, 0}
+{}uint8 NONE = "NONE\0"
 
+/; get_primitive (~Token tok) [Type]
+    int idx = in_csv(~CSV_PRIMITIVES, tok`.data)
+    
+    Type out
+    out.start()
+
+    /; if (idx !< 0)
+        out.s = sizes{idx}
+        out.name = tok.data
+        out.mod = 0
+        return out
+    ;/
+
+    out.s = 0 - 1
+    out.name = ~NONE{0}
+    out.mod = 0
+
+    return out
+;/
 
 #############
 # Variables #
 #############
 
-# 136 bytes long
+# 112 bytes long
 struct Variable {
-    Vector name,
+    ~uint name,
     
     Type data_type,
 
@@ -218,7 +249,22 @@ struct Variable {
 }
 
 /; method Variable
+    /; start (Type t)
+        self.data_type = t
+    ;/
 
+    /; copy [Variable]
+        Variable out
+        Type cpy = self.data_type.copy()
+        out.start(cpy)
+        out.location = self.location
+        out.loc_type = self.loc_type
+        return out
+    ;/
+
+    /; _del
+        self.data_type._del()
+    ;/
 ;/
 
 
@@ -227,21 +273,67 @@ struct Variable {
 # Modules #
 ###########
 
+# 145 bytes long
 struct Module {
-    int i
+    ~Module
+        parent,
+    ~uint8
+        name,
+    bool
+        exp,  # Export or not
+    Vector
+        typ,  # Types
+        fnc,  # Functions
+        def,  # Variable definitions (lables)
+        sub   # Sub modules (pointers)
 }
 
 /; method Module
     /; start
+        self.typ.start(88)
+        self.fnc.start(1) # not impl yet
+        self.def.start(112)
+        self.sub.start(145)
+    ;/
 
+    /; find_type (~Token name) [~Type]
+
+        /;
+
+        ;/
+
+        return 0
     ;/
 
     /; _del
+        /; loop (int i = 0; i < self.typ.num_el) [i++]
+            ~Type t = self.typ.get(i)
+            t`._del()
+        ;/
+        self.typ._del()
 
+        self.fnc._del()
+        /; loop (int i = 0; i < self.typ.num_el) [i++]
+            ~Type t = self.typ.get(i)
+            t`._del()
+        ;/
+        
+        self.def._del()
+        self.sub._del()
     ;/
 ;/
 
+/; 
+
+;/
+
 /; base_loop_1 (Path in, Vector tokens, ~Module mod)
+    ~Token curr
+
+    /; loop (int i = 0; i < tokens.num_el) [i++]
+        curr = tokens.get(i)
+
+    ;/
 
 ;/
 
