@@ -5,6 +5,7 @@
 # hsec - the heading of the output assembly
 # dsec - the data tied to the assembly
 # csec - the .text section that is the code of the assembly
+
 struct CompData {
     Vector
         hsec,
@@ -214,15 +215,15 @@ struct Type {
 {}uint8 sizes = {1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 8, 4, 8, 8, 0, 1, 0, 0}
 {}uint8 NONE = "NONE\0"
 
-/; get_primitive (~Token tok) [Type]
-    int idx = in_csv(~CSV_PRIMITIVES, tok`.data)
+/; get_primitive (Vector artifact) [Type]
+    int idx = in_csv(~CSV_PRIMITIVES, artifact.get(0))
     
     Type out
     out.start()
 
     /; if (idx !< 0)
         out.s = sizes{idx}
-        out.name = tok.data
+        out.name = artifact.get(0)
         out.mod = 0
         return out
     ;/
@@ -294,15 +295,49 @@ struct Module {
         self.fnc.start(1) # not impl yet
         self.def.start(112)
         self.sub.start(145)
+	self.parent = 0
     ;/
 
-    /; find_type (~Token name) [~Type]
+    /; _find_type(Vector a, int depth) [~Type]
+        
+	/; if (a._len() > depth + 1)
+	    /; loop (int i = 0; i < self.sub.num_el) [i++]
+	        ~Module m = self.sub.get(i)
+		
+		~Type t = 0
+		
+		/; if (cstr_eq(m`.name, a.get(depth)) == true)
+		    t = m`._find_type(a, depth + 1)
+		;/
 
-        /;
+		/; if (t != 0)
+		    return t
+		;/
+	    ;/
+	;; else
+	    /; loop (int i = 0; i < self.typ.num_el) [i++]
+	        ~Type t = self.typ.get(i)
+		/; if (cstr_eq(t`.name, a.get(depth)))
+		    return t
+		;/
+	    ;/
+	;/
 
-        ;/
+        /; if (self.parent == 0)
+	    return 0
+	;/
 
-        return 0
+	return self.parent`._find_type(a, 0)
+    ;/
+
+    /; find_type (Vector artifact) [Type]
+	~Type t = self._find_type(artifact, 0)
+
+	/; if (t == 0)
+	    return get_primitive(artifact)
+	;/
+
+        return t`.copy()
     ;/
 
     /; _del
@@ -323,9 +358,9 @@ struct Module {
     ;/
 ;/
 
-/; 
-
-;/
+######################################
+# Compiler evaluation and processing #
+######################################
 
 /; base_loop_1 (Path in, Vector tokens, ~Module mod)
     ~Token curr
