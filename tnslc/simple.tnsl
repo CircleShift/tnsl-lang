@@ -1,36 +1,29 @@
 # No longer simple
-:include "c_wrap.tnsl"
+:include "c_wrap_linux.tnsl"
 
-enum LOL [int] {
-    A = 1,
-    B = 2,
-    C = 4
+{}uint8 str = "Hello copy!\n\0"
+
+struct Copier {
+    ~uint8 h8r
 }
 
-struct Lolbert {
-    int a, b, c,
+/; method Copier
 
-    ~uint8 stuff
-}
+    /; copy [Copier]
+        Copier out
+	out.h8r = self.h8r
+	return out
+    ;/
 
-/; lolbert1 (~Lolbert l, uint8 check) [bool]
-    return l`.a == check
 ;/
 
-
-/; main [int]
-    Lolbert lol
-    lol.a = 1
-    lol.b = 4
-    lol.c = 3
-    lol.stuff = _alloc(2)
-    lol.stuff{0} = 2
-    lol.stuff{1} = 1
-
-    /; if (lolbert1(~lol, lol.stuff{1}) && lolbert1(~lol, lol.stuff{0}))
-        _delete(lol.stuff)
-        return lol.a + lol.b
-    ;/
-    _delete(lol.stuff)
+/; main
+    Copier a
+    a.h8r = ~str{0}
+    ~Copier b
+    b = ~a
+    Copier c = b`.copy()
+    _printf(c.h8r)
     return 0
 ;/
+

@@ -1,34 +1,11 @@
-:include "c_wrap.tnsl"
+:include "c_wrap_linux.tnsl"
 :include "logging.tnsl"
-:include "vector.tnsl"
 :include "utils.tnsl"
+:include "vector.tnsl"
 :include "tokenizer.tnsl"
 :include "compiler.tnsl"
 
-{}uint8 m_usage = "Usage: tnslc [file to compile] [output asm]\n\0"
-
 /; main (int argc, ~~uint8 argv) [int]
-    asm "mov r8, rcx"
-    asm "mov r9, rdx"
-
-    /; if (argc < 3)
-        _printf(~m_usage{0})
-        return 1
-    ;/
-
-    Path in
-    Path out
-
-    in.start(argv{0})
-    out.start(argv{0})
-
-    in.relative_file(argv{1})
-    out.relative_file(argv{2})
-
-    compile(in, out)
-
-    in._del()
-    out._del()
-
-    return 0
+	
+	return 0
 ;/

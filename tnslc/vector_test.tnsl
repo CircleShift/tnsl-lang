@@ -1,16 +1,16 @@
-:include "c_wrap.tnsl"
+:include "c_wrap_linux.tnsl"
 :include "vector.tnsl"
 
 /; main (int argc, ~~uint argv) [int]
     # On windows, the first two arguments are passed in RCX and RDX, so we need to
     # update their positions here or else tnsl will have garbage values in r8 and r9
-    asm "mov r8, rcx"
-    asm "mov r9, rdx"
+    # asm "mov r8, rcx"
+    # asm "mov r9, rdx"
     
     # If on linux, you would use rdi and rsi instead of rcx and rdx, respectively
     # simply comment out the bove asm, and uncomment the below lines
-    # asm "mov r8, rdi"
-    # asm "mov r9, rsi"
+    asm "mov r8, rdi"
+    asm "mov r9, rsi"
 
     Vector vec
     vec.start(1)

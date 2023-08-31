@@ -1,0 +1,226 @@
+# Must be included at the top of the file
+asm "extern malloc, realloc, free, printf, open, close, read, write"
+
+{}uint8 _alert = "Alert!\n\0"
+{}uint8 _dec = "%d\n\0"
+{}uint8 _ptr = "%p\n\0"
+
+/; _alloc (uint size) [~void]
+    ~void out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # Mov size into proper register, and set all extras to zero
+    asm "mov rdi, r8"
+    asm "mov rsi, 0"
+    asm "xor rax, rax"
+    
+    # Do call
+    asm "call malloc wrt ..plt"
+
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially, and we have a uint in r8)
+    asm "mov r9, rax"
+
+    return out
+;/
+
+/; _realloc (~void ptr, uint new_size) [~void]
+    ~void out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # Mov ptr and new size into proper registers, and set all extras to zero
+    asm "mov rdi, r8"
+    asm "mov rsi, r9"
+    asm "xor rax, rax"
+
+    # Do call
+    asm "call realloc wrt ..plt"
+    
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
+    asm "mov r10, rax"
+
+    return out
+;/
+
+/; _delete (~void ptr)
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # setup call by clearing most values
+    asm "mov rdi, r8"
+    asm "mov rsi, 0"
+    asm "xor rax, rax"
+
+    # do call
+    asm "call free wrt ..plt"
+
+    # there's no more to do 'cause free returns nothing 
+;/
+
+/; _printf (~void str)
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # setup call by clearing most values
+    asm "mov rdi, r8"
+    asm "xor rsi, rsi"
+    asm "xor rax, rax"
+    
+    # do call
+    asm "call printf wrt ..plt"
+    
+    # there's no more to do 'cause printf returns nothing 
+;/
+
+/; _print_num (~void str, int num)
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # setup call by clearing most values
+    asm "mov rdi, r8"
+    asm "mov rsi, r9"
+    asm "xor rax, rax"
+    
+    # do call
+    asm "call printf wrt ..plt"
+    
+    # there's no more to do 'cause printf returns nothing 
+;/
+
+
+# Create file for writing (overwrite)
+/; _create_file (~void name) [~void]
+    ~void out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+
+    # Do call
+    asm "mov rdi, r8"
+    asm "mov rsi, 0q1102"
+    asm "mov rdx, 0q700"
+    asm "call open wrt ..plt"
+
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially. We have a ptr in r8)
+    asm "mov r9, rax"
+
+    return out
+;/
+
+# Open file for reading or writing (no overwrite)
+/; _open_file (~void name) [~void]
+    ~void out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+
+    # Do syscall
+    asm "mov rdi, r8"
+    asm "mov rsi, 2"
+    asm "mov rdx, 0q700"
+    asm "call open wrt ..plt"
+
+    # Set out to the returned value
+    # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
+    asm "mov r9, rax"
+
+    return out
+;/
+
+/; _close_file (~void handle)
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+
+    # Do syscall
+    asm "mov rdi, r8"
+    asm "call close wrt ..plt"
+;/
+
+/; _read_byte (~void handle, ~uint8 byte) [int]
+    int out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+
+    # Do syscall
+    asm "mov rdi, r8"  # handle
+    asm "mov rsi, r9"  # buffer
+    asm "mov rdx, 1"   # one byte
+    asm "call read wrt ..plt"
+
+    # return number of bytes read
+    asm "mov r10, rax"
+
+    return out
+;/
+
+/; _write_byte (~void handle, ~uint8 byte) [int]
+    int out
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+
+    # Do syscall
+    asm "mov rdi, r8"  # handle
+    asm "mov rsi, r9"  # buffer
+    asm "mov rdx, 1"   # one byte
+    asm "call write wrt ..plt"
+
+    asm "mov r10, rax"
+
+    return out
+;/
+
+/; print_alert
+    _printf(~_alert{0})
+;/

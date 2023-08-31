@@ -1,4 +1,4 @@
-:include "c_wrap.tnsl"
+:include "c_wrap_linux.tnsl"
 # :include "utils.tnsl"
 
 
@@ -7,8 +7,8 @@
 
 # Proof of concept copy program
 /; main (int argc, ~~uint8 argv) [int]
-    asm "mov r8, rcx"
-    asm "mov r9, rdx"
+    asm "mov r8, rdi"
+    asm "mov r9, rsi"
 
     /; if (argc < 3)
         _printf(~wrong_args{0})
@@ -23,9 +23,8 @@
 
     uint8 buf = 0
     int read_count = 0
-    int tries = 0
     /; loop
-        _read_byte(read_handle, ~buf, ~read_count)
+        read_count = _read_byte(read_handle, ~buf)
         /; if (read_count == 0)
             break
         ;/
