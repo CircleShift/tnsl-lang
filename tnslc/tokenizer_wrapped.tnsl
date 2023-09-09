@@ -1,0 +1,35 @@
+:include "c_wrap_linux.tnsl"
+:include "logging.tnsl"
+:include "utils.tnsl"
+:include "vector.tnsl"
+:include "tokenizer.tnsl"
+
+{}uint8 w_usage = "Usage: tokenizer [file in] [file out]"
+
+/; main (int argc, ~~uint8 argv) [int]
+	asm "mov r8, rdi"
+	asm "mov r9, rsi"
+
+	/; if (argc < 3)
+		_printf(~w_usage{0})
+		return 1
+	;/
+
+	~void fin = _open_file(argv{1})
+	~void fout = _create_file(argv{2})
+
+	Vector tokens = tokenize_file(fin)
+	~Token tok
+
+	/; loop (int i = 0; i < tokens.num_el) [i++]
+		tok = tokens.get(i)
+		print_token(tok`, fout)
+		tok`._del()
+	;/
+
+	_close_file(fin)
+	_close_file(fout)
+
+	return 0
+;/
+
