@@ -1,430 +1,112 @@
-# Actual compilation of the vector of tokens, ported from the "dirty tnsl"
-# that was originally written for the interpreter
+/; matching_delim (Vector v, int cur) [int]
+	~Token cur
+	cur = v.get(cur)
 
-# CompData represents three vectors:
-# hsec - the heading of the output assembly
-# dsec - the data tied to the assembly
-# csec - the .text section that is the code of the assembly
 
-struct CompData {
-    Vector
-        hsec,
-        dsec,
-        csec
-}
-
-/; method CompData
-    /; start
-        self.hsec.start(1)
-        self.dsec.start(1)
-        self.csec.start(1)
-    ;/
-
-    /; add (CompData c)
-        self.hsec.add(c.hsec)
-        self.dsec.add(c.dsec)
-        self.csec.add(c.csec)
-    ;/
-
-    /; _del
-        self.hsec._del()
-        self.dsec._del()
-        self.csec._del()
-    ;/
-
-    /; write_file(~void fd)
-        /; loop (int i = 0; i < self.hsec.num_el) [i++]
-            _write_byte(fd, self.hsec.get(i))
-        ;/
-        
-        /; loop (int i = 0; i < self.dsec.num_el) [i++]
-            _write_byte(fd, self.dsec.get(i))
-        ;/
-
-        /; loop (int i = 0; i < self.csec.num_el) [i++]
-            _write_byte(fd, self.csec.get(i))
-        ;/
-    ;/
 ;/
 
-# Path represents the actual path of a file
-# that we are trying to tokenize
-# Assumes that the last item in the path array is a file name
-struct Path {
-    int 
-        path_count,
-    ~~uint8
-        split_path
-}
-
-/; method Path
-    /; start (~uint8 path)
-        self.split_path = _alloc(8)
-        self.path_count = 0
-        self.relative_file(path)
-    ;/
-
-    /; copy [Path]
-        Path out
-        ~uint8 f_pth = self.full_path()
-        out.start(f_pth)
-        _delete(f_pth)
-        return out
-    ;/
-    
-    /; relative_file(~uint8 rel_path)
-        # Assume the last string is the file name
-        /; if (self.path_count > 0)
-            int idx = self.path_count - 1
-            _delete(self.split_path{idx})
-            self.path_count--
-        ;/
-
-        ~uint8 n_ptr = _alloc(1)
-        n_ptr{0} = 0
-        int idx = self.path_count
-
-        /; loop (int i = 0; i < cstr_len(rel_path)) [i++]
-            /; if (rel_path{i} == '\\' || rel_path{i} == '/')
-                /; if (cstr_len(n_ptr) > 0)
-                    self.path_count++
-                    idx = self.path_count
-                    self.split_path = _realloc(self.split_path, idx * 8)
-                    self.split_path{idx - 1} = n_ptr
-
-                    n_ptr = _alloc(1)
-                    n_ptr{0} = 0
-                ;/
-            ;; else
-                idx = cstr_len(n_ptr)
-                n_ptr = _realloc(n_ptr, idx + 2)
-                n_ptr{idx} = rel_path{i}
-                n_ptr{idx + 1} = 0
-            ;/
-        ;/
-
-        /; if (cstr_len(n_ptr) > 0)
-            self.path_count++
-            idx = self.path_count
-            self.split_path = _realloc(self.split_path, idx * 8)
-            self.split_path{idx - 1} = n_ptr
-        ;/
-    ;/
-
-    /; full_path [~uint8]
-        ~uint8 pth = _alloc(1)
-        pth{0} = 0
-
-        ~uint8 w_ptr = self.split_path{0}
-
-        /; loop (int i = 0; i < self.path_count) [i++]
-            w_ptr = self.split_path{i}
-            int old_len = cstr_len(pth)
-            int new_len = old_len + cstr_len(w_ptr)
-            
-            pth = _realloc(pth, new_len + 1)
-            pth{new_len} = 0
-            
-
-            /; loop (int j = 0; j < cstr_len(w_ptr)) [j++]
-                pth{old_len + j} = w_ptr{j}
-            ;/
-
-            /; if (i < self.path_count - 1)
-                pth = _realloc(pth, new_len + 2)
-                pth{new_len} = '/'
-                pth{new_len + 1} = 0
-            ;/
-        ;/
-
-        return pth
-    ;/
-
-    /; open_read [~void]
-        ~uint8 path = self.full_path()
-        ~void out = _open_file(path)
-        _delete(path)
-        return out
-    ;/
-
-    /; open_write [~void]
-        ~uint8 path = self.full_path()
-        ~void out = _create_file(path)
-        _delete(path)
-        return out
-    ;/
-
-    /; print_all
-        /; loop (int i = 0; i < self.path_count) [i++]
-            _printf(self.split_path{i})
-        ;/
-    ;/
-
-    /; _del
-        /; loop (int i = 0; i < self.path_count) [i++]
-            _delete(self.split_path{i})
-        ;/
-
-        _delete(self.split_path)
-    ;/
-;/
-
-########################################
-# Compiler functions - here be dragons #
-########################################
-
-enum POINTER_TYPE [uint8] {
-    POINTER = 0,
-    REFERENCE = 1,
-    ARRAY = 2
-}
-
-# 88 bytes long
-struct Type {
-    int s,
-    ~uint8 name,
-    Vector ptr_chain,
-    Vector members,
-    ~Module mod
-}
-
-/; method Type
-    /; start
-        self.ptr_chain.start(1)
-        # 112 is the size of one Variable struct
-        self.members.start(112)
-        self.s = -1
-    ;/
-
-    /; copy [Type]
-        Type out
-        out.start()
-        out.name = self.name
-        out.mod = self.mod
-        out.s = self.s
-        return out
-    ;/
-
-    /; _del
-        self.ptr_chain._del()
-        self.members._del()
-    ;/
-;/
-
-{}uint8 CSV_PRIMITIVES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,comp32,comp64,comp,vect,bool,type,void"
-{}uint8 sizes = {1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 8, 4, 8, 8, 0, 1, 0, 0}
-{}uint8 NONE = "NONE\0"
-
-/; get_primitive (Vector artifact) [Type]
-    int idx = in_csv(~CSV_PRIMITIVES, artifact.get(0))
-    
-    Type out
-    out.start()
-
-    /; if (idx !< 0)
-        out.s = sizes{idx}
-        out.name = artifact.get(0)
-        out.mod = 0
-        return out
-    ;/
-
-    out.s = 0 - 1
-    out.name = ~NONE{0}
-    out.mod = 0
-
-    return out
-;/
-
-#############
-# Variables #
-#############
-
-# 112 bytes long
-struct Variable {
-    ~uint name,
-    
-    Type data_type,
-
-    int location,
-        loc_type
-}
-
-/; method Variable
-    /; start (Type t)
-        self.data_type = t
-    ;/
-
-    /; copy [Variable]
-        Variable out
-        Type cpy = self.data_type.copy()
-        out.start(cpy)
-        out.location = self.location
-        out.loc_type = self.loc_type
-        return out
-    ;/
-
-    /; _del
-        self.data_type._del()
-    ;/
+# Entrypoint for round two
+/; round_two (Path in, ~Module m) [CompData]
+	CompData out
+	out.start()	
+	return out
 ;/
 
 
-
-###########
-# Modules #
-###########
-
-# 145 bytes long
-struct Module {
-    ~Module
-        parent,
-    ~uint8
-        name,
-    bool
-        exp,  # Export or not
-    Vector
-        typ,  # Types
-        fnc,  # Functions
-        def,  # Variable definitions (lables)
-        sub   # Sub modules (pointers)
-}
-
-/; method Module
-    /; start
-        self.typ.start(88)
-        self.fnc.start(1) # not impl yet
-        self.def.start(112)
-        self.sub.start(145)
-	self.parent = 0
-    ;/
-
-    /; _find_type(Vector a, int depth) [~Type]
-        
-	/; if (a._len() > depth + 1)
-	    /; loop (int i = 0; i < self.sub.num_el) [i++]
-	        ~Module m = self.sub.get(i)
-		
-		~Type t = 0
-		
-		/; if (cstr_eq(m`.name, a.get(depth)) == true)
-		    t = m`._find_type(a, depth + 1)
-		;/
-
-		/; if (t != 0)
-		    return t
-		;/
-	    ;/
-	;; else
-	    /; loop (int i = 0; i < self.typ.num_el) [i++]
-	        ~Type t = self.typ.get(i)
-		/; if (cstr_eq(t`.name, a.get(depth)))
-		    return t
-		;/
-	    ;/
+{}uint8 e_circular = "[TNSLC] [ERROR] Circular struct definition detected in structs:\n\0"
+{}uint8 e_tc_nl = "\n\0"
+{}uint8 e_noquit = "[TNSLC] [UB] PRE-ALPHA VERSION OF COMPILER UNABLE TO EXIT! UNDEFINED BEHAVIOUR AHEAD\n\0"
+# Structure sizing for the first round
+/; size_struct (~Type t, ~Module m)
+	/; if (t`.s !== 0)
+		return
 	;/
 
-        /; if (self.parent == 0)
-	    return 0
+	t`.s = 0 - 1
+	int s = 0
+	
+	~Variable mb
+	~Module mbm
+	~Type mbt
+	/; loop (int i = 0; i < t`.members.num_el) [i++]
+		mb = t`.members.get(i)
+		mbt = ~mb`.data_type
+		/; if (mbt`.ptr_chain.num_el > 0)
+			s = s + 8
+		;; else if (mbt`.s > 0)
+			s = s + mbt`.s
+		;; else if (mbt`.s == 0)
+			Vector v
+			v.start(8)
+			v.push(~mbt`.name)
+			m`._find_type(v, 0)
+			size_struct
+		;; else if (mbt`.s < 0)
+			_printf(~e_circular{0})
+
+			_printf(t`.name)
+			_printf(~e_tc_nl{0})
+
+			_printf(mbt`.name)
+			_printf(~e_tc_nl{0})
+			
+			_printf(~e_noquit{0})
+		;/
 	;/
 
-	return self.parent`._find_type(a, 0)
-    ;/
+	t`.s = s
+;/
 
-    /; find_type (Vector artifact) [Type]
-	~Type t = self._find_type(artifact, 0)
+/; flush_structs (~Module m)
+	~Type t
+	/; loop(int i = 0; i < m`.typ.num_el) [i++]
+		t = m`.typ.get(i)
+		size_struct(t, m)
+	;/
+	
+	~Module s
+	/; loop(int i = 0; i < m`.sub.num_el) [i++]
+		s = m`.sub.get(i)
+		flush_structs(s)
+	;/
+;/
 
-	/; if (t == 0)
-	    return get_primitive(artifact)
+/; create_struct
+;/
+
+/; create_module (~uint8 name, bool e, bool m) [Module]
+;/
+
+{}uint8 r1_export = "export\0"
+{}uint8 r1_module = "module\0"
+{}uint8 r1_struct = "struct\0"
+{}uint8 r1_method = "method\0"
+/; round_one (Path in, ~Module root)	
+	~uint8 pth = in.full_path()
+	Vector v = tokenize_file(pth)
+	_delete(pth)
+
+	~Token cur
+	/; loop (int i = 0; i < v.num_el) [i++]
+		cur = v.get(i)
+		/; if(cstr_eq(cur`.data, ~r1_struct{0}))
+		;/
 	;/
 
-        return t`.copy()
-    ;/
-
-    /; _del
-        /; loop (int i = 0; i < self.typ.num_el) [i++]
-            ~Type t = self.typ.get(i)
-            t`._del()
-        ;/
-        self.typ._del()
-
-        self.fnc._del()
-        /; loop (int i = 0; i < self.typ.num_el) [i++]
-            ~Type t = self.typ.get(i)
-            t`._del()
-        ;/
-        
-        self.def._del()
-        self.sub._del()
-    ;/
+	flush_structs(root)
 ;/
 
-######################################
-# Compiler evaluation and processing #
-######################################
-
-/; base_loop_1 (Path in, Vector tokens, ~Module mod)
-    ~Token curr
-
-    /; loop (int i = 0; i < tokens.num_el) [i++]
-        curr = tokens.get(i)
-
-    ;/
-
-;/
-
-/; base_loop_2 (Path in, Vector tokens, ~Module mod, ~CompData out)
-
-;/
-
-{}uint8 w_cstart = "Reading file: \0"
-{}uint8 w_nl = "\n\0"
-
-/; compile_file (Path in, ~Module mod) [CompData]
-    
-    ~uint8 pth = in.full_path()
-    _printf(~w_cstart{0})
-    _printf(pth)
-    _printf(~w_nl{0})
-    _delete(pth)
-
-    ~void fd = in.open_read()
-    Vector tokens = tokenize_file(fd)
-    _close_file(fd)
-
-    base_loop_1(in, tokens, mod)
-
-    CompData out
-    out.start()
-
-    base_loop_2(in, tokens, mod, ~out)
-
-    return out
-;/
-
-
-{}uint8 w_dsec = "\nsection .data\n\n\0"
-{}uint8 w_csec = "\nsection .text\n\n\0"
-
-{}uint8 w_compiled = "Compilation complete!  Writing file.\n\0"
 
 /; compile (Path in, out)
-    Module root
-    root.start()
-    CompData cd
-    cd = compile_file(in, ~root)
-    
-    _printf(~w_compiled{0})
-    
-    # Section headers for the asm
-    ~uint8 shed = ~w_dsec{0}
-    cd.hsec.add_str(shed)
-    shed = ~w_csec{0}
-    cd.dsec.add_str(shed)
+	Module root
+	root.start()
+	root.exp = true
 
-    ~void fout = out.open_write()
-    cd.write_file(fout)
-    _close_file(fout)
-
-    root._del()
-    cd._del()
+	round_one(in, ~root)
+	CompData dat = round_two(in, ~root)
+	
+	~void fd = out.open_write()
+	dat.write_file(fd)
+	_close_file(fd)
 ;/
+

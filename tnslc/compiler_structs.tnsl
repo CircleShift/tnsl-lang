@@ -1,0 +1,437 @@
+# Actual compilation of the vector of tokens, ported from the "dirty tnsl"
+# that was originally written for the interpreter
+
+# CompData represents three vectors:
+# hsec - the heading of the output assembly
+# dsec - the data tied to the assembly
+# csec - the .text section that is the code of the assembly
+
+struct CompData {
+	Vector
+		hsec,
+		dsec,
+		csec
+}
+
+/; method CompData
+	/; start
+		self.hsec.start(1)
+		self.dsec.start(1)
+		self.csec.start(1)
+	;/
+
+	/; add (CompData c)
+		self.hsec.add(c.hsec)
+		self.dsec.add(c.dsec)
+		self.csec.add(c.csec)
+	;/
+
+	/; _del
+		self.hsec._del()
+		self.dsec._del()
+		self.csec._del()
+	;/
+
+	/; write_file(~void fd)
+		/; loop (int i = 0; i < self.hsec.num_el) [i++]
+			_write_byte(fd, self.hsec.get(i))
+		;/
+		
+		/; loop (int i = 0; i < self.dsec.num_el) [i++]
+			_write_byte(fd, self.dsec.get(i))
+		;/
+
+		/; loop (int i = 0; i < self.csec.num_el) [i++]
+			_write_byte(fd, self.csec.get(i))
+		;/
+	;/
+;/
+
+# Path represents the actual path of a file
+# that we are trying to tokenize
+# Assumes that the last item in the path array is a file name
+struct Path {
+	int 
+		path_count,
+	~~uint8
+		split_path
+}
+
+/; method Path
+	/; start (~uint8 path)
+		self.split_path = _alloc(8)
+		self.path_count = 0
+		self.relative_file(path)
+	;/
+
+	/; copy [Path]
+		Path out
+		~uint8 f_pth = self.full_path()
+		out.start(f_pth)
+		_delete(f_pth)
+		return out
+	;/
+	
+	/; relative_file(~uint8 rel_path)
+		# Assume the last string is the file name
+		/; if (self.path_count > 0)
+			int idx = self.path_count - 1
+			_delete(self.split_path{idx})
+			self.path_count--
+		;/
+
+		~uint8 n_ptr = _alloc(1)
+		n_ptr{0} = 0
+		int idx = self.path_count
+
+		/; loop (int i = 0; i < cstr_len(rel_path)) [i++]
+			/; if (rel_path{i} == '\\' || rel_path{i} == '/')
+				/; if (cstr_len(n_ptr) > 0)
+					self.path_count++
+					idx = self.path_count
+					self.split_path = _realloc(self.split_path, idx * 8)
+					self.split_path{idx - 1} = n_ptr
+
+					n_ptr = _alloc(1)
+					n_ptr{0} = 0
+				;/
+			;; else
+				idx = cstr_len(n_ptr)
+				n_ptr = _realloc(n_ptr, idx + 2)
+				n_ptr{idx} = rel_path{i}
+				n_ptr{idx + 1} = 0
+			;/
+		;/
+
+		/; if (cstr_len(n_ptr) > 0)
+			self.path_count++
+			idx = self.path_count
+			self.split_path = _realloc(self.split_path, idx * 8)
+			self.split_path{idx - 1} = n_ptr
+		;/
+	;/
+
+	/; full_path [~uint8]
+		~uint8 pth = _alloc(1)
+		pth{0} = 0
+
+		~uint8 w_ptr = self.split_path{0}
+
+		/; loop (int i = 0; i < self.path_count) [i++]
+			w_ptr = self.split_path{i}
+			int old_len = cstr_len(pth)
+			int new_len = old_len + cstr_len(w_ptr)
+			
+			pth = _realloc(pth, new_len + 1)
+			pth{new_len} = 0
+			
+
+			/; loop (int j = 0; j < cstr_len(w_ptr)) [j++]
+				pth{old_len + j} = w_ptr{j}
+			;/
+
+			/; if (i < self.path_count - 1)
+				pth = _realloc(pth, new_len + 2)
+				pth{new_len} = '/'
+				pth{new_len + 1} = 0
+			;/
+		;/
+
+		return pth
+	;/
+
+	/; open_read [~void]
+		~uint8 path = self.full_path()
+		~void out = _open_file(path)
+		_delete(path)
+		return out
+	;/
+
+	/; open_write [~void]
+		~uint8 path = self.full_path()
+		~void out = _create_file(path)
+		_delete(path)
+		return out
+	;/
+
+	/; print_all
+		/; loop (int i = 0; i < self.path_count) [i++]
+			_printf(self.split_path{i})
+		;/
+	;/
+
+	/; _del
+		/; loop (int i = 0; i < self.path_count) [i++]
+			_delete(self.split_path{i})
+		;/
+
+		_delete(self.split_path)
+	;/
+;/
+
+########################################
+# Compiler functions - here be dragons #
+########################################
+
+enum POINTER_TYPE [uint8] {
+	POINTER = 0,
+	REFERENCE = 1,
+	ARRAY = 2
+}
+
+# 88 bytes long
+struct Type {
+	int s,
+	~uint8 name,
+	Vector ptr_chain,
+	Vector members,
+	~Module mod
+}
+
+/; method Type
+	/; start
+		self.ptr_chain.start(1)
+		# 112 is the size of one Variable struct
+		self.members.start(112)
+		self.s = -1
+	;/
+
+	/; copy [Type]
+		Type out
+		out.name = self.name
+		out.mod = self.mod
+		out.s = self.s
+
+		out.ptr_chain.copy(self.ptr_chain)
+
+		# Deep copy members
+		out.members.start(112)	
+		~Variable v
+		Variable cpy
+		/; loop (int i = 0; i < self.members) [i++]
+			v = self.members.get(i)
+			cpy = v`.copy()
+			out.members.push(~cpy)
+		;/
+		
+		return out
+	;/
+
+	/; _del
+		self.ptr_chain._del()
+		self.members._del()
+	;/
+;/
+
+{}uint8 CSV_PRIMITIVES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,comp32,comp64,comp,vect,bool,type,void"
+{}uint8 sizes = {1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 8, 4, 8, 8, 0, 1, 0, 0}
+{}uint8 NONE = "NONE\0"
+
+/; get_primitive (Vector artifact) [Type]
+	~~uint8 str_ptr = artifact.get(0)
+	int idx = in_csv(~CSV_PRIMITIVES, str_ptr`)
+
+	Type out
+	out.start()
+
+	/; if (idx !< 0)
+		out.s = sizes{idx}
+		out.name = str_ptr
+		out.mod = 0
+		return out
+	;/
+
+	out.s = 0 - 1
+	out.name = ~NONE{0}
+	out.mod = 0
+
+	return out
+;/
+
+/; is_primitive (~uint8 name) [bool]
+	int idx = in_csv(~CSV_PRIMITIVES, name)
+	return idx !< 0
+;/
+
+#############
+# Variables #
+#############
+
+# 112 bytes long
+struct Variable {
+	~uint name,
+	
+	Type data_type,
+
+	int location,
+		loc_type
+}
+
+/; method Variable
+	/; start (Type t)
+		self.data_type = t
+	;/
+
+	/; copy [Variable]
+		Variable out
+		out.data_type = self.data_type.copy()
+		out.location = self.location
+		out.loc_type = self.loc_type
+		return out
+	;/
+
+	/; _del
+		self.data_type._del()
+	;/
+;/
+
+
+
+#############
+# Functions #
+#############
+
+# 72 bytes long
+struct Function {
+	~uint8
+		name,
+	Vector
+		inputs,
+		outputs
+}
+
+/; method Function
+	/; start
+		self.inputs.start(88)
+		self.outputs.start(88)
+	;/
+
+	/; _del
+		~Type t
+		
+		/; loop (int i = 0; i < self.inputs.num_el) [i++]
+			t = self.inputs.get(i)
+			t`._del()
+		;/
+		self.inputs._del()
+
+		/; loop (int i = 0; i < self.outputs.num_el) [i++]
+			t = self.outputs.get(i)
+			t`._del()
+		;/
+		self.outputs._del()
+	;/
+;/
+
+###########
+# Modules #
+###########
+
+# 145 bytes long
+struct Module {
+	~Module
+		parent,
+	~uint8
+		name,
+	bool
+		exp,  # Export or not
+	Vector
+		typ,  # Types
+		fnc,  # Functions
+		def,  # Variable definitions (lables)
+		sub   # Sub modules (pointers)
+}
+
+/; method Module
+	/; start
+		self.typ.start(88)
+		self.fnc.start(72) # not impl yet
+		self.def.start(112)
+		self.sub.start(145)
+		self.parent = 0
+		self.exp = false
+	;/
+
+	/; _find_type(Vector a, int depth) [~Type]
+		~Type none = 0
+		~Module p = self.parent
+		~~uint8 cmp_ptr = a.get(depth)
+
+		# If we've reached the num_el of the artifact, we are looking for
+		# the type name in this module's type vector
+		/; if (depth + 1 !< a.num_el)
+			~Type t
+			/; loop (int i = 0; i < self.typ.num_el) [i++]
+				t = self.typ.get(i)
+				/; if (cstr_eq(t`.name, cmp_ptr`) == true)
+					return t
+				;/
+			;/
+		# Else we are looking to see if we can find the next sub module
+		# in the artifact
+		;; else
+			~Module m
+			~Type t = 0
+			/; loop (int j = 0; j < self.sub.num_el) [j++]
+				m = self.typ.get(j)
+				/; if (cstr_eq(m`.name, cmp_ptr`) == true)
+					t = m`._find_type(a, depth + 1)
+					break
+				;/
+			;/
+
+			/; if (t !== 0)
+				return t
+			;/
+		;/
+		
+		# If the parent is zero, we are the root module, and should return 0
+		# likewise, if we are above depth 0, we have been called from _find_type
+		# and do not need to search our parent (the caller)
+		/; if (p == 0 || depth > 0)
+			return none
+		;/
+
+		# Recursive search upwards
+		return p`._find_type(a, 0)
+	;/
+
+	/; find_type (Vector artifact) [Type]
+		~Type t = self._find_type(artifact, 0)
+
+		/; if (t == 0)
+			return get_primitive(artifact)
+		;/
+
+		return t`.copy()
+	;/
+
+	/; _del
+		/; loop (int i = 0; i < self.typ.num_el) [i++]
+			~Type t = self.typ.get(i)
+			t`._del()
+		;/
+		self.typ._del()
+		
+		/; loop (int i = 0; i < self.fnc.num_el) [i++]
+			~Function f = self.fnc.get(i)
+			f`._del()
+		;/
+		self.fnc._del()
+		
+		/; loop (int i = 0; i < self.def.num_el) [i++]
+			~Variable v = self.def.get(i)
+			v`._del()
+		;/
+		self.def._del()
+
+		/; loop (int i = 0; i < self.sub.num_el) [i++]
+			~Module m = self.sub.get(i)
+			m`._del()
+		;/
+		self.sub._del()
+	;/
+;/
+
+
+
