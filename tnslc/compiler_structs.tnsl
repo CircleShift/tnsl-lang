@@ -13,6 +13,9 @@ struct CompData {
 		csec
 }
 
+{}uint8 w_data_sec = "\n\nsection .data\n\n\0"
+{}uint8 w_text_sec = "\n\nsection .text\n\n\0"
+
 /; method CompData
 	/; start
 		self.hsec.start(1)
@@ -36,10 +39,14 @@ struct CompData {
 		/; loop (int i = 0; i < self.hsec.num_el) [i++]
 			_write_byte(fd, self.hsec.get(i))
 		;/
+
+		write_to_file(fd, ~w_data_sec{0})
 		
 		/; loop (int i = 0; i < self.dsec.num_el) [i++]
 			_write_byte(fd, self.dsec.get(i))
 		;/
+
+		write_to_file(fd, ~w_text_sec{0})
 
 		/; loop (int i = 0; i < self.csec.num_el) [i++]
 			_write_byte(fd, self.csec.get(i))
@@ -198,7 +205,7 @@ struct Type {
 
 	/; copy [Type]
 		Type out
-		out.name = self.name
+		out.name = cstr_make_copy(self.name)
 		out.mod = self.mod
 		out.s = self.s
 
@@ -217,9 +224,34 @@ struct Type {
 		return out
 	;/
 
+	/; push_ptr (uint8 ptype)
+		self.ptr_chain.push(~ptype)
+	;/
+
+	/; pop_ptr [uint8]
+		int l = self.ptr_chain.num_el
+		uint8 out
+		out = self.ptr_chain.get(l)
+		self.ptr_chain.pop()
+		return out
+	;/
+
+	/; push_member(Variable member)
+		Variable to_push = member.copy()
+		self.members.push(~to_push)
+	;/
+
 	/; _del
 		self.ptr_chain._del()
+		
+		~Variable v
+		/; loop (int i = 0; i < self.members.num_el) [i++]
+			v = self.members.get(i)
+			v`._del()
+		;/
 		self.members._del()
+		
+		_delete(self.name)
 	;/
 ;/
 
@@ -274,6 +306,7 @@ struct Variable {
 
 	/; copy [Variable]
 		Variable out
+		out.name = cstr_make_copy(self.name)
 		out.data_type = self.data_type.copy()
 		out.location = self.location
 		out.loc_type = self.loc_type
@@ -339,7 +372,7 @@ struct Module {
 		typ,  # Types
 		fnc,  # Functions
 		def,  # Variable definitions (lables)
-		sub   # Sub modules (pointers)
+		sub   # Sub modules
 }
 
 /; method Module
@@ -350,6 +383,14 @@ struct Module {
 		self.sub.start(145)
 		self.parent = 0
 		self.exp = false
+	;/
+
+	/; push_struct(Type t)
+		self.typ.push(~t)
+	;/
+
+	/; push_sub(Module s)
+		self.sub.push(~s)
 	;/
 
 	/; _find_type(Vector a, int depth) [~Type]
@@ -430,6 +471,8 @@ struct Module {
 			m`._del()
 		;/
 		self.sub._del()
+		
+		_delete(self.name)
 	;/
 ;/
 

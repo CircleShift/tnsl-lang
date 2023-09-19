@@ -2,9 +2,9 @@
 :include "logging.tnsl"
 :include "utils.tnsl"
 :include "vector.tnsl"
-# :include "tokenizer.tnsl"
+:include "tokenizer.tnsl"
 :include "compiler_structs.tnsl"
-# :include "compiler.tnsl"
+:include "compiler.tnsl"
 
 {}uint8 w_usage = "Usage: tnslc [file to compile] [file to write]"
 
@@ -20,6 +20,8 @@
 	Path in, out
 	in.start(argv{1})
 	out.start(argv{2})
+
+	compile(in, out)
 
 	in._del()
 	out._del()

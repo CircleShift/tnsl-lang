@@ -69,6 +69,14 @@
     ;/
 ;/
 
+/; cstr_make_copy(~uint8 to_copy) [~uint8]
+    int l = cstr_len(to_copy)
+    ~uint8 out = _alloc(l + 1)
+    out{l} = 0
+    cstr_copy(to_copy, out)
+    return out
+;/
+
 /; contains_char ({}uint8 arr, uint8 c) [bool]
     /; loop (int i = 0; i < len arr) [i++]
         /; if (arr{i} == c)
@@ -94,3 +102,21 @@
         _write_byte(file, string + i)
     ;/
 ;/
+
+/; cstr_add(~uint8 a, b) [~uint8]
+	int al = cstr_len(a)
+	int bl = cstr_len(b)
+	~uint8 out = _alloc(al + bl + 1)
+
+	/; loop (int i = 0; i < al) [i++]
+		out{i} = a{i}
+	;/
+
+	/; loop (int i = 0, i < bl) [i++]
+		out{al + i} = b{i}
+	;/
+
+	out{al + bl} = 0
+	return out
+;/
+

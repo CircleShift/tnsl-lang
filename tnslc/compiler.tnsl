@@ -2,15 +2,30 @@
 # TEXT UTILS #
 ##############
 
-/; parse_meta (~uint8 str, int idx) [uint8]
+{}uint8 e_tc_nl = "\n\0"
+{}uint8 e_noquit = "[TNSLC] [UB] PRE-ALPHA VERSION OF COMPILER UNABLE TO EXIT! UNDEFINED BEHAVIOUR AHEAD\n\0"
 
-	/; if (str{idx} == 'n')
+{}uint8 e_unknown_meta = "[TNSLC] [WARNING] Unknown meta character '%c'!\n\0"
+/; parse_meta (~uint8 str, int idx) [uint8]
+	uint8 c = str{idx}
+
+	/; if (c == 'n')
 		return '\n'
-	;; else if (str{idx} == '0')
+	;; else if (c == 'r')
+		return '\r'
+	;; else if (c == '\\')
+		return '\\'
+	;; else if (c == '"')
+		return '"'
+	;; else if (c == '\'')
+		return '\''
+	;; else if (c == '0')
 		return 0
 	;/
-
-	return str{idx}
+	
+	_print_num(~e_unknown_meta{0}, c)
+	_printf(~e_noquit{0})
+	return c
 ;/
 
 /; unquote_char (~uint8 str) [uint8]
@@ -35,6 +50,7 @@
 	/; loop (int i = 1; i < l - 1) [i++]
 		/; if (str{i} == '\\')
 			out{ln} = parse_meta(str, i + 1)
+			i++
 		;; else
 			out{ln} = str{i}
 		;/
@@ -67,9 +83,8 @@
 	return out
 ;/
 
-{}uint8 w_method_guard = "_#"
-{}uint8 w_enum_guard = "__#"
-
+{}uint8 w_method_guard = "_#\0"
+{}uint8 w_enum_guard = "__#\0"
 
 ####################
 # FIND/PARSE UTILS #
@@ -80,13 +95,14 @@
 /; matching_delim (Vector v, int c) [int]
 	~Token cur
 	cur = v.get(c)
-	uint8 op
+	uint8 op, first
+	first = cur`.data{0}
 
-	/; if (cur`.data{0} == '(')
+	/; if (first == '(')
 		op = ')'
-	;; else if (cur`.data{0} == '[')
+	;; else if (first == '[')
 		op = ']'
-	;; else if (cur`.data{0} == '{')
+	;; else if (first == '{')
 		op = '}'
 	;; else
 		op = ';'
@@ -104,7 +120,7 @@
 			continue
 		;/
 
-		uint8 first = cur`.data{0}
+		first = cur`.data{0}
 		# Increments
 		/; if (first == '(')
 			p++
@@ -135,7 +151,8 @@
 		;; else if (first == '}')
 			s--
 		;; else if (first == ';')
-			/; if (cur`.data{1} == '/')
+			first = cur`.data{1}
+			/; if (first == '/')
 				f--
 			;/
 		;/
@@ -159,8 +176,6 @@
 
 
 {}uint8 e_circular = "[TNSLC] [ERROR] Circular struct definition detected in structs:\n\0"
-{}uint8 e_tc_nl = "\n\0"
-{}uint8 e_noquit = "[TNSLC] [UB] PRE-ALPHA VERSION OF COMPILER UNABLE TO EXIT! UNDEFINED BEHAVIOUR AHEAD\n\0"
 # Structure sizing for the first round
 /; size_struct (~Type t, ~Module m)
 	/; if (t`.s !== 0)
@@ -224,33 +239,20 @@
 	;/
 ;/
 
-# Parses a struct (and skips that many tokens)
-/; create_struct (Vector v, ~int c) [Type]
-;/
 
-/; create_module (~uint8 name, bool e, bool m) [Module]
-	Module out
-	out.start()
-	out.name
-;/
-
-{}uint8 r1_export = "export\0"
-{}uint8 r1_module = "module\0"
-{}uint8 r1_struct = "struct\0"
-{}uint8 r1_method = "method\0"
-/; round_one (Path in, ~Module root)	
+/; round_one_file (Path in, ~Module root)	
 	~uint8 pth = in.full_path()
 	Vector v = tokenize_file(pth)
 	_delete(pth)
 
-	~Token cur
-	/; loop (int i = 0; i < v.num_el) [i++]
-		cur = v.get(i)
-		/; if(cstr_eq(cur`.data, ~r1_struct{0}))
-		;/
-	;/
+	# round_one_tokens(in, v, root, 0, v.num_el)
 
-	flush_structs(root)
+	# Clean up tokens
+	~Token t
+	/; loop (int i = 0; i < v.num_el) [i++]
+		t = v.get(i)
+		_delete(t`.data)
+	;/
 ;/
 
 
@@ -259,8 +261,9 @@
 	root.start()
 	root.exp = true
 
-	round_one(in, ~root)
-	CompData dat = round_two(in, ~root)
+#	round_one_file(in, ~root)
+#	flush_structs(root)
+#	CompData dat = round_two(in, ~root)
 	
 	~void fd = out.open_write()
 	dat.write_file(fd)
