@@ -29,22 +29,3 @@ libtnsl provides the tnsl base module and the following sub-modules to address e
 
 Each sub-module should have its own README to address features
 
----
-	Copyright 2021-2022 Kyle Gunger
-
-	Dual licensed under the CDDL 1.0 and BSD 3-Clause licenses.
-
-	This file may only be used in accordance with one of the two
-	licenses.  You should have received a copy of each license with
-	the source code.  In the event that you did not recieve a copy
-	of the licenses, they may be found at the following URLs:
-
-	CDDL 1.0:
-	https://opensource.org/licenses/CDDL-1.0
-
-	BSD 3-Clause:
-	https://opensource.org/licenses/BSD-3-Clause
-
-	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
-	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
-	EXPRESS OR IMPLIED

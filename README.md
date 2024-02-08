@@ -1,7 +1,7 @@
 <img src="./logo/tnsl-logo-stroke.svg" width="100%" height="256px"></img>
 
 # tnsl-lang
-This is the base repository for the tnsl language, and includes the standard compiler implementation, specification, and libtnsl implementation.  The specification and compiler are licenced under the CDDL-1.0 ([LICENCE.md](./LICENCE.md)), while libtnsl is dual-licenced under both the CDDL-1.0 ([LICENCE.md](./LICENCE.md)) and BSD-3-Clause ([LICENCE-BSD3.md](./libtnsl/LICENCE-BSD3.md)).
+This is the base repository for the tnsl language, and includes the standard compiler implementation, specification, and libtnsl implementation.  The specification and compiler are licenced under the MPL-2.0 ([LICENCE](./LICENCE)), while libtnsl is dual-licenced under both the MPL-2.0 ([LICENCE](./LICENCE)) and BSD-3-Clause ([LICENCE-BSD3.md](./libtnsl/LICENCE-BSD3.md)).
 
 ## tnsl specification
 
@@ -15,7 +15,7 @@ Under the folder `spec` is the [TNSL language specification](./spec/README.md). 
 
 ## libtnsl
 
-An implimentation of the TNSL standard library.  Dual licenced under the CDDL 1.0 and BSD 3-clause licences.
+An implimentation of the TNSL standard library.  Dual licenced under the MPL-2.0 and BSD 3-clause licences.
 
 	Current focused portions of libtnsl (in order of importance):
 	- Type reflection and implimentation
@@ -42,20 +42,3 @@ It is reccommended that if you are going to clone this repository and attempt to
 	Specification:    incomplete
 	libtnsl:          incomplete
 	tnslc:            in progress
-
-## Credits
-
-	Copyright 2021-2022 Kyle Gunger
-
-	This file is licensed under the CDDL 1.0 (the License)
-	and may only be used in accordance with the License.
-	You should have received a copy of the License with this
-	software/source code. If you did not, a copy can be found
-	at the following URL:
-
-	https://opensource.org/licenses/CDDL-1.0
-
-	THIS SOFTWARE/SOURCE CODE IS PROVIDED "AS IS" WITH NO
-	WARRANTY, GUARANTEE, OR CLAIM OF FITNESS FOR ANY PURPOSE
-	EXPRESS OR IMPLIED.  PLEASE SEE THE LICENCE FOR LIMITATIONS
-	AND PERMISSIONS UNDER THE LAW.
