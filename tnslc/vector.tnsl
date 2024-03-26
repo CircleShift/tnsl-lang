@@ -7,6 +7,7 @@ struct Vector {
 }
 
 uint VECTOR_MIN_ELEMENTS = 4
+uint VECTOR_MAX_GROW = 256
 ~void NULL = 0
 
 ~uint8 NUM_STR = "Num %d\n\0"
@@ -20,12 +21,45 @@ uint VECTOR_MIN_ELEMENTS = 4
 		self.data = _alloc(self.size * self._elsz)
 	;/
 
+	/; _grow (uint i)
+		self.size = self.size + i
+		self.data = _realloc(self.data, self.size * self._elsz)
+	;/
+
 	/; get (uint index) [~void]
 		/; if (index !< self.count)
 			return NULL
 		;/
 
 		return self.data + index * self._elsz
+	;/
+
+	/; push (~void el)
+		/; if (self.size == self.count)
+			/; if (self.size < VECTOR_MAX_GROW)
+				self._grow(self.size)
+			;; else
+				self._grow(VECTOR_MAX_GROW)
+			;/
+		;/
+
+		~void start = self.data + self.count * self._elsz
+		/; loop (int i = 0; i < self._elsz) [i++]
+			~void to = start + i
+			~void from = el + i
+			to` = from`
+		;/
+		self.count++
+	;/
+
+	/; push_char (uint8 ch)
+		self.push(~ch)
+	;/
+
+	/; push_cstr(~uint8 ch)
+		/; loop (ch` != 0) [ch++]
+			self.push(ch)
+		;/
 	;/
 
 	/; end

@@ -11,6 +11,23 @@
 	utils.Vector vec
 
 	vec.init(1)
+
+	vec.push_char('h')
+	vec.push_char('e')
+	vec.push_char('l')
+	vec.push_char('l')
+	vec.push_char('o')
+	vec.push_char(' ')
+	vec.push_char('w')
+	vec.push_char('o')
+	vec.push_char('r')
+	vec.push_char('l')
+	vec.push_char('d')
+	vec.push_char('\n')
+	vec.push_char(0)
+
+	_printf(vec.data)
+
 	vec.end()
 
 	return 0
