@@ -1,0 +1,38 @@
+struct Vector {
+	~void data,
+	uint
+		count,
+		size,
+		_elsz
+}
+
+uint VECTOR_MIN_ELEMENTS = 4
+~void NULL = 0
+
+~uint8 NUM_STR = "Num %d\n\0"
+
+/; method Vector
+	
+	/; init (uint elsz)
+		self._elsz = elsz
+		self.size = VECTOR_MIN_ELEMENTS
+		self.count = 0
+		self.data = _alloc(self.size * self._elsz)
+	;/
+
+	/; get (uint index) [~void]
+		/; if (index !< self.count)
+			return NULL
+		;/
+
+		return self.data + index * self._elsz
+	;/
+
+	/; end
+		self.count = 0
+		self.size = 0
+		self._elsz = 0
+		_delete(self.data)
+	;/
+;/
+

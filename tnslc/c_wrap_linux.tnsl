@@ -16,7 +16,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
     
     # Mov size into proper register, and set all extras to zero
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "mov rsi, 0"
     asm "xor rax, rax"
     
@@ -24,8 +24,8 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "call malloc wrt ..plt"
 
     # Set out to the returned value
-    # (The compiler assignes spaces sequentially, and we have a uint in r8)
-    asm "mov r9, rax"
+    # (The compiler assignes spaces sequentially, and we have a uint in r10)
+    asm "mov r11, rax"
 
     return out
 ;/
@@ -41,16 +41,16 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
     
     # Mov ptr and new size into proper registers, and set all extras to zero
-    asm "mov rdi, r8"
-    asm "mov rsi, r9"
+    asm "mov rdi, r10"
+    asm "mov rsi, r11"
     asm "xor rax, rax"
 
     # Do call
     asm "call realloc wrt ..plt"
     
     # Set out to the returned value
-    # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
-    asm "mov r10, rax"
+    # (The compiler assignes spaces sequentially. We have a ptr in r10, and a uint in r11)
+    asm "mov r12, rax"
 
     return out
 ;/
@@ -65,7 +65,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
     
     # setup call by clearing most values
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "mov rsi, 0"
     asm "xor rax, rax"
 
@@ -85,7 +85,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
     
     # setup call by clearing most values
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "xor rsi, rsi"
     asm "xor rax, rax"
     
@@ -105,8 +105,8 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
     
     # setup call by clearing most values
-    asm "mov rdi, r8"
-    asm "mov rsi, r9"
+    asm "mov rdi, r10"
+    asm "mov rsi, r11"
     asm "xor rax, rax"
     
     # do call
@@ -128,14 +128,14 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
 
     # Do call
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "mov rsi, 0q1102"
     asm "mov rdx, 0q700"
     asm "call open wrt ..plt"
 
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8)
-    asm "mov r9, rax"
+    asm "mov r11, rax"
 
     return out
 ;/
@@ -152,14 +152,14 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
 
     # Do syscall
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "mov rsi, 2"
     asm "mov rdx, 0q700"
     asm "call open wrt ..plt"
 
     # Set out to the returned value
     # (The compiler assignes spaces sequentially. We have a ptr in r8, and a uint in r9)
-    asm "mov r9, rax"
+    asm "mov r11, rax"
 
     return out
 ;/
@@ -174,7 +174,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
 
     # Do syscall
-    asm "mov rdi, r8"
+    asm "mov rdi, r10"
     asm "call close wrt ..plt"
 ;/
 
@@ -189,13 +189,13 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
 
     # Do syscall
-    asm "mov rdi, r8"  # handle
-    asm "mov rsi, r9"  # buffer
+    asm "mov rdi, r10"  # handle
+    asm "mov rsi, r11"  # buffer
     asm "mov rdx, 1"   # one byte
     asm "call read wrt ..plt"
 
     # return number of bytes read
-    asm "mov r10, rax"
+    asm "mov r12, rax"
 
     return out
 ;/
@@ -211,12 +211,12 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "sub rsp, 128"
 
     # Do syscall
-    asm "mov rdi, r8"  # handle
-    asm "mov rsi, r9"  # buffer
+    asm "mov rdi, r10"  # handle
+    asm "mov rsi, r11"  # buffer
     asm "mov rdx, 1"   # one byte
     asm "call write wrt ..plt"
 
-    asm "mov r10, rax"
+    asm "mov r12, rax"
 
     return out
 ;/

@@ -1,0 +1,5 @@
+/; module compile
+	:import "tokenizer.tnsl"
+	:import "lexer.tnsl"
+	:import "generator.tnsl"
+;/

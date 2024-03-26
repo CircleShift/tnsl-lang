@@ -1,6 +1,18 @@
 :import "c_wrap_linux.tnsl"
 
+/; module utils
+	:import "vector.tnsl"
+	:import "file.tnsl"
+;/
+
+:import "compile/compile.tnsl"
+
 /; main [int]
+	utils.Vector vec
+
+	vec.init(1)
+	vec.end()
+
 	return 0
 ;/
 
