@@ -4,7 +4,7 @@ The reference compiler for the TNSL programming language.  The compiler is writt
 
 ## Usage:
 
-Place the bootstrap compiler `ctc` in the folder and execute `run.sh`
+Place the [bootstrap compiler](https://git.cshift.net/CircleShift/ctc) `ctc` in the folder and execute `run.sh`
 The compiler outputs x86 NASM compatible assembly.
 
 Examples:
