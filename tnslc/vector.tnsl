@@ -57,9 +57,10 @@ uint VECTOR_MAX_GROW = 256
 	;/
 
 	/; push_cstr(~uint8 ch)
-		/; loop (ch` != 0) [ch++]
+		/; loop (ch` !== 0) [ch++]
 			self.push(ch)
 		;/
+		self.push(ch)
 	;/
 
 	/; end
