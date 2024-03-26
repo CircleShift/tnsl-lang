@@ -35,7 +35,7 @@ uint VECTOR_MAX_GROW = 256
 	;/
 
 	/; push (~void el)
-		/; if (self.size == self.count)
+		/; if (self.size == self.count + 1)
 			/; if (self.size < VECTOR_MAX_GROW)
 				self._grow(self.size)
 			;; else
@@ -45,8 +45,8 @@ uint VECTOR_MAX_GROW = 256
 
 		~void start = self.data + self.count * self._elsz
 		/; loop (int i = 0; i < self._elsz) [i++]
-			~void to = start + i
-			~void from = el + i
+			~uint8 to = start + i
+			~uint8 from = el + i
 			to` = from`
 		;/
 		self.count++
@@ -63,11 +63,36 @@ uint VECTOR_MAX_GROW = 256
 		self.push(ch)
 	;/
 
+	/; as_cstr [~uint8]
+		~uint8 z = self.data + self.count
+		z` = 0
+		return self.data
+	;/
+
 	/; end
 		self.count = 0
 		self.size = 0
 		self._elsz = 0
 		_delete(self.data)
+	;/
+;/
+
+
+# Artifacts
+
+struct Artifact {
+	~~uint8 strings,
+	uint
+		size,
+		count
+}
+
+/; method Artifact
+
+	/; init
+		self.size = VECTOR_MIN_ELEMENTS
+		self.count = 0
+		self.strings = _alloc(self.size * 8)
 	;/
 ;/
 

@@ -1,5 +1,5 @@
 struct File {
-	int i
+	
 }
 
 /; method File

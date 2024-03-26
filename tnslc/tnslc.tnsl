@@ -13,9 +13,8 @@
 TNSLC v1.0.0 (C) 2024 CircleShift
 
 usage:
-	tnslc [options] (file in) [file out]
+	tnslc (file in) [file out]
 	
-	-h    print this help text
 \0"
 
 /; main (int argc, ~~uint8 argv) [int]
