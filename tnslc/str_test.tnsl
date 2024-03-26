@@ -1,9 +1,0 @@
-{}uint8 a = "\n\0\""
-
-/; str_call({}uint str) [int]
-    return len str
-;/
-
-/; main [int]
-    return str_call(~a)
-;/

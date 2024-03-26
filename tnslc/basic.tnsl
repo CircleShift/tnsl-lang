@@ -1,8 +1,0 @@
-:include "c_wrap.tnsl"
-
-{}uint8 str = "ASDF\0"
-
-/; main [int]
-    _printf(~str{0})
-    return 0
-;/

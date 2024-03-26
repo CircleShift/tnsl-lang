@@ -1,18 +1,13 @@
 #!/bin/bash
 
-BUILD_DIR="./build"
-ARTIFACTS_DIR="$BUILD_DIR/artifacts"
+BUILD_DIR=./build
+ARTIFACT_DIR=$BUILD_DIR/artifacts
 
-if [ ! -d $BUILD_DIR ]; then
-	mkdir $BUILD_DIR
-fi
-
-if [ ! -d $ARTIFACTS_DIR ]; then
-	mkdir $ARTIFACTS_DIR
-fi
-
-../tint -in tnslc.tnsl -flags "$1"
-mv -f "$1.asm" "$ARTIFACTS_DIR/$1.asm"
-nasm -f elf64 -o "$ARTIFACTS_DIR/$1.o" "$ARTIFACTS_DIR/$1.asm"
-clang -o "./build/${1%.*}" "$ARTIFACTS_DIR/$1.o"
+mkdir -p $BUILD_DIR
+mkdir -p $ARTIFACT_DIR
+filename=tnslc.tnsl
+filename="${filename%.*}"
+./ctc $filename.tnsl $ARTIFACT_DIR/$filename.asm
+nasm -f elf64 -o $ARTIFACT_DIR/$filename.o $ARTIFACT_DIR/$filename.asm
+gcc -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
 
