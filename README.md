@@ -35,7 +35,7 @@ The standard TNSL compiler suite.  Contains a universal front end for producing 
 
 Until the go based interpereter is done, some code may not be correct TNSL code to account for inconsistancies in the bootstrap interpereter.  However, the code shouldn't be too far from normal TNSL, the only real difference should be import statements, which will be fixed after the compiler can compile itself.
 
-It is reccommended that if you are going to clone this repository and attempt to run anything within, first you should clone the latest version of [the interpreter](https://github.com/CircleShift/tnsl-parse) and build it.  Place the tint binary in this directory.
+It is reccommended that if you are going to clone this repository and attempt to run anything within, first you should clone the latest version of [ctc](https://github.com/CircleShift/ctc) and build it.  Place the ctc binary in the tnslc directory.
 
 ## Status
 
