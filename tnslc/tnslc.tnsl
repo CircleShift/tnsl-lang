@@ -7,18 +7,36 @@
 
 :import "compile/compile.tnsl"
 
-~uint8 HELLO = "hello world\n\0"
+~uint8 DEFAULT_FOUT = "out.asm\0"
 
-/; main [int]
-	utils.Vector vec
+~uint8 USAGE = "
+TNSLC v1.0.0 (C) 2024 CircleShift
 
-	vec.init(1)
+usage:
+	tnslc [options] (file in) [file out]
+	
+	-h    print this help text
+\0"
 
-	vec.push_cstr(HELLO)
+/; main (int argc, ~~uint8 argv) [int]
+	asm "mov r10, rdi"
+	asm "mov r11, rsi"
 
-	_printf(vec.data)
+	/; if (argc < 2)
+		_printf(USAGE)
+		return 1
+	;/
 
-	vec.end()
+	utils.File in, out
+
+	in.init(argv{1})
+	/; if (argc < 3)
+		out.init(argv{2})
+	;; else
+		out.init(DEFAULT_FOUT)
+	;/
+
+	compile.generate(in, out)
 
 	return 0
 ;/

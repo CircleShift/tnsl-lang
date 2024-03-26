@@ -1,0 +1,9 @@
+struct File {
+	int i
+}
+
+/; method File
+	/; init (~uint8 str)
+	;/
+
+;/
