@@ -21,6 +21,11 @@ uint VECTOR_MAX_GROW = 256
 		self.data = _alloc(self.size * self._elsz)
 	;/
 
+	/; from_cstr(~uint8 cstr)
+		self.init(1)
+		self.push_cstr(cstr)
+	;/
+
 	/; _grow (uint i)
 		self.size = self.size + i
 		self.data = _realloc(self.data, self.size * self._elsz)
@@ -60,7 +65,6 @@ uint VECTOR_MAX_GROW = 256
 		/; loop (ch` !== 0) [ch++]
 			self.push(ch)
 		;/
-		self.push(ch)
 	;/
 
 	/; as_cstr [~uint8]
@@ -92,7 +96,71 @@ struct Artifact {
 	/; init
 		self.size = VECTOR_MIN_ELEMENTS
 		self.count = 0
-		self.strings = _alloc(self.size * 8)
+		self.strings = _alloc(len self.strings * self.size)
+	;/
+
+	/; split_cstr (~uint8 str, uint8 split)
+		Vector track
+		track.init(1)
+
+		/; loop (str` !== 0) [str++]
+			/; if (str` == split)
+				self.push(track.as_cstr())
+				track.init(1)
+			;; else
+				track.push(str)
+			;/
+		;/
+
+		self.push(track.as_cstr())
+		_print_num(NUM_STR, self.count)
+	;/
+
+	/; _grow (uint i)
+		self.size = self.size + i
+		self.strings = _realloc(self.strings, len self.strings * self.size)
+	;/
+
+	/; push (~uint8 str)
+		/; if (self.size == self.count + 1)
+			/; if (self.size < VECTOR_MAX_GROW)
+				self._grow(self.size)
+			;; else
+				self._grow(VECTOR_MAX_GROW)
+			;/
+		;/
+
+		self.strings{self.count} = str
+		self.count++
+	;/
+
+	/; get (uint index) [~uint8]
+		/; if (index !< self.count)
+			return NULL
+		;/
+
+		return self.strings{index}
+	;/
+	
+	/; to_cstr (uint8 join) [~uint8]
+		Vector out
+		out.init(1)
+
+		/; loop (int i = 0; i < self.count) [i++]
+			out.push_cstr(self.get(i))
+			/; if (i < self.count - 1)
+				out.push(~join)
+			;/
+		;/
+
+		return out.as_cstr()
+	;/
+
+	/; end
+		/; loop (int i = 0; i < self.count) [i++]
+			_delete(self.get(i))
+		;/
+		_delete(self.strings)
 	;/
 ;/
 

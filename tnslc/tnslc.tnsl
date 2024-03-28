@@ -17,6 +17,8 @@ usage:
 	
 \0"
 
+~uint8 split_test = "test/whatever/file.tnsl\0"
+
 /; main (int argc, ~~uint8 argv) [int]
 	asm "mov r10, rdi"
 	asm "mov r11, rsi"
@@ -26,16 +28,18 @@ usage:
 		return 1
 	;/
 
-	utils.File in, out
+	utils.Artifact art
+	
+	art.init()
+	# art.push(split_test)
+	# _printf(art.strings{0})
 
-	in.init(argv{1})
-	/; if (argc < 3)
-		out.init(argv{2})
-	;; else
-		out.init(DEFAULT_FOUT)
-	;/
+	art.split_cstr(split_test, '/')
+	~uint8 file = art.to_cstr('/')
+	_printf(file)
+	_delete(file)
 
-	compile.generate(in, out)
+	art.end()
 
 	return 0
 ;/
