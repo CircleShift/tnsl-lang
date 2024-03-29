@@ -1,9 +1,0 @@
-struct File {
-	
-}
-
-/; method File
-	/; init (~uint8 str)
-	;/
-
-;/

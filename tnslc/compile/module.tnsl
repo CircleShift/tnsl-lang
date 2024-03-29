@@ -1,0 +1,11 @@
+struct Module {
+	~Module parent,
+	utils.Vector vars
+}
+
+/; method Module
+	/; init (~Module parent)
+		self.parent = parent
+		self.vars.init(1)
+	;/
+;/

@@ -8,7 +8,6 @@ struct Vector {
 
 uint VECTOR_MIN_ELEMENTS = 4
 uint VECTOR_MAX_GROW = 256
-~void NULL = 0
 
 ~uint8 NUM_STR = "Num %d\n\0"
 
@@ -55,6 +54,24 @@ uint VECTOR_MAX_GROW = 256
 			to` = from`
 		;/
 		self.count++
+	;/
+
+	/; _shrink(uint i)
+		/; if (i !< self.size)
+			self.size = 1
+		;; else
+			self.size = self.size - i
+		;/
+
+		self.data = _realloc(self.data, self.size * self._elsz)
+	;/
+
+	/; pop
+		self.count--
+
+		/; if (self.count < self.size / 2)
+			self._shrink(self.size / 3)
+		;/
 	;/
 
 	/; push_char (uint8 ch)
@@ -113,12 +130,11 @@ struct Artifact {
 		;/
 
 		self.push(track.as_cstr())
-		_print_num(NUM_STR, self.count)
 	;/
 
 	/; _grow (uint i)
 		self.size = self.size + i
-		self.strings = _realloc(self.strings, len self.strings * self.size)
+		self.strings = _realloc(self.strings, self.size * len self.strings)
 	;/
 
 	/; push (~uint8 str)
@@ -132,6 +148,25 @@ struct Artifact {
 
 		self.strings{self.count} = str
 		self.count++
+	;/
+
+	/; _shrink(uint i)
+		/; if (i !< self.size)
+			self.size = 1
+		;; else
+			self.size = self.size - i
+		;/
+
+		self.strings = _realloc(self.strings, self.size * len self.strings)
+	;/
+
+	/; pop
+		_delete(self.get(self.count - 1))
+		self.count--
+
+		/; if (self.count < self.size / 2)
+			self._shrink(self.size / 3)
+		;/
 	;/
 
 	/; get (uint index) [~uint8]

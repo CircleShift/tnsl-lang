@@ -1,10 +1,6 @@
 :import "c_wrap_linux.tnsl"
 
-/; module utils
-	:import "vector.tnsl"
-	:import "file.tnsl"
-;/
-
+:import "utils/utils.tnsl"
 :import "compile/compile.tnsl"
 
 ~uint8 DEFAULT_FOUT = "out.asm\0"
@@ -17,7 +13,11 @@ usage:
 	
 \0"
 
-~uint8 split_test = "test/whatever/file.tnsl\0"
+~uint8 FOPEN_ERR = "Error opening file\n\0"
+
+~uint8 char_str = "%c\0"
+~uint8 newline = "\n\0"
+~uint8 rel_pth = "../../tnslc.tnsl\0"
 
 /; main (int argc, ~~uint8 argv) [int]
 	asm "mov r10, rdi"
@@ -28,18 +28,29 @@ usage:
 		return 1
 	;/
 
-	utils.Artifact art
-	
-	art.init()
-	# art.push(split_test)
-	# _printf(art.strings{0})
+	utils.File fin
+	fin.init(argv{1})
+	fin.open()
 
-	art.split_cstr(split_test, '/')
-	~uint8 file = art.to_cstr('/')
-	_printf(file)
-	_delete(file)
+	/; if (fin.at_end == true)
+		_printf(FOPEN_ERR)
+		fin.end()
+		return 2
+	;/
 
-	art.end()
+	/; loop (fin.at_end == false)
+		_print_num(char_str, fin.read())
+	;/
+
+	utils.File rel = fin.relative(rel_pth)
+	~uint8 str = rel.path.to_cstr('/')
+	_printf(str)
+	_printf(newline)
+	_delete(str)
+	rel.end()
+
+	fin.close()
+	fin.end()
 
 	return 0
 ;/

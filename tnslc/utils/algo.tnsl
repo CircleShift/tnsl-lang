@@ -1,0 +1,10 @@
+
+/; strcmp(~uint8 a, b) [bool]
+	/; loop (a` == b` && a` !== 0 && b` !== 0) [a++; b++] ;/
+
+	/; if (b` == 0 && a` == 0)
+		return true
+	;/
+	return false
+;/
+

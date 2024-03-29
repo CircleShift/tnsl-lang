@@ -5,6 +5,8 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
 {}uint8 _dec = "%d\n\0"
 {}uint8 _ptr = "%p\n\0"
 
+~void NULL = 0
+
 /; _alloc (uint size) [~void]
     ~void out
 

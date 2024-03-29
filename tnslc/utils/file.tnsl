@@ -1,0 +1,89 @@
+struct File {
+	Artifact path,
+	~void handle,
+	bool at_end
+}
+
+~uint8 PT_HANDLE = "Handle: %p\n\0"
+uint INVALID_HANDLE = 0xffffffff
+~uint8 PARENT_DIR = ".."
+~uint8 CURRENT_DIR = "."
+
+/; method File
+	/; init (~uint8 str)
+		self.path.init()
+		self.path.split_cstr(str, '/')
+		self.handle = NULL
+		self.at_end = false
+	;/
+
+	/; relative (~uint8 path) [File]
+		~uint8 current = self.path.to_cstr('/')
+		File out
+		out.init(current)
+		_delete(current)
+		out.path.pop()
+		
+		Artifact add
+		add.init()
+		add.split_cstr(path, '/')
+
+		# Brunt of work here
+		/; loop (uint i = 0; i < add.count) [i++]
+			~uint8 cur = add.get(i)
+			/; if (strcmp(cur, CURRENT_DIR) == false)
+				out.path.split_cstr(cur, '/')
+			;/
+		;/
+
+		add.end()
+
+		return out
+	;/
+
+	/; end
+		self.path.end()
+		/; if (self.handle < INVALID_HANDLE && self.handle != NULL)
+			_close_file(self.handle)
+			self.handle = NULL
+		;/
+	;/
+
+	/; open
+		~uint8 p = self.path.to_cstr('/')
+		self.handle = _open_file(p)
+		_delete(p)
+	;/
+
+	/; create
+		~uint8 p = self.path.to_cstr('/')
+		self.handle = _create_file(p)
+		_delete(p)
+	;/
+
+	/; close
+		/; if (self.handle !== INVALID_HANDLE && self.handle !== NULL)
+			_close_file(self.handle)
+			self.handle = NULL
+			self.at_end = false
+		;/
+	;/
+
+	/; read [uint8]
+		uint8 out
+		int bytes = _read_byte(self.handle, ~out)
+		/; if (bytes == 0)
+			self.at_end = true
+			return 0
+		;/
+		return out
+	;/
+
+	/; write (uint8 byte)
+		int written = _write_byte(self.handle, ~byte)
+		/; if (written == 0)
+			self.at_end = true
+		;/
+	;/
+
+;/
