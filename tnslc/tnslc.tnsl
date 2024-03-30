@@ -17,7 +17,8 @@ usage:
 
 ~uint8 char_str = "%c\0"
 ~uint8 newline = "\n\0"
-~uint8 scratch = "1234\0"
+~uint8 scratch = "asd,efg\0"
+~uint8 test = "asd\0"
 
 /; main (int argc, ~~uint8 argv) [int]
 	asm "mov r10, rdi"
@@ -28,13 +29,24 @@ usage:
 		return 1
 	;/
 	
-	int i = utils.cstr_to_int(scratch)
-	_print_num(utils.NUM_STR, 0 - i)
-	i = 0 - i
-	~uint8 s = utils.int_to_str(i)
-	_printf(s)
-	_printf(newline)
-	_delete(s)
+	/; if (compile._in_csv(scratch, test))
+		_printf(test)
+		_printf(newline)
+	;/
+
+	utils.File fin, fout
+	fin.init(argv{1})
+	
+	/; if (argc > 2)
+		fout.init(argv{2})
+	;; else
+		fout.init(DEFAULT_FOUT)
+	;/
+
+	compile.generate(fin, fout)
+
+	fin.end()
+	fout.end()
 
 	return 0
 ;/

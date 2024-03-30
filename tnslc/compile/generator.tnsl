@@ -1,3 +1,13 @@
 /; generate (utils.File fin, fout)
+	~uint8 fa = fin.path.to_cstr('/')
+	~uint8 fb = fout.path.to_cstr('/')
+
+	_printf(fa)
+	_printf(newline)
+	_printf(fb)
+	_printf(newline)
+
+	_delete(fa)
+	_delete(fb)
 ;/
 

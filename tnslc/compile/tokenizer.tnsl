@@ -1,0 +1,53 @@
+struct Token {
+	~uint8 data,
+	int
+		_type,
+		line,
+		col
+}
+
+/; method Token
+	/; eq (Token tok) [bool]
+		return utils.strcmp(self.data, tok.data)
+	;/
+
+	/; eq_str(~uint8 str) [bool]
+		return utils.strcmp(self.data, str)
+	;/
+;/
+
+/; _is_space(uint8 char) [bool]
+	/; if (char == '\t' || char == '\n' || char == '\r' || char == ' ')
+		return true
+	;/
+	return false
+;/
+
+/; _in_csv (~uint8 csv, ~uint8 str) [bool]
+	int along = 0
+
+	/; loop (csv` !== 0) [csv++]
+		/; if (csv` == ',')
+			/; if (along !< 0 && str{along} == 0)
+				return true
+			;/
+			along = 0
+		;; else if (along !< 0 && str{along} == csv`)
+			along++
+		;; else
+			along = 0
+			along--
+		;/
+	;/
+
+	return along !< 0 && str{along} == 0
+;/
+
+/; tokenize(utils.File fin) [utils.Vector]
+	Token tok
+
+	utils.Vector out
+	out.init(len tok)
+
+	return out
+;/

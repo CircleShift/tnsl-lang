@@ -9,5 +9,5 @@ filename=tnslc.tnsl
 filename="${filename%.*}"
 ./ctc $filename.tnsl $ARTIFACT_DIR/$filename.asm
 nasm -f elf64 -o $ARTIFACT_DIR/$filename.o $ARTIFACT_DIR/$filename.asm
-gcc -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
+gcc -s -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
 

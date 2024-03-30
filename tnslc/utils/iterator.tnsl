@@ -1,0 +1,28 @@
+struct Iterator {
+	~Vector v,
+	int pos
+}
+
+/; method Iterator
+	/; init(~Vector v)
+		self.v = v
+		self.pos = 0
+	;/
+
+	/; get [~void]
+		return self.v`.get(self.pos)
+	;/
+
+	/; next
+		/; if (self.pos + 1 < self.v`.count)
+			self.pos++
+		;/
+	;/
+
+	/; prev
+		/; if (self.pos > 0)
+			self.pos--
+		;/
+	;/
+;/
+
