@@ -1,13 +1,16 @@
 /; generate (utils.File fin, fout)
-	~uint8 fa = fin.path.to_cstr('/')
-	~uint8 fb = fout.path.to_cstr('/')
 
-	_printf(fa)
-	_printf(newline)
-	_printf(fb)
-	_printf(newline)
+	fin.open()
+	fout.create()
 
-	_delete(fa)
-	_delete(fb)
+	uint8 buf = fin.read()
+	/; loop (fin.at_end == false && fout.at_end == false)
+		fout.write(buf)
+		buf = fin.read()
+	;/
+
+	fin.close()
+	fout.close()
+
 ;/
 

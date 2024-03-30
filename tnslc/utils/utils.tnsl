@@ -1,3 +1,5 @@
+:import "c_wrap_linux.tnsl"
+
 /; module utils
 
 	:import "vector.tnsl"

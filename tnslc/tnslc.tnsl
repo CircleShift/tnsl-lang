@@ -1,5 +1,3 @@
-:import "c_wrap_linux.tnsl"
-
 :import "utils/utils.tnsl"
 :import "compile/compile.tnsl"
 
@@ -17,8 +15,6 @@ usage:
 
 ~uint8 char_str = "%c\0"
 ~uint8 newline = "\n\0"
-~uint8 scratch = "asd,efg\0"
-~uint8 test = "asd\0"
 
 /; main (int argc, ~~uint8 argv) [int]
 	asm "mov r10, rdi"
@@ -29,10 +25,6 @@ usage:
 		return 1
 	;/
 	
-	/; if (compile._in_csv(scratch, test))
-		_printf(test)
-		_printf(newline)
-	;/
 
 	utils.File fin, fout
 	fin.init(argv{1})

@@ -5,7 +5,6 @@ struct File {
 }
 
 ~uint8 PT_HANDLE = "Handle: %p\n\0"
-uint INVALID_HANDLE = 0xffffffff
 ~uint8 PARENT_DIR = ".."
 ~uint8 CURRENT_DIR = "."
 
@@ -43,7 +42,7 @@ uint INVALID_HANDLE = 0xffffffff
 
 	/; end
 		self.path.end()
-		/; if (self.handle < INVALID_HANDLE && self.handle != NULL)
+		/; if (self.handle + 1 !== 0)
 			_close_file(self.handle)
 			self.handle = NULL
 		;/
@@ -52,17 +51,23 @@ uint INVALID_HANDLE = 0xffffffff
 	/; open
 		~uint8 p = self.path.to_cstr('/')
 		self.handle = _open_file(p)
+		/; if (self.handle + 1 == 0)
+			self.at_end = true
+		;/
 		_delete(p)
 	;/
 
 	/; create
 		~uint8 p = self.path.to_cstr('/')
 		self.handle = _create_file(p)
+		/; if (self.handle + 1 == 0)
+			self.at_end = true
+		;/
 		_delete(p)
 	;/
 
 	/; close
-		/; if (self.handle !== INVALID_HANDLE && self.handle !== NULL)
+		/; if (self.handle + 1 !== 0)
 			_close_file(self.handle)
 			self.handle = NULL
 			self.at_end = false
@@ -83,6 +88,12 @@ uint INVALID_HANDLE = 0xffffffff
 		int written = _write_byte(self.handle, ~byte)
 		/; if (written == 0)
 			self.at_end = true
+		;/
+	;/
+
+	/; write_cstr (~uint8 str)
+		/; loop (self.at_end == false && str` !== 0) [str++]
+			self.write(str`)
 		;/
 	;/
 
