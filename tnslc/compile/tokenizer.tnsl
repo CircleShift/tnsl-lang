@@ -43,6 +43,28 @@ struct Token {
 	return along !< 0 && str{along} == 0
 ;/
 
+/; _str_contains (~uint8 str, uint8 ch) [bool]
+	/; loop (str` !== 0) [str++]
+		/; if (str` == ch)
+			return true
+		;/
+	;/
+	return false
+;/
+
+~uint8 KEYWORDS = "module,export,asm,if,else,loop,label,goto,continue,break,return,import,as,using,struct,method,interface,enum,implements,operator,is\0"
+~uint8 KEYTYPES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,vect,void\0"
+~uint8 LITERALS = "false,true\0"
+
+~uint8 RESERVED = "~`!@#$%^&*()[]{}+_=\"\'\\|;:/?.>,<\0"
+
+~uint8 OPS = "`~!%^&*-=+./><\0"
+~uint8 MULTI_OPS = "==,&&,||,^^,!==,!&&,!||,!^^,!<,!>,<<,>>,!&,!|,!^,++,--,>==,<==,len\0"
+
+~uint8 DELIMS = "()[]{}\0"
+~uint8 MULTI_DELIMS = ";:#\0"
+
+
 /; tokenize(utils.File fin) [utils.Vector]
 	Token tok
 
