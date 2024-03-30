@@ -8,3 +8,189 @@
 	return false
 ;/
 
+# Length of a cstr
+/; strlen(~uint8 str) [int]
+	int out = 0
+	/; loop (str` !== 0) [str++; out++] ;/
+	return out
+;/
+
+/; base_for_char (uint8 c) [int]
+	/; if (c == 'b' || c == 'B')
+		return 2
+	;; else if (c == 'o' || c == 'O')
+		return 8
+	;; else if (c == 'x' || c == 'X')
+		return 16
+	;/
+
+	return 10
+;/
+
+/; decode_bin (uint8 ch) [int]
+	/; if (ch == '1')
+		return 1
+	;/
+	return 0
+;/
+
+/; decode_oct (uint8 ch) [int]
+	/; if (ch !< '0' && ch !> '7')
+		return ch - '0'
+	;/
+	return 0
+;/
+
+/; decode_hex (uint8 ch) [int]
+	/; if (ch !< '0' && ch !> '9')
+		return ch - '0'
+	;; else if (ch !< 'a' && ch !> 'f')
+		return ch - 'a'
+	;; else if (ch !< 'A' && ch !> 'F')
+		return ch - 'A'
+	;/
+	return 0
+;/
+
+/; decode_dec (uint8 ch) [int]
+	_print_num(NUM_STR, ch)
+	/; if (ch !< '0' && ch !> '9')
+		return ch - '0'
+	;/
+	return 0
+;/
+
+/; cstr_to_int(~uint8 str) [int]
+	int base = 10
+	int start = 0
+	int l = strlen(str)
+
+	# Get base
+	/; if (l > start + 2 && str{start} == '0')
+		/; if (str{start + 1} > '9' || str{start + 1} < '0')
+			base = base_for_char(str{start + 1})
+			start = 2
+		;/
+	;/
+
+	int out = 0
+	/; loop (start < l) [start++]
+		out = out * base
+		int decoded = 0
+		
+		_print_num(NUM_STR, start)
+		_print_num(NUM_STR, str{start})
+		/; if (base == 2)
+			decoded = decode_bin(str{start})
+		;; else if (base == 8)
+			decoded = decode_oct(str{start})
+		;; else if (base == 10)
+			decoded = decode_dec(str{start})
+		;; else if (base == 16)
+			decoded = decode_hex(str{start})
+		;/
+
+		out = out + decoded
+	;/
+
+	return out
+;/
+
+/; cstr_to_uint(~uint8 str) [uint]
+	int base = 10
+	int start = 0
+	int l = strlen(str)
+
+	# Get base
+	/; if (l > start + 2 && str{start} == '0')
+		/; if (str{start + 1} > '9' || str{start + 1} < '0')
+			base = base_for_char(str{start + 1})
+			start = 2
+		;/
+	;/
+
+	uint out = 0
+	/; loop (start < l) [start++]
+		out = out * base
+		uint decoded = 0
+		
+		/; if (base == 2)
+			decoded = decode_bin(str{start})
+		;; else if (base == 8)
+			decoded = decode_oct(str{start})
+		;; else if (base == 10)
+			decoded = decode_dec(str{start})
+		;; else if (base == 16)
+			decoded = decode_hex(str{start})
+		;/
+
+		out = out + decoded
+	;/
+
+	return out
+;/
+
+/; reverse_str (~uint8 str)
+	uint8 tmp
+	int l = strlen(str)
+	/; loop(int i = 0; i < l / 2) [i++]
+		tmp = str{i}
+		str{i} = str{(l - 1) - i}
+		str{(l - 1) - i} = tmp
+	;/
+;/
+
+/; uint_to_hex_str(uint i) [~uint8]
+	Vector out
+	out.init(1)
+
+	out.push_char('0')
+	out.push_char('x')
+
+	/; loop (i > 0) [i = i / 16]
+		int n = i % 16
+		/; if (n > 9)
+			out.push_char('a' + n - 10)
+		;; else
+			out.push_char('0' + n)
+		;/
+	;/
+
+	/; if (out.count < 3)
+		out.push_char('0')
+	;; else
+		~uint8 str = out.as_cstr()
+		reverse_str(str + 2)
+	;/
+
+	return out.as_cstr()
+;/
+
+/; int_to_str(int i) [~uint8]
+	Vector out
+	out.init(1)
+
+	/; if (i < 0)
+		out.push_char('-')
+		i = 0 - i
+	;/
+
+	/; loop (i > 0) [i = i / 10]
+		int n = i % 10
+		out.push_char('0' + n)
+	;/
+
+	/; if (out.count < 1)
+		out.push_char('0')
+	;/
+	
+	~uint8 str = out.as_cstr()
+	/; if (str` == '-')
+		reverse_str(str + 1)
+	;; else
+		reverse_str(str)
+	;/
+
+	return str
+;/
+

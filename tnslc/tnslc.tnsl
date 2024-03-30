@@ -17,7 +17,7 @@ usage:
 
 ~uint8 char_str = "%c\0"
 ~uint8 newline = "\n\0"
-~uint8 rel_pth = "../../tnslc.tnsl\0"
+~uint8 scratch = "1234\0"
 
 /; main (int argc, ~~uint8 argv) [int]
 	asm "mov r10, rdi"
@@ -27,30 +27,14 @@ usage:
 		_printf(USAGE)
 		return 1
 	;/
-
-	utils.File fin
-	fin.init(argv{1})
-	fin.open()
-
-	/; if (fin.at_end == true)
-		_printf(FOPEN_ERR)
-		fin.end()
-		return 2
-	;/
-
-	/; loop (fin.at_end == false)
-		_print_num(char_str, fin.read())
-	;/
-
-	utils.File rel = fin.relative(rel_pth)
-	~uint8 str = rel.path.to_cstr('/')
-	_printf(str)
+	
+	int i = utils.cstr_to_int(scratch)
+	_print_num(utils.NUM_STR, 0 - i)
+	i = 0 - i
+	~uint8 s = utils.int_to_str(i)
+	_printf(s)
 	_printf(newline)
-	_delete(str)
-	rel.end()
-
-	fin.close()
-	fin.end()
+	_delete(s)
 
 	return 0
 ;/
