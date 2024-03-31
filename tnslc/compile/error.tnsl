@@ -5,6 +5,7 @@
 /; report_error (utils.File file, Token token, ~uint8 message)
 	~uint s = file.path.to_cstr('/')
 	_printf(s)
+	_delete(s)
 	_print_num(ERR_NUM, token.line)
 	_print_num(ERR_NUM, token.col)
 	_print_num(TOK_PRNT, token.data)
