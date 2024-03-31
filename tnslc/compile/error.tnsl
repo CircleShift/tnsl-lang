@@ -1,0 +1,14 @@
+
+~uint8 ERR_NUM = ":%d\0"
+~uint8 TOK_PRNT = " \"%s\": \0"
+
+/; report_error (utils.File file, Token token, ~uint8 message)
+	~uint s = file.path.to_cstr('/')
+	_printf(s)
+	_print_num(ERR_NUM, token.line)
+	_print_num(ERR_NUM, token.col)
+	_print_num(TOK_PRNT, token.data)
+	_printf(message)
+	_printf(newline)
+;/
+

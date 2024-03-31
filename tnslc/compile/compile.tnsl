@@ -3,4 +3,5 @@
 	:import "tokenizer.tnsl"
 	:import "lexer.tnsl"
 	:import "generator.tnsl"
+	:import "error.tnsl"
 ;/

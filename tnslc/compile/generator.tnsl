@@ -1,16 +1,25 @@
-/; generate (utils.File fin, fout)
 
-	fin.open()
-	fout.create()
+~uint8 TOKEN_COUNT = "Token count: %d\n\0"
 
-	uint8 buf = fin.read()
-	/; loop (fin.at_end == false && fout.at_end == false)
-		fout.write(buf)
-		buf = fin.read()
+/; generate (~utils.File fin, fout)
+
+	utils.Vector tokens = tokenize(fin)
+
+	_print_num(TOKEN_COUNT, tokens.count)
+
+	fout`.create()
+
+	/; loop (int i = 0; i < tokens.count) [i++]
+		~Token tok = tokens.get(i)
+		~uint8 buf = tok`.sprint()
+		fout`.write_cstr(buf)
+		fout`.write('\n')
+		_delete(buf)
 	;/
 
-	fin.close()
-	fout.close()
+	fout`.close()
+
+	free_token_list(~tokens)
 
 ;/
 
