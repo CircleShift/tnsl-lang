@@ -194,3 +194,9 @@
 	return str
 ;/
 
+/; strclone(~uint8 cstr) [~uint8]
+	Vector out
+	out.from_cstr(cstr)
+	return out.as_cstr()
+;/
+

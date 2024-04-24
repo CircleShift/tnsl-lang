@@ -1,0 +1,10 @@
+struct Function {
+	~uint8 name
+}
+
+/; method Function
+	
+	/; end
+	;/
+;/
+

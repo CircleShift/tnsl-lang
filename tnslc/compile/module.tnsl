@@ -1,11 +1,63 @@
 struct Module {
+	~uint8 name,
 	~Module parent,
-	utils.Vector vars
+	utils.Vector vars, funcs, submods,
+	bool exported
 }
 
 /; method Module
-	/; init (~Module parent)
+	/; init (~uint8 name, ~Module parent, bool exported)
 		self.parent = parent
-		self.vars.init(1)
+		self.exported = exported
+		self.name = utils.strclone(name)
+
+		Variable v
+		self.vars.init(len v)
+		Function f
+		self.funcs.init(len f)
+		Module m
+		self.submods.init(len m)
+	;/
+
+	# Assumes that variable will be freed by this module
+	/; add_var (~Variable v)
+		self.vars.push(v)
+	;/
+
+	# Assumes that function will be freed by this module
+	/; add_func (~Function f)
+		self.funcs.push(f)
+	;/
+
+	# Assumes that submod will be freed by this module
+	/; add_sub (~Module s)
+		self.submods.push(s)
+	;/
+
+	# Free all contained substructures
+	/; end
+		_delete(self.name)
+		
+		~Variable v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`.end()
+		;/
+
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			f`.end()
+		;/
+
+		~Module s
+		/; loop (int i = 0; i < self.submods.count) [i++]
+			s = self.submods.get(i)
+			s`.end()
+		;/
+
+		self.vars.end()
+		self.funcs.end()
+		self.submods.end()
 	;/
 ;/
