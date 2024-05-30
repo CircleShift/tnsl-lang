@@ -8,6 +8,6 @@ mkdir -p $ARTIFACT_DIR
 filename=tnslc.tnsl
 filename="${filename%.*}"
 ./ctc $filename.tnsl $ARTIFACT_DIR/$filename.asm
-nasm -f elf64 -o $ARTIFACT_DIR/$filename.o $ARTIFACT_DIR/$filename.asm
-gcc -s -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
+nasm -g -f elf64 -o $ARTIFACT_DIR/$filename.o $ARTIFACT_DIR/$filename.asm
+gcc -ggdb -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
 
