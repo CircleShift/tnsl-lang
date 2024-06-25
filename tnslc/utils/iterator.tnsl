@@ -19,10 +19,22 @@ struct Iterator {
 		;/
 	;/
 
+	/; at_end [bool]
+		return (self.pos + 1) !< (self.v`.count)
+	;/
+
 	/; prev
 		/; if (self.pos > 0)
 			self.pos--
 		;/
+	;/
+
+	/; get_pos [int]
+		return self.pos
+	;/
+
+	/; set_pos (int p)
+		self.pos = p
 	;/
 ;/
 

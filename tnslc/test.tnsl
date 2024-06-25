@@ -1,5 +1,12 @@
 # should not be included
+
+/; whatev (~uint8 a) [uint8]
+	return a{0}
+;/
+
 /; main [int]
-	
+	~uint8 a = "asdf\0"
+	whatev(a)
+	whatev("asdf\0")
 	return 0
 ;/

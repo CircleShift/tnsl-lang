@@ -1,2 +1,88 @@
 
+int NT_MODULE = 0
+int NT_BLOCK = 1
+int NT_FUNC = 2
+int NT_PARAM = 3
+int NT_RESULT = 4
+int NT_DATA = 5
+int NT_TYPE = 6
+int NT_STRUCT = 7
+
+struct Node {
+	int _type,
+	~uint8 data,
+	utils.Vector sub
+}
+
+/; method Node
+	/; init (int typ, ~uint8 dat)
+		self._type = typ
+		self.data = dat
+		Node sub
+		self.sub.init(len sub)
+	;/
+
+	/; end
+		_delete(self.data)
+
+		~Node n
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			n = self.sub.get(i)
+			n`.end()
+		;/
+		self.sub.end()
+	;/
+
+;/
+
+/; build_struct (utils.Iterator it)
+;/
+
+/; build_module ()
+;/
+
+/; build_block (utils.Iterator it)
+;/
+
+/; build_preproc (utils.Iterator it)
+;/
+
+/; build_vardef (utils.Iterator it)
+;/
+
+/; at_defn (utils.Iterator it) [bool]
+	return false
+;/
+
+~uint8 TOKEN_COUNT = "Token count: %d\n\0"
+
+/; build_file (~utils.File fin, ~Node mod)
+	utils.Vector tokens = tokenize(fin)
+	_print_num(TOKEN_COUNT, tokens.count)
+	
+	utils.Iterator tokit
+	tokit.init(~tokens)
+
+	/; loop (tokit.at_end() == false)
+		~Token t = tokit.get()
+		/; if (utils.strcmp(t`.data, "/;\0") == true)
+			_printf("Block detected!\n\0")
+			build_block(tokit)
+		;; else if (utils.strcmp(t`.data, "struct\0") == true)
+			_printf("Struct detected!\n\0")
+			build_struct(tokit)
+		;; else if (utils.strcmp(t`.data, ":\0") == true)
+			_printf("Preproc detected!\n\0")
+			build_preproc(tokit)
+		;; else if (at_defn(tokit) == true)
+			_printf("Defn detected!\n\0")
+			build_vardef(tokit)
+		;; else
+			# _printf("Error detected!\n\0")
+			# TODO: ERROR
+		;/
+
+		tokit.next()
+	;/
+;/
 
