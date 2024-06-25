@@ -35,22 +35,56 @@ struct Node {
 
 ;/
 
-/; build_struct (utils.Iterator it)
+/; build_struct (~utils.Iterator it, ~Node mod, ~utils.File fin)
 ;/
 
-/; build_module ()
+/; build_module (~utils.Iterator it, ~Node mod, ~utils.File fin)
 ;/
 
-/; build_block (utils.Iterator it)
+/; build_block (~utils.Iterator it, ~Node mod, ~utils.File fin)
+	it`.next()
+	/; if (it`.at_end() == true)
+		return
+	;/
+
+	~Token cur = it`.get()
 ;/
 
-/; build_preproc (utils.Iterator it)
+/; build_preproc (~utils.Iterator it, ~Node mod, ~utils.File fin)
+	it`.next()
+	/; if (it`.at_end() == true)
+		return
+	;/
+
+	~Token cur = it`.get()
+	/; if (utils.strcmp(cur`.data, "import\0") == true)
+		# get file path
+		it`.next()
+		cur = it`.get()
+
+		# gen new file struct
+		~uint8 frel = utils.unquote_str(cur`.data)
+		_printf("\nReading file: \0")
+		_printf(frel)
+		_printf("\n\0")
+		utils.File fnew = fin`.relative(frel)
+		
+		# file import
+		build_file(~fnew, mod)
+
+		# cleanup
+		_delete(frel)
+		fnew.end()
+	;; else
+		# unknown preproc
+		return
+	;/
 ;/
 
-/; build_vardef (utils.Iterator it)
+/; build_vardef (~utils.Iterator it, ~Node mod, ~utils.File fin)
 ;/
 
-/; at_defn (utils.Iterator it) [bool]
+/; at_defn (~utils.Iterator it) [bool]
 	return false
 ;/
 
@@ -65,18 +99,18 @@ struct Node {
 
 	/; loop (tokit.at_end() == false)
 		~Token t = tokit.get()
-		/; if (utils.strcmp(t`.data, "/;\0") == true)
+		/; if (utils.strcmp(t`.data, "/;\0") || utils.strcmp(t`.data, ";;\0"))
 			_printf("Block detected!\n\0")
-			build_block(tokit)
+			build_block(~tokit, mod, fin)
 		;; else if (utils.strcmp(t`.data, "struct\0") == true)
 			_printf("Struct detected!\n\0")
-			build_struct(tokit)
+			build_struct(~tokit, mod, fin)
 		;; else if (utils.strcmp(t`.data, ":\0") == true)
 			_printf("Preproc detected!\n\0")
-			build_preproc(tokit)
+			build_preproc(~tokit, mod, fin)
 		;; else if (at_defn(tokit) == true)
 			_printf("Defn detected!\n\0")
-			build_vardef(tokit)
+			build_vardef(~tokit, mod, fin)
 		;; else
 			# _printf("Error detected!\n\0")
 			# TODO: ERROR
@@ -84,5 +118,7 @@ struct Node {
 
 		tokit.next()
 	;/
+
+	free_token_list(~tokens)
 ;/
 

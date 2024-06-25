@@ -200,3 +200,43 @@
 	return out.as_cstr()
 ;/
 
+/; unquote_cha(~uint8 cha) [uint8]
+	/; if (cha` !== '\\')
+		return cha`
+	;/
+
+	cha++
+
+	/; if (cha` == '\"')
+		return '\"'
+	;; else if (cha` == '\'')
+		return '\''
+	;; else if (cha` == '\\')
+		return '\\'
+	;; else if (cha` == 'n')
+		return '\n'
+	;; else if (cha` == 't')
+		return '\t'
+	;; else if (cha` == '0')
+		return 0
+	;/
+
+	return cha`
+;/
+
+/; unquote_str(~uint8 str) [~uint8]
+	Vector out
+	out.init(1)
+
+	/; loop (str++; str` !== 0 && str` !== '\"') [str++]
+		uint8 buf = str`
+		/; if (str` == '\\')
+			buf = unquote_cha(str)
+			str++
+		;/
+		out.push(~buf)
+	;/
+
+	return out.as_cstr()
+;/
+
