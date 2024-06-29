@@ -1,12 +1,13 @@
 
 int NT_MODULE = 0
-int NT_BLOCK = 1
-int NT_FUNC = 2
-int NT_PARAM = 3
-int NT_RESULT = 4
-int NT_DATA = 5
-int NT_TYPE = 6
-int NT_STRUCT = 7
+int NT_MOD_EX = 1
+int NT_BLOCK = 2
+int NT_FUNC = 3
+int NT_PARAM = 4
+int NT_RESULT = 5
+int NT_DATA = 6
+int NT_TYPE = 7
+int NT_STRUCT = 8
 
 struct Node {
 	int _type,
@@ -35,19 +36,141 @@ struct Node {
 
 ;/
 
+/; check_via_next (~utils.Iterator it, ~uint8 chk) [bool]
+	it`.next()
+
+	/; if (it`.at_end() == true)
+		it`.prev()
+		return false
+	;/
+	
+	~Token cur = it`.get()
+	/; if (utils.strcmp(cur`.data, cur) == true)
+		return true
+	;/
+
+	it`.prev()
+	return false
+;/
+
+/; check_and_advance (~utils.Iterator it, ~uint8 chk) [bool]
+	/; if (it`.at_end() == true)
+		return false
+	;/
+
+	~Token cur = it`.get()
+	/; if (utils.strcmp(cur`.data, cur) == true)
+		it`.next()
+		return true
+	;/
+
+	return false
+;/
+
 /; build_struct (~utils.Iterator it, ~Node mod, ~utils.File fin)
 ;/
 
 /; build_module (~utils.Iterator it, ~Node mod, ~utils.File fin)
+
+	int NT = NT_MODULE
+	~Token t = it`.get()
+	/; if (utils.strcmp(t`.data, "export\0"))
+		NT = NT_MOD_EX
+		it`.next()
+	;/
+
+	Node sub
+	it`.next()
+	t = it`.get()
+
+	/; if (t`._type !== TT_DEFWORD)
+		_printf("Error in module decl")
+		return
+	;/
+	
+	sub.init(NT, utils.strcpy(t`.data))
+	bool run = true
+
+	/; loop (it`.at_end() == false && run == true)
+		t = it`.get()
+		
+		/; if (utils.strcmp(t`.data, ";/\0") || utils.strcmp(t`.data, ";;\0"))
+			run = false
+
+		;; else if (utils.strcmp(t`.data, "/;\0"))
+			_printf("Block detected!\n\0")
+			build_block(it, ~sub, fin)
+
+		;; else if (utils.strcmp(t`.data, "struct\0") == true)
+			_printf("Struct detected!\n\0")
+			build_struct(it, ~sub, fin)
+
+		;; else if (utils.strcmp(t`.data, ":\0") == true)
+			_printf("Preproc detected!\n\0")
+			build_preproc(it, ~sub, fin)
+
+		;; else if (at_defn(it) == true)
+			_printf("Defn detected!\n\0")
+			build_vardef(it, ~sub, fin)
+
+		;; else
+			# _printf("Error detected!\n\0")
+			# TODO: ERROR
+		;/
+
+		/; if (run == true)
+			it`.next()
+		;/
+	;/
+
+	mod`.sub.push(~sub)
+;/
+
+/; build_method (~utils.Iterator it, ~Node mod, ~utils.File fin)
+;/
+
+/; build_function (~utils.Iterator it, ~Node mod, ~utils.File fin)
 ;/
 
 /; build_block (~utils.Iterator it, ~Node mod, ~utils.File fin)
 	it`.next()
+
 	/; if (it`.at_end() == true)
 		return
 	;/
 
-	~Token cur = it`.get()
+	~Token cur
+	bool run = true
+
+	/; loop (it`.at_end() == false && run == true)
+		cur = it`.get()
+
+		/; if (utils.strcmp(cur`.data, "module\0") || utils.strcmp(cur`.data, "export\0"))
+			build_module(it, mod, fin)
+
+		;; else if (utils.strcmp(cur`.data, "method\0") == true)
+			build_method(it, mod, fin)
+
+		;; else if (cur`._type == TT_DEFWORD)
+			build_function(it, mod, fin)
+
+		;; else
+			# TODO: ERROR
+
+		;/
+
+		cur = it`.get()
+
+		/; if (utils.strcmp(cur`.data, ";/\0") == true)
+			run = false
+		;; else if (utils.strcmp(cur`.data, ";;\0") == true)
+			it`.next()
+		;; else
+			run = false
+			# report error
+		;/
+	;/
+
 ;/
 
 /; build_preproc (~utils.Iterator it, ~Node mod, ~utils.File fin)
@@ -108,7 +231,7 @@ struct Node {
 		;; else if (utils.strcmp(t`.data, ":\0") == true)
 			_printf("Preproc detected!\n\0")
 			build_preproc(~tokit, mod, fin)
-		;; else if (at_defn(tokit) == true)
+		;; else if (at_defn(~tokit) == true)
 			_printf("Defn detected!\n\0")
 			build_vardef(~tokit, mod, fin)
 		;; else
