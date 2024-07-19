@@ -1,9 +1,0 @@
-struct Variable {
-	~uint8 name
-}
-
-/; method Variable
-
-	/; end
-	;/
-;/

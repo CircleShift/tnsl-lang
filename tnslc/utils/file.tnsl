@@ -1,6 +1,7 @@
 struct File {
 	Artifact path,
 	~void handle,
+	uint pos,
 	bool at_end
 }
 
@@ -14,6 +15,7 @@ struct File {
 		self.path.split_cstr(str, '/')
 		self.handle = NULL
 		self.at_end = false
+		self.pos = 0
 	;/
 
 	/; relative (~uint8 path) [File]
@@ -75,13 +77,33 @@ struct File {
 	;/
 
 	/; read [uint8]
+		/; if (self.at_end == true)
+			return 0
+		;/
+
 		uint8 out
 		int bytes = _read_byte(self.handle, ~out)
+		self.pos = self.pos + 1
+		
 		/; if (bytes == 0)
 			self.at_end = true
 			return 0
 		;/
+		
 		return out
+	;/
+
+	/; unread
+		/; if (self.pos < 1)
+			return
+		;/
+
+		_fseek(self.handle, self.pos - 1)
+		self.pos = self.pos - 1
+
+		/; if (self.at_end == true)
+			self.at_end = false
+		;/
 	;/
 
 	/; write (uint8 byte)

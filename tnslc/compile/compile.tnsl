@@ -1,9 +1,3 @@
 /; module compile
-	:import "variable.tnsl"
-	:import "function.tnsl"
-	:import "module.tnsl"
-	:import "tokenizer.tnsl"
-	:import "ast.tnsl"
-	:import "generator.tnsl"
-	:import "error.tnsl"
+	:import "generate.tnsl"
 ;/

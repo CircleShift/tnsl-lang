@@ -1,5 +1,5 @@
 # Must be included at the top of the file
-asm "extern malloc, realloc, free, printf, open, close, read, write"
+asm "extern malloc, realloc, free, printf, open, close, read, write, fseek"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
@@ -200,6 +200,30 @@ asm "extern malloc, realloc, free, printf, open, close, read, write"
     asm "mov r12, rax"
 
     return out
+;/
+
+/; _fseek (~void handle, uint pos) [int]
+	int out
+
+	# align stack
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    # add buffer zone to stack
+	asm "sub rsp, 128"
+
+	# Call c func
+	asm "mov rdi, r10"
+	asm "mov rsi, r11"
+	asm "mov rdx, 0" # standard value for SEEK_SET as per GNU libc
+    asm "call fseek wrt ..plt"
+
+	# get return value
+	asm "mov r12, rax"
+
+	return out
 ;/
 
 /; _write_byte (~void handle, ~uint8 byte) [int]

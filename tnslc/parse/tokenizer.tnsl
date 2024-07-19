@@ -1,0 +1,90 @@
+
+uint TTYPE_DELIM = 0
+uint TTYPE_SEP   = 1
+uint TTYPE_KEYWD = 2
+uint TTYPE_KEYTP = 3
+uint TTYPE_LITRL = 4
+uint TTYPE_AUG   = 5
+uint TTYPE_USRWD = 6
+
+uint TTYPE_ERR   = 999
+
+struct Token {
+	uint _type,
+	~uint8 data,
+	uint line, col
+}
+
+~uint8 KEYWORDS = "import,module,export,struct,method,operator,if,else,loop,continue,break,return"
+~uint8 KEYTYPES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,void,vect,type"
+
+/; produce_word_token (~utils.File fin, Token prev) [Token]
+	Token out
+	return out
+;/
+
+/; produce_int_token (~utils.File fin, Token prev) [Token]
+	Token out
+	out._type = TTYPE_LITRL
+	out.line = prev.line
+	out.col = prev.col
+	return out
+;/
+
+/; produce_string_token (~utils.File fin, Token prev) [Token]
+	Token out
+	out._type = TTYPE_LITRL
+	out.line = prev.line
+	out.col = prev.col
+
+	utils.Vector store
+	store.init(1)
+	uint8 delim = fin`.read()
+	store.push(~delim)
+
+	out.data = store.as_cstr()
+
+	return out
+;/
+
+/; produce_reserved_token (~utils.File fin, Token prev) [Token]
+	Token out
+	
+	return out
+;/
+
+/; is_whitespace (uint8 ch) [bool]
+	/; if (ch > 8 && ch < 14)
+		return true
+	;; else if (ch == ' ')
+		return true
+	;/
+	return false
+;/
+
+/; is_reserved [bool]
+	return false
+;/
+
+/; produce_next_token (~utils.File fin, Token prev) [Token]
+	# /; if (prev.data !== 0)
+		prev.col = prev.col + utils.strlen(prev.data)
+	# ;/
+
+	uint8 first = fin`.read()
+	/; loop (is_whitespace(first) == true)
+		first = fin`.read()
+	;/
+	fin`.unread()
+	
+	/; if (first == '\'' || first == '\"')
+		return produce_string_token(fin, prev)
+	;/
+
+	Token out
+	out.line = prev.line
+	out.col = prev.col
+	out._type = TTYPE_ERR
+	return out
+;/
+
