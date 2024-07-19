@@ -12,22 +12,101 @@ uint TTYPE_ERR   = 999
 struct Token {
 	uint _type,
 	~uint8 data,
-	uint line, col
+	uint
+		line,
+		col
 }
 
-~uint8 KEYWORDS = "import,module,export,struct,method,operator,if,else,loop,continue,break,return"
-~uint8 KEYTYPES = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,void,vect,type"
+/; method Token
+	/; eq (~uint8 str) [bool]
+		return utils.strcmp(self.data, str)
+	;/
+
+	/; end
+		_delete(self.data)
+	;/
+;/
+
+/; _in_csv (~uint8 csv, ~uint8 str) [bool]
+	int along = 0
+
+	/; loop (csv` !== 0) [csv++]
+		/; if (csv` == ',')
+			/; if (along !< 0 && str{along} == 0)
+				return true
+			;/
+			along = 0
+		;; else if (along !< 0 && str{along} == csv`)
+			along++
+		;; else
+			along = 0
+			along--
+		;/
+	;/
+
+	return along !< 0 && str{along} == 0
+;/
+
+/; _str_contains (~uint8 str, uint8 ch) [bool]
+	/; loop (str` !== 0) [str++]
+		/; if (str` == ch)
+			return true
+		;/
+	;/
+	return false
+;/
+
+
+~uint8 KEYWORDS   = "import,using,module,export,struct,method,implements,interface,operator,enum,if,else,loop,continue,break,return,label,goto,asm\0"
+~uint8 KEYTYPES   = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,void,vect,type\0"
+~uint8 LITERALS   = "false,true,null\0"
+
+~uint8 RESERVED   = "~`!@#$%^&*()[]{}-+=\"\'\\|;:/?.>,<\0"
+
+~uint8 OP         = "`~!%^&|*-=+./><\0"
+~uint8 MULTI_OP   = "==,&&,||,^^,!==,!&&,!||,!^^,!<,!>,<<,>>,!&,!|,!^,++,--,>==,<==\0"
+uint   MAX_MULTI  = 3
+~uint8 MULTI_OP_W = "is,len\0"
+
+~uint8 DELIMS     = "()[]{}\0"
+
 
 /; produce_word_token (~utils.File fin, Token prev) [Token]
 	Token out
-	return out
-;/
-
-/; produce_int_token (~utils.File fin, Token prev) [Token]
-	Token out
-	out._type = TTYPE_LITRL
 	out.line = prev.line
 	out.col = prev.col
+
+	utils.Vector tmp
+	tmp.init(1)
+	
+	uint8 ch = fin`.read()
+	tmp.push(~ch)
+
+	/; loop (bool run = true) [run == true]
+		ch = fin`.read()
+		/; if (ch == 0)
+			run = false
+		;; else if (is_reserved(ch) == true || is_whitespace(ch) == true)
+			fin`.unread()
+			run = false
+		;; else
+			tmp.push(~ch)
+		;/
+	;/
+
+	~uint8 str = tmp.as_cstr()
+	/; if (_in_csv(KEYWORDS, str) == true)
+		out._type = TTYPE_KEYWD
+	;; else if (_in_csv(KEYTYPES, str) == true)
+		out._type == TTYPE_KEYTP
+	;; else if (_in_csv(LITERALS, str) == true)
+		out._type == TTYPE_LITRL
+	;; else if (_in_csv(MULTI_OP_W, str) == true)
+		out._type = TTYPE_AUG
+	;; else
+		out._type = TTYPE_USRWD
+	;/
+
 	return out
 ;/
 
@@ -42,6 +121,19 @@ struct Token {
 	uint8 delim = fin`.read()
 	store.push(~delim)
 
+	/; loop (fin`.at_end == false && delim !== 0)
+		uint8 tmp = fin`.read()
+		store.push(~tmp)
+		/; if(tmp == '\\')
+			tmp = fin`.read()
+			store.push(~tmp)
+		;; else if (tmp == delim)
+			delim = 0
+		;; else if (tmp == '\n')
+			out.line++
+		;/
+	;/
+
 	out.data = store.as_cstr()
 
 	return out
@@ -49,7 +141,106 @@ struct Token {
 
 /; produce_reserved_token (~utils.File fin, Token prev) [Token]
 	Token out
+	utils.Vector tmp
+	tmp.init(1)
+
+	out.line = prev.line
+	out.col = prev.col
+
+	/; loop (int i = 0; i < MAX_MULTI) [i++]
+		uint8 ch = fin`.read()
+		/; if (is_reserved(ch) == true)
+			tmp.push(~ch)
+		;; else
+			fin`.unread()
+			i = MAX_MULTI
+		;/
+	;/
 	
+	/; loop (bool run = true) [run == true]
+		/; if (tmp.count < 2)
+			run = false
+			~uint8 ch = tmp.get(0)
+			/; if (ch` == ';' || ch` == ',')
+				out._type = TTYPE_SEP
+			;; else if (_str_contains(DELIMS, ch`) == true)
+				out._type = TTYPE_DELIM
+			;; else if (_str_contains(OP, ch`) == true)
+				out._type = TTYPE_AUG
+			;/
+		;; else if (_in_csv(MULTI_OP, tmp.as_cstr()) == true)
+			run = false
+			out._type = TTYPE_AUG
+		;; else if (tmp.count == 2)
+			~uint8 cha = tmp.get(0)
+			~uint8 chb = tmp.get(0)
+			/; if (cha` == ';' && chb` == ';')
+				run = false
+			;; else if (cha` == '/' && chb` == ';')
+				run = false
+			;; else if (cha` == ';' && chb` == '/')
+				run = false
+			;/
+
+			/; if (run == false)
+				out._type = TTYPE_DELIM
+			;/
+		;; else
+			tmp.pop()
+			fin`.unread()
+		;/
+	;/
+
+	out.data = tmp.as_cstr()
+
+	return out
+;/
+
+/; produce_numeric_token (~utils.File fin, Token prev) [Token]
+	Token out
+	out._type = TTYPE_LITRL
+	out.line = prev.line
+	out.col = prev.col
+
+	utils.Vector tmp
+	tmp.init(1)
+	uint8 ch = fin`.read()
+	tmp.push(~ch)
+
+	bool alt_base = false
+	/; if (ch == '0')
+		ch = fin`.read()
+		/; if (ch !< 'a' && ch !> 'z')
+			alt_base = true
+		;; else if (ch !< 'A' && ch !> 'Z')
+			alt_base = true
+		;; else if (is_reserved(ch) == true)
+			fin`.unread()
+			out.data = tmp.as_cstr()
+			return out
+		;; else if (ch == 0)
+			out.data = tmp.as_cstr()
+			return out
+		;/
+		tmp.push(~ch)
+	;/
+
+	/; loop (bool run = true) [run == true]
+		ch = fin`.read()
+		/; if (is_numeric(ch) == false && alt_base == false)
+			fin`.unread()
+			run = false
+		;; else if (is_reserved(ch) == true)
+			fin`.unread()
+			run = false
+		;; else if (ch == 0 || fin`.at_end == true)
+			run = false
+		;; else
+			tmp.push(~ch)
+		;/
+	;/
+
+	out.data = tmp.as_cstr()
 	return out
 ;/
 
@@ -62,23 +253,41 @@ struct Token {
 	return false
 ;/
 
-/; is_reserved [bool]
+/; is_reserved (uint8 ch) [bool]
+	return _str_contains(RESERVED, ch)
+;/
+
+/; is_numeric (uint8 ch) [bool]
+	/; if (ch !< '0' && ch !> '9')
+		return true
+	;/
 	return false
 ;/
 
 /; produce_next_token (~utils.File fin, Token prev) [Token]
-	# /; if (prev.data !== 0)
+	/; if (prev._type !== TTYPE_ERR)
 		prev.col = prev.col + utils.strlen(prev.data)
-	# ;/
+	;/
 
 	uint8 first = fin`.read()
 	/; loop (is_whitespace(first) == true)
+		/; if (first == '\n')
+			prev.line++
+			prev.col = 0
+		;/
 		first = fin`.read()
+		prev.col++
 	;/
 	fin`.unread()
 	
 	/; if (first == '\'' || first == '\"')
 		return produce_string_token(fin, prev)
+	;; else if (is_reserved(first) == true)
+		return produce_reserved_token(fin, prev)
+	;; else if (is_numeric(first) == true)
+		return produce_numeric_token(fin, prev)
+	;; else if (first !== 0)
+		return produce_word_token(fin, prev)
 	;/
 
 	Token out
@@ -86,5 +295,14 @@ struct Token {
 	out.col = prev.col
 	out._type = TTYPE_ERR
 	return out
+;/
+
+/; produce_first_token (~utils.File fin) [Token]
+	Token tmp
+	tmp.line = 1
+	tmp.col = 1
+	tmp._type = TTYPE_ERR
+	
+	return produce_next_token(fin, tmp)
 ;/
 
