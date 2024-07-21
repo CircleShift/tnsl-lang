@@ -1,0 +1,21 @@
+
+uint16 NTYPE_MOD = 0
+uint16 NTYPE_STRUCT = 1
+uint16 NTYPE_ID = 2
+uint16 NTYPE_BINOP = 3
+uint16 NTYPE_PREOP = 4
+uint16 NTYPE_POSTOP = 5
+uint16 NTYPE_FUNCTION = 6
+
+
+struct Node {
+	uint16 _type,
+	~uint8 data,
+	utils.Vector sub
+}
+
+/; generate_ast (~utils.File fin) [Node]
+	Node out
+	return out
+;/
+

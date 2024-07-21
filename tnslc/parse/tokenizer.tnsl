@@ -6,7 +6,9 @@ uint TTYPE_KEYTP = 3
 uint TTYPE_LITRL = 4
 uint TTYPE_AUG   = 5
 uint TTYPE_USRWD = 6
+uint TTYPE_COMNT = 7
 
+uint TTYPE_UNKNOWN = 998
 uint TTYPE_ERR   = 999
 
 struct Token {
@@ -75,36 +77,31 @@ uint   MAX_MULTI  = 3
 	Token out
 	out.line = prev.line
 	out.col = prev.col
+	out._type = TTYPE_USRWD
 
 	utils.Vector tmp
 	tmp.init(1)
-	
-	uint8 ch = fin`.read()
-	tmp.push(~ch)
 
-	/; loop (bool run = true) [run == true]
+	uint8 ch = fin`.read()
+
+	/; loop (fin`.at_end == false && is_reserved(ch) == false && is_whitespace(ch) == false)
+		tmp.push(~ch)
 		ch = fin`.read()
-		/; if (ch == 0)
-			run = false
-		;; else if (is_reserved(ch) == true || is_whitespace(ch) == true)
-			fin`.unread()
-			run = false
-		;; else
-			tmp.push(~ch)
-		;/
 	;/
 
-	~uint8 str = tmp.as_cstr()
-	/; if (_in_csv(KEYWORDS, str) == true)
+	/; if (fin`.at_end == false)
+		fin`.unread()
+	;/
+
+	out.data = tmp.as_cstr()
+	/; if (_in_csv(KEYWORDS, out.data) == true)
 		out._type = TTYPE_KEYWD
-	;; else if (_in_csv(KEYTYPES, str) == true)
-		out._type == TTYPE_KEYTP
-	;; else if (_in_csv(LITERALS, str) == true)
-		out._type == TTYPE_LITRL
-	;; else if (_in_csv(MULTI_OP_W, str) == true)
+	;; else if (_in_csv(KEYTYPES, out.data) == true)
+		out._type = TTYPE_KEYTP
+	;; else if (_in_csv(LITERALS, out.data) == true)
+		out._type = TTYPE_LITRL
+	;; else if (_in_csv(MULTI_OP_W) == true)
 		out._type = TTYPE_AUG
-	;; else
-		out._type = TTYPE_USRWD
 	;/
 
 	return out
@@ -112,79 +109,135 @@ uint   MAX_MULTI  = 3
 
 /; produce_string_token (~utils.File fin, Token prev) [Token]
 	Token out
-	out._type = TTYPE_LITRL
 	out.line = prev.line
 	out.col = prev.col
+	out._type = TTYPE_LITRL
 
-	utils.Vector store
-	store.init(1)
+	utils.Vector tmp
+	tmp.init(1)
+
 	uint8 delim = fin`.read()
-	store.push(~delim)
+	tmp.push(~delim)
 
 	/; loop (fin`.at_end == false && delim !== 0)
-		uint8 tmp = fin`.read()
-		store.push(~tmp)
-		/; if(tmp == '\\')
-			tmp = fin`.read()
-			store.push(~tmp)
-		;; else if (tmp == delim)
-			delim = 0
-		;; else if (tmp == '\n')
+		uint8 ch = fin`.read()
+		/; if (ch == '\\')
+			tmp.push(~ch)
+			ch = fin`.read()
+		;; else if (ch == '\n')
 			out.line++
+		;; else if (ch == delim)
+			delim = 0
+		;/
+		
+		/; if (ch !== 0)
+			tmp.push(~ch)
 		;/
 	;/
 
-	out.data = store.as_cstr()
-
+	out.data = tmp.as_cstr()
 	return out
+;/
+
+/; comment_line (~utils.File fin)
+	uint8 ch = fin`.read()
+
+	/; loop (fin`.at_end == false && ch !== '\n')
+		ch = fin`.read()
+	;/
+
+	/; if (fin`.at_end == false)
+		fin`.unread()
+	;/
+;/
+
+/; comment_block (~utils.File fin, ~Token out)
+	uint8 ch = 1
+	/; loop (fin`.at_end == false && ch !== 0)
+		ch = fin`.read()
+		/; if (ch == '#')
+			ch = fin`.read()
+			/; if (ch == '/')
+				ch = 0
+			;; else
+				comment_line(fin)
+			;/
+		;/
+
+		/; if (ch == '\n')
+			out`.line++
+		;/
+	;/
+;/
+
+/; is_comment_block (~uint8 str) [bool]
+	return utils.strcmp(str, "/#\0")
+;/
+
+/; is_multi_delim(~uint8 str) [bool]
+	/; if (utils.strcmp(str, "/;\0") == true)
+		return true
+	;; else if (utils.strcmp(str, ";;\0") == true)
+		return true
+	;; else if (utils.strcmp(str, ";/\0") == true)
+		return true
+	;/
+	return false
 ;/
 
 /; produce_reserved_token (~utils.File fin, Token prev) [Token]
 	Token out
+	out.line = prev.line
+	out.col = prev.col
+	out._type = TTYPE_USRWD
+
 	utils.Vector tmp
 	tmp.init(1)
 
-	out.line = prev.line
-	out.col = prev.col
+	uint8 ch = fin`.read()
 
-	/; loop (int i = 0; i < MAX_MULTI) [i++]
-		uint8 ch = fin`.read()
-		/; if (is_reserved(ch) == true)
-			tmp.push(~ch)
-		;; else
-			fin`.unread()
+	/; if (ch == '#')
+		tmp.push(~ch)
+		out._type = TTYPE_COMNT
+		out.data = tmp.as_cstr()
+		comment_line(fin)
+		return out
+	;/
+
+	tmp.push(~ch)
+	/; loop (int i = 1; i < MAX_MULTI) [i++]
+		ch = fin`.read()
+		/; if (is_reserved(ch) == false)
 			i = MAX_MULTI
+			fin`.unread()
+		;; else
+			tmp.push(~ch)
 		;/
 	;/
-	
-	/; loop (bool run = true) [run == true]
-		/; if (tmp.count < 2)
-			run = false
-			~uint8 ch = tmp.get(0)
-			/; if (ch` == ';' || ch` == ',')
-				out._type = TTYPE_SEP
-			;; else if (_str_contains(DELIMS, ch`) == true)
-				out._type = TTYPE_DELIM
-			;; else if (_str_contains(OP, ch`) == true)
-				out._type = TTYPE_AUG
-			;/
-		;; else if (_in_csv(MULTI_OP, tmp.as_cstr()) == true)
-			run = false
-			out._type = TTYPE_AUG
-		;; else if (tmp.count == 2)
-			~uint8 cha = tmp.get(0)
-			~uint8 chb = tmp.get(0)
-			/; if (cha` == ';' && chb` == ';')
-				run = false
-			;; else if (cha` == '/' && chb` == ';')
-				run = false
-			;; else if (cha` == ';' && chb` == '/')
-				run = false
-			;/
 
-			/; if (run == false)
+	/; loop (bool run = true; run == true)
+		~uint8 str = tmp.as_cstr()
+		/; if (tmp.count == 1)
+			/; if (str` == ',' || str` == ';')
+				out._type = TTYPE_SEP
+			;; else if (_str_contains(OP, str`))
+				out._type = TTYPE_AUG
+			;; else if (_str_contains(DELIMS, str`))
 				out._type = TTYPE_DELIM
+			;; else
+				out._type = TTYPE_UNKNOWN
 			;/
+			run = false
+		;; else if (_in_csv(MULTI_OP, str) == true)
+			out._type = TTYPE_AUG
+			run = false
+		;; else if (is_comment_block(str) == true)
+			out._type = TTYPE_COMNT
+			comment_block(fin, ~out)
+			run = false
+		;; else if (is_multi_delim(str) == true)
+			out._type = TTYPE_DELIM
+			run = false
 		;; else
 			tmp.pop()
 			fin`.unread()
@@ -192,50 +245,42 @@ uint   MAX_MULTI  = 3
 	;/
 
 	out.data = tmp.as_cstr()
-
 	return out
 ;/
 
 /; produce_numeric_token (~utils.File fin, Token prev) [Token]
 	Token out
-	out._type = TTYPE_LITRL
 	out.line = prev.line
 	out.col = prev.col
+	out._type = TTYPE_LITRL
 
 	utils.Vector tmp
 	tmp.init(1)
+	
 	uint8 ch = fin`.read()
 	tmp.push(~ch)
-
-	bool alt_base = false
+	bool base = false
 	/; if (ch == '0')
 		ch = fin`.read()
-		/; if (ch !< 'a' && ch !> 'z')
-			alt_base = true
-		;; else if (ch !< 'A' && ch !> 'Z')
-			alt_base = true
-		;; else if (is_reserved(ch) == true)
-			fin`.unread()
-			out.data = tmp.as_cstr()
-			return out
-		;; else if (ch == 0)
-			out.data = tmp.as_cstr()
-			return out
+		/; if (is_reserved(ch) == false && is_whitespace(ch) == false && is_numeric(ch) == false)
+			base = true
+			tmp.push(~ch)
 		;/
-		tmp.push(~ch)
 	;/
 
-	/; loop (bool run = true) [run == true]
+	bool decimal = false
+	/; loop (bool run = true; run == true && fin`.at_end == false)
 		ch = fin`.read()
-		/; if (is_numeric(ch) == false && alt_base == false)
+		/; if (decimal == false && ch == '.')
+			decimal = true
+			tmp.push(~ch)
+		;; else if (is_reserved(ch) == true || is_whitespace(ch) == true)
 			fin`.unread()
 			run = false
-		;; else if (is_reserved(ch) == true)
+		;; else if (is_numeric(ch) == false && base == false)
 			fin`.unread()
 			run = false
-		;; else if (ch == 0 || fin`.at_end == true)
-			run = false
-		;; else
+		;; else if (ch !== 0)
 			tmp.push(~ch)
 		;/
 	;/
@@ -254,7 +299,7 @@ uint   MAX_MULTI  = 3
 ;/
 
 /; is_reserved (uint8 ch) [bool]
-	return _str_contains(RESERVED, ch)
+	return _str_contains(RESERVED, ch) == true
 ;/
 
 /; is_numeric (uint8 ch) [bool]
@@ -304,5 +349,75 @@ uint   MAX_MULTI  = 3
 	tmp._type = TTYPE_ERR
 	
 	return produce_next_token(fin, tmp)
+;/
+
+/; gen_token_list (~utils.File fin) [utils.Vector]
+	utils.Vector out
+	Token tmp
+	out.init(len tmp)
+	
+	fin`.open()
+	tmp = produce_first_token(fin)
+	/; loop (tmp._type !== TTYPE_ERR)
+		/; if (tmp._type !== TTYPE_COMNT)
+			out.push(~tmp)
+			tmp = produce_next_token(fin, tmp)
+		;; else
+			Token com = tmp
+			tmp = produce_next_token(fin, com)
+			com.end()
+		;/
+	;/
+
+	return out
+;/
+
+/; print_token_type(Token t)
+	
+	/; if (t._type == TTYPE_DELIM)
+		_printf("DELIM\0")
+	;; else if (t._type == TTYPE_SEP)
+		_printf("SEP\0")
+	;; else if (t._type == TTYPE_KEYWD)
+		_printf("KEYWD\0")
+	;; else if (t._type ==TTYPE_KEYTP)
+		_printf("KEYTP\0")
+	;; else if (t._type == TTYPE_LITRL)
+		_printf("LITRL\0")
+	;; else if (t._type == TTYPE_AUG)
+		_printf("AUG\0")
+	;; else if (t._type == TTYPE_USRWD)
+		_printf("USRWD\0")
+	;; else if (t._type == TTYPE_COMNT)
+		_printf("COMNT\0")
+	;; else if (t._type == TTYPE_UNKNOWN)
+		_printf("UNKNOWN\0")
+	;; else if (t._type == TTYPE_ERR)
+		_printf("ERR\0")
+	;/
+
+;/
+
+/; print_token_list (~utils.Vector vec)
+	~Token tok
+	/; loop (uint i = 0; i < vec`.count) [i++]
+		tok = vec.get(i)
+		_printf("Token {\0")
+		_printf(tok`.data)
+		_print_num(", line: %u\0", tok`.line)
+		_print_num(", col: %u, type: \0", tok`.col)
+		print_token_type(tok`)
+		_printf("}\n\0")
+	;/
+;/
+
+/; end_token_list (~utils.Vector vec)
+	~Token tok
+	
+	/; loop (uint i = 0; i < vec`.count) [i++]
+		tok = vec`.get(i)
+		tok`.end()
+	;/
+	vec`.end()
 ;/
 

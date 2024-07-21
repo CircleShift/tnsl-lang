@@ -24,7 +24,8 @@
 #    It is a doc comment of a code block because it starts with '/##' instead of '/#'
 #    and ends with '# ;' which ends the comment and opens a block.
 #    This doc comment is on the main function
-#; main /# Comment inside function declaration #/ [int /# Comment inside this list of outputs #/ ]
+#/
+/; main /# Comment inside function declaration #/ [int /# Comment inside this list of outputs #/ ]
     return 0 # line comment inside a function
     /# Block comment inside function #/
 ;/

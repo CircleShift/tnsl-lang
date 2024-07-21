@@ -98,8 +98,8 @@ struct File {
 			return
 		;/
 
-		_fseek(self.handle, self.pos - 1)
 		self.pos = self.pos - 1
+		_fseek(self.handle, self.pos)
 
 		/; if (self.at_end == true)
 			self.at_end = false

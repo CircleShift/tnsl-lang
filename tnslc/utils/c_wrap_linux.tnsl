@@ -1,5 +1,5 @@
 # Must be included at the top of the file
-asm "extern malloc, realloc, free, printf, open, close, read, write, fseek"
+asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
@@ -218,7 +218,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, fseek"
 	asm "mov rdi, r10"
 	asm "mov rsi, r11"
 	asm "mov rdx, 0" # standard value for SEEK_SET as per GNU libc
-    asm "call fseek wrt ..plt"
+    asm "call lseek wrt ..plt"
 
 	# get return value
 	asm "mov r12, rax"
