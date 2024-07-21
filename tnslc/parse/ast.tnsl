@@ -9,7 +9,6 @@ uint16 NTYPE_POST_OP = 6
 uint16 NTYPE_FUNCTION = 7
 uint16 NTYPE_METHOD = 8
 
-
 struct Node {
 	uint16 _type,
 	~uint8 data,
@@ -107,11 +106,10 @@ struct Node {
 
 			_ast_file(~_import, mod)
 			_import.end()
-		;; else
-			first = produce_next_token(fin, tmp)
-			tmp.end()
-			tmp = first
 		;/
+		first = produce_next_token(fin, tmp)
+		tmp.end()
+		tmp = first
 	;/
 
 	fin`.close()

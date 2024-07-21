@@ -1,5 +1,5 @@
 # Must be included at the top of the file
-asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
+asm "extern malloc, realloc, free, printf, open, close, read, write, lseek, perror"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
@@ -119,8 +119,8 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
 
 
 # Create file for writing (overwrite)
-/; _create_file (~void name) [~void]
-    ~void out
+/; _create_file (~void name) [int]
+    int out
 
     asm "mov rax, rsp"
     asm "xor rdx, rdx"
@@ -143,8 +143,8 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
 ;/
 
 # Open file for reading or writing (no overwrite)
-/; _open_file (~void name) [~void]
-    ~void out
+/; _open_file (~void name) [int]
+    int out
 
     asm "mov rax, rsp"
     asm "xor rdx, rdx"
@@ -166,7 +166,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
     return out
 ;/
 
-/; _close_file (~void handle)
+/; _close_file (int handle)
 
     asm "mov rax, rsp"
     asm "xor rdx, rdx"
@@ -180,7 +180,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
     asm "call close wrt ..plt"
 ;/
 
-/; _read_byte (~void handle, ~uint8 byte) [int]
+/; _read_byte (int handle, ~uint8 byte) [int]
     int out
 
     asm "mov rax, rsp"
@@ -202,7 +202,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
     return out
 ;/
 
-/; _fseek (~void handle, uint pos) [int]
+/; _fseek (int handle, uint pos) [int]
 	int out
 
 	# align stack
@@ -226,7 +226,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
 	return out
 ;/
 
-/; _write_byte (~void handle, ~uint8 byte) [int]
+/; _write_byte (int handle, ~uint8 byte) [int]
     int out
 
     asm "mov rax, rsp"
@@ -245,6 +245,26 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek"
     asm "mov r12, rax"
 
     return out
+;/
+
+/; _perror (~void str)
+
+    asm "mov rax, rsp"
+    asm "xor rdx, rdx"
+    asm "mov rcx, 16"
+    asm "div rcx"
+    asm "sub rsp, rdx"
+    asm "sub rsp, 128"
+    
+    # setup call by clearing most values
+    asm "mov rdi, r10"
+    asm "xor rsi, rsi"
+    asm "xor rax, rax"
+    
+    # do call
+    asm "call perror wrt ..plt"
+    
+    # there's no more to do 'cause printf returns nothing 
 ;/
 
 /; print_alert

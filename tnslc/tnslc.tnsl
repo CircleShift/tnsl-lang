@@ -39,6 +39,10 @@ usage:
 	parse.print_ast(~n)
 	n.end()
 
+	# utils.Vector v = parse.gen_token_list(~fin)
+	# parse.print_token_list(~v)
+	# parse.end_token_list(~v)
+
 	fin.end()
 	fout.end()
 

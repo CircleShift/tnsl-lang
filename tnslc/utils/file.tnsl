@@ -1,6 +1,6 @@
 struct File {
 	Artifact path,
-	~void handle,
+	int32 handle,
 	uint pos,
 	bool at_end
 }
@@ -13,7 +13,8 @@ struct File {
 	/; init (~uint8 str)
 		self.path.init()
 		self.path.split_cstr(str, '/')
-		self.handle = NULL
+		self.handle = 0
+		self.handle--
 		self.at_end = false
 		self.pos = 0
 	;/
@@ -43,16 +44,18 @@ struct File {
 	;/
 
 	/; end
-		self.path.end()
 		/; if (self.handle + 1 !== 0)
 			_close_file(self.handle)
-			self.handle = NULL
+			self.handle = 0
+			self.handle--
 		;/
+		self.path.end()
 	;/
 
 	/; open
 		~uint8 p = self.path.to_cstr('/')
 		self.handle = _open_file(p)
+
 		/; if (self.handle + 1 == 0)
 			self.at_end = true
 		;/
@@ -71,7 +74,8 @@ struct File {
 	/; close
 		/; if (self.handle + 1 !== 0)
 			_close_file(self.handle)
-			self.handle = NULL
+			self.handle = 0
+			self.handle--
 			self.at_end = false
 		;/
 	;/
@@ -84,8 +88,13 @@ struct File {
 		uint8 out
 		int bytes = _read_byte(self.handle, ~out)
 		self.pos = self.pos + 1
-		
+
 		/; if (bytes == 0)
+			self.at_end = true
+			return 0
+		;; else if (bytes !== 1)
+			_perror("Error reading from file\0")
+			_print_num("FD: %ld\n\0", self.handle)
 			self.at_end = true
 			return 0
 		;/
