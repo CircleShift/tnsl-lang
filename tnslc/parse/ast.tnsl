@@ -32,10 +32,11 @@ struct Node {
 			~Node cur = self.sub.get(i)
 			cur`.end()
 		;/
+		self.sub.end()
 	;/
 ;/
 
-/; _ast_root_loop (~utils.File fin, ~Node mod, Token first)
+/; _ast_block (~utils.File fin, ~Node mod, Token first)
 ;/
 
 /; _ast_module (~utils.File fin, ~Node mod, Token first)
@@ -54,15 +55,64 @@ struct Node {
 	out.init(t, tmp.data)
 
 	tmp = produce_next_token(fin, tmp)
-	_ast_root_loop(fin, ~out, tmp)
+	/; loop (tmp.eq(";/\0") !== true)
+		/; if (tmp.eq("import\0"))
+			first = produce_next_token(fin, tmp)
+			tmp.end()
+			tmp = first
+
+			~uint8 path = utils.unquote_str(tmp.data)
+			utils.File _import = fin`.relative(path)
+			_delete(path)
+			path = _import.path.to_cstr('/')
+			
+			_printf("Importing ./\0")
+			_printf(path)
+			_printf("\n\0")
+			_delete(path)
+
+			_ast_file(~_import, mod)
+			_import.end()
+
+		;; else
+			first = produce_next_token(fin, tmp)
+			tmp.end()
+			tmp = first
+		;/
+	;/
+
 	mod`.sub.push(~out)
 ;/
 
 /; _ast_file (~utils.File fin, ~Node mod)
 	fin`.open()
 	
-	Token tok = produce_first_token(fin)
-	_ast_root_loop(fin, mod, tok)
+	Token tmp = produce_first_token(fin)
+	Token first
+	/; loop (tmp._type !== TTYPE_ERR)
+		/; if (tmp.eq("import\0"))
+			first = produce_next_token(fin, tmp)
+			tmp.end()
+			tmp = first
+
+			~uint8 path = utils.unquote_str(tmp.data)
+			utils.File _import = fin`.relative(path)
+			_delete(path)
+			path = _import.path.to_cstr('/')
+			
+			_printf("Importing ./\0")
+			_printf(path)
+			_printf("\n\0")
+			_delete(path)
+
+			_ast_file(~_import, mod)
+			_import.end()
+		;; else
+			first = produce_next_token(fin, tmp)
+			tmp.end()
+			tmp = first
+		;/
+	;/
 
 	fin`.close()
 ;/

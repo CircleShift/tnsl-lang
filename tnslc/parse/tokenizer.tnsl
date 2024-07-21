@@ -84,12 +84,12 @@ uint   MAX_MULTI  = 3
 
 	uint8 ch = fin`.read()
 
-	/; loop (fin`.at_end == false && is_reserved(ch) == false && is_whitespace(ch) == false)
+	/; loop (ch !== 0 && is_reserved(ch) == false && is_whitespace(ch) == false)
 		tmp.push(~ch)
 		ch = fin`.read()
 	;/
 
-	/; if (fin`.at_end == false)
+	/; if (ch !== 0)
 		fin`.unread()
 	;/
 
@@ -262,7 +262,10 @@ uint   MAX_MULTI  = 3
 	bool base = false
 	/; if (ch == '0')
 		ch = fin`.read()
-		/; if (is_reserved(ch) == false && is_whitespace(ch) == false && is_numeric(ch) == false)
+		/; if (ch == 0)
+			out.data = tmp.as_cstr()
+			return out
+		;; else if (is_reserved(ch) == false && is_whitespace(ch) == false && is_numeric(ch) == false)
 			base = true
 			tmp.push(~ch)
 		;/
@@ -271,7 +274,9 @@ uint   MAX_MULTI  = 3
 	bool decimal = false
 	/; loop (bool run = true; run == true && fin`.at_end == false)
 		ch = fin`.read()
-		/; if (decimal == false && ch == '.')
+		/; if (ch == 0)
+			run = false
+		;; else if (decimal == false && ch == '.')
 			decimal = true
 			tmp.push(~ch)
 		;; else if (is_reserved(ch) == true || is_whitespace(ch) == true)
