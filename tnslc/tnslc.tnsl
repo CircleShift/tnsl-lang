@@ -35,9 +35,9 @@ usage:
 		fout.init(DEFAULT_FOUT)
 	;/
 
-	utils.Vector v = parse.gen_token_list(~fin)
-	parse.print_token_list(~v)
-	parse.end_token_list(~v)
+	parse.Node n = parse.generate_ast(~fin)
+	parse.print_ast(~n)
+	n.end()
 
 	fin.end()
 	fout.end()

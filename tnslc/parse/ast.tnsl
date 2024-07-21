@@ -1,11 +1,13 @@
 
-uint16 NTYPE_MOD = 0
-uint16 NTYPE_STRUCT = 1
-uint16 NTYPE_ID = 2
-uint16 NTYPE_BINOP = 3
-uint16 NTYPE_PREOP = 4
-uint16 NTYPE_POSTOP = 5
-uint16 NTYPE_FUNCTION = 6
+uint16 NTYPE_MODULE = 0
+uint16 NTYPE_EXPORT = 1
+uint16 NTYPE_STRUCT = 2
+uint16 NTYPE_ID = 3
+uint16 NTYPE_BIN_OP = 4
+uint16 NTYPE_PRE_OP = 5
+uint16 NTYPE_POST_OP = 6
+uint16 NTYPE_FUNCTION = 7
+uint16 NTYPE_METHOD = 8
 
 
 struct Node {
@@ -14,8 +16,119 @@ struct Node {
 	utils.Vector sub
 }
 
+/; method Node
+	/; init (uint16 _type, ~uint8 data)
+		self.data = data
+		self._type = _type
+
+		Node n
+		self.sub.init(len n)
+	;/
+
+	/; end
+		_delete(self.data)
+		
+		/; loop (uint i = 0; i < self.sub.count) [i++]
+			~Node cur = self.sub.get(i)
+			cur`.end()
+		;/
+	;/
+;/
+
+/; _ast_root_loop (~utils.File fin, ~Node mod, Token first)
+;/
+
+/; _ast_module (~utils.File fin, ~Node mod, Token first)
+	Node out
+
+	uint16 t = NTYPE_MODULE
+	/; if (first.eq("export\0") == true)
+		Token tmp = produce_next_token(fin, first)
+		first.end()
+		first = tmp
+		t = NTYPE_EXPORT
+	;/
+
+	Token tmp = produce_next_token(fin, first)
+	first.end()
+	out.init(t, tmp.data)
+
+	tmp = produce_next_token(fin, tmp)
+	_ast_root_loop(fin, ~out, tmp)
+	mod`.sub.push(~out)
+;/
+
+/; _ast_file (~utils.File fin, ~Node mod)
+	fin`.open()
+	
+	Token tok = produce_first_token(fin)
+	_ast_root_loop(fin, mod, tok)
+
+	fin`.close()
+;/
+
 /; generate_ast (~utils.File fin) [Node]
 	Node out
+
+	utils.Vector v
+	v.init(1)
+
+	out.init(NTYPE_MODULE, v.as_cstr())
+
+	_ast_file(fin, ~out)
+
 	return out
 ;/
 
+#
+# Print out the AST from a specific node
+#
+
+/; print_node_type (~Node n)
+	/; if (n`._type == NTYPE_MODULE)
+		_printf("Mod\0")
+	;; else if (n`._type == NTYPE_EXPORT)
+		_printf("Exported Module\0")
+	;; else if (n`._type == NTYPE_STRUCT)
+		_printf("Struct\0")
+	;; else if (n`._type == NTYPE_ID)
+		_printf("ID\0")
+	;; else if (n`._type == NTYPE_BIN_OP)
+		_printf("Binary OP\0")
+	;; else if (n`._type == NTYPE_PRE_OP)
+		_printf("Pre OP\0")
+	;; else if (n`._type == NTYPE_POST_OP)
+		_printf("Post OP\0")
+	;; else if (n`._type == NTYPE_FUNCTION)
+		_printf("Function\0")
+	;/
+;/
+
+/; print_node_head (~Node n)
+	_printf("{ NODE_TYPE: \0")
+	print_node_type(n)
+	_printf(", DATA: \0")
+	_printf(n`.data)
+	_printf("\n\0")
+;/
+
+/; print_ast_rec(~Node n, uint depth)
+	/; loop (int i = 0; i < depth) [i++]
+		_printf("  \0")
+	;/
+	print_node_head(n)
+
+	/; loop (uint i = 0; i < n`.sub.count) [i++]
+		~Node s = n`.sub.get(i)
+		print_ast_rec(s, depth + 1)
+	;/
+	
+	/; loop (int i = 0; i < depth) [i++]
+		_printf("  \0")
+	;/
+	_printf("}\n\0")
+;/
+
+/; print_ast (~Node n)
+	print_ast_rec(n, 0)
+;/
