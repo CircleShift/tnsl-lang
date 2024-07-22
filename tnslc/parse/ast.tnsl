@@ -2,12 +2,14 @@
 uint16 NTYPE_MODULE = 0
 uint16 NTYPE_EXPORT = 1
 uint16 NTYPE_STRUCT = 2
-uint16 NTYPE_ID = 3
-uint16 NTYPE_BIN_OP = 4
-uint16 NTYPE_PRE_OP = 5
-uint16 NTYPE_POST_OP = 6
-uint16 NTYPE_FUNCTION = 7
-uint16 NTYPE_METHOD = 8
+uint16 NTYPE_TYPE = 3
+uint16 NTYPE_ID = 4
+uint16 NTYPE_BIN_OP = 5
+uint16 NTYPE_PRE_OP = 6
+uint16 NTYPE_POST_OP = 7
+uint16 NTYPE_FUNCTION = 8
+uint16 NTYPE_METHOD = 9
+uint16 NTYPE_ASM = 998
 
 struct Node {
 	uint16 _type,
@@ -35,48 +37,215 @@ struct Node {
 	;/
 ;/
 
-/; _ast_block (~utils.File fin, ~Node mod, Token first)
+/; _ast_import(~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	~uint8 path = utils.unquote_str(tmp.data)
+	utils.File _import = fin`.relative(path)
+	_delete(path)
+	path = _import.path.to_cstr('/')
+	
+	_printf("Importing ./\0")
+	_printf(path)
+	_printf("\n\0")
+	_delete(path)
+
+	_ast_file(~_import, mod)
+	_import.end()
 ;/
 
-/; _ast_module (~utils.File fin, ~Node mod, Token first)
-	Node out
+/; _get_closing_delim(uint8 ch) [uint8]
+	/; if (ch == '/' || ch == ';')
+		return ';'
+	;; else if (ch == '(')
+		return ')'
+	;; else if (ch == '{')
+		return '}'
+	;; else if (ch == '[')
+		return ']'
+	;/
+	return 0
+;/
 
-	uint16 t = NTYPE_MODULE
-	/; if (first.eq("export\0") == true)
-		Token tmp = produce_next_token(fin, first)
-		first.end()
-		first = tmp
-		t = NTYPE_EXPORT
+/; _ast_type (~utils.File fin, ~Node mod, ~Token first)
+
+;/
+
+/; _ast_decl_list (~utils.File fin, ~Node mod, ~Token first)
+	
+;/
+
+/; _ast_type_list (~utils.File fin, ~Node mod, ~Token first)
+;/
+
+/; _ast_struct (~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	/; if (tmp._type !== TTYPE_USRWD)
+		_printf("Unexpected token after struct keyword:\n\0")
+		_printf("  \0")
+		print_token(tmp)
+		_printf("\n\0")
+		return
 	;/
 
-	Token tmp = produce_next_token(fin, first)
-	first.end()
-	out.init(t, tmp.data)
+	Node out
+	out.init(NTYPE_STRUCT, tmp.data)
+
+	first` = produce_next_token(fin, tmp)
+	_ast_decl_list(fin, out, first)
+
+	mod`.sub.push(~out)
+;/
+
+/; _ast_method (~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	/; if (tmp._type !== TTYPE_USRWD)
+		_printf("Expected a user-defined type after 'method':\n\0")
+		_printf("  \0")
+		print_token(tmp)
+		_printf("\n\0")
+		return
+	;/
+
+	Node out
+	out.init(NTYPE_METHOD, tmp.data)
 
 	tmp = produce_next_token(fin, tmp)
-	/; loop (tmp.eq(";/\0") !== true)
-		/; if (tmp.eq("import\0"))
-			first = produce_next_token(fin, tmp)
-			tmp.end()
-			tmp = first
+	first` = tmp
+	/; loop (first`._type !== TTYPE_ERR && first`.eq(";;\0") == false && first`.eq(";/\0") == false)
+		/; if (first`.eq("/;\0") == true)
+			tmp = produce_next_token(fin, tmp)
+			first`.end()
+			first` = tmp
+			_ast_function(fin, ~out, first)
 
-			~uint8 path = utils.unquote_str(tmp.data)
-			utils.File _import = fin`.relative(path)
-			_delete(path)
-			path = _import.path.to_cstr('/')
-			
-			_printf("Importing ./\0")
-			_printf(path)
-			_printf("\n\0")
-			_delete(path)
-
-			_ast_file(~_import, mod)
-			_import.end()
-
+			/; loop (first`.eq(";;") == true)
+				tmp = produce_next_token(fin, tmp)
+				first`.end()
+				first` = tmp
+				_ast_function(fin, ~out, first)
+			;/
 		;; else
-			first = produce_next_token(fin, tmp)
-			tmp.end()
-			tmp = first
+			_printf("Expected only function blocks in method block:\n\0")
+			_printf("  \0")
+			print_token(tmp)
+			_printf("\n\0")
+
+			tmp = produce_next_token(fin, tmp)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+
+	mod`.sub.push(~out)
+;/
+
+/; _ast_asm(~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+	
+	/; if (tmp._type !== TTYPE_LITRL || tmp.data{0} !== '"')
+		_printf("Expected string token after 'asm' keyword:\n\0")
+		_printf("  \0")
+		print_token(tmp)
+		_printf("\n\0")
+		return
+	;/
+
+	Node out
+	out.init(NTYPE_ASM, utils.unquote_str(tmp.data))
+
+	mod`.sub.push(~out)
+	first` = produce_next_token(fin, tmp)
+	tmp.end()
+;/
+
+/; _ast_function (~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	/; if (tmp._type !== TTYPE_USRWD)
+		_printf("Expected function name (Compiler bug, not user program issue):\n\0")
+		_printf("  \0")
+		print_token(tmp)
+		_printf("\n\0")
+		return
+	;/
+;/
+
+/; _ast_block (~utils.File fin, ~Node mod, ~Token first)
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	/; if (tmp._type == TTYPE_USRWD)
+		_ast_function(fin, mod, first)
+	;; else if (tmp.eq("method\0") == true)
+		_ast_method(fin, mod, first)
+	;; else if (tmp.eq("module\0") == true || tmp.eq("export\0") == true)
+		_ast_module(fin, mod, first)
+	;; else
+		_printf("Expected function definition, 'method', or 'module' after block opening (root of file or module):\n\0")
+		_printf("  \0")
+		print_token(tmp)
+		_printf("\n\0")
+	;/
+
+	/; if (first`.eq(";;\0") == true)
+		_ast_block(fin, mod, first)
+	;; else
+		tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
+;/
+
+/; _ast_module (~utils.File fin, ~Node mod, ~Token first)
+	Token tmp
+	uint16 _type = NTYPE_MODULE
+	/; if (first`.eq("export\0"))
+		_type = NTYPE_EXPORT
+		tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
+
+	tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+
+	/; if (tmp._type !== TTYPE_USRWD)
+		_printf("Expected module name: \0")
+		print_token(tmp)
+		return
+	;/
+
+	Node out
+	out.init(_type, tmp.data)
+	
+	tmp = produce_next_token(fin, first`)
+	first` = tmp
+	/; loop(first`._type !== TTYPE_ERR && first`.eq(";;\0") == false && first`.eq(";/\0") == false)
+		/; if (first`.eq("import\0") == true)
+			_ast_import(fin, ~out, first)
+		;; else if (first`.eq("struct\0") == true)
+			_ast_struct(fin, ~out, first)
+		;; else if (first`.eq("/;\0") == true)
+			_ast_block(fin, ~out, first)
+		;; else
+			tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
 		;/
 	;/
 
@@ -86,30 +255,19 @@ struct Node {
 /; _ast_file (~utils.File fin, ~Node mod)
 	fin`.open()
 	
-	Token tmp = produce_first_token(fin)
-	Token first
-	/; loop (tmp._type !== TTYPE_ERR)
-		/; if (tmp.eq("import\0"))
-			first = produce_next_token(fin, tmp)
-			tmp.end()
-			tmp = first
-
-			~uint8 path = utils.unquote_str(tmp.data)
-			utils.File _import = fin`.relative(path)
-			_delete(path)
-			path = _import.path.to_cstr('/')
-			
-			_printf("Importing ./\0")
-			_printf(path)
-			_printf("\n\0")
-			_delete(path)
-
-			_ast_file(~_import, mod)
-			_import.end()
+	Token first = produce_first_token(fin)
+	/; loop (first._type !== TTYPE_ERR)
+		/; if (first.eq("import\0") == true)
+			_ast_import(fin, mod, ~first)
+		;; else if (first.eq("struct\0") == true)
+			_ast_struct(fin, mod, ~first)
+		;; else if (first.eq("/;\0") == true)
+			_ast_block(fin, mod, ~first)
+		;; else
+			Token tmp = produce_next_token(fin, first)
+			first.end()
+			first = tmp
 		;/
-		first = produce_next_token(fin, tmp)
-		tmp.end()
-		tmp = first
 	;/
 
 	fin`.close()
@@ -149,6 +307,10 @@ struct Node {
 		_printf("Post OP\0")
 	;; else if (n`._type == NTYPE_FUNCTION)
 		_printf("Function\0")
+	;; else if (n`._type == NTYPE_METHOD)
+		_printf("Method\0")
+	;; else if (n`._type == NTYPE_ASM)
+		_printf("ASM\0")
 	;/
 ;/
 
