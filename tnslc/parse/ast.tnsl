@@ -15,6 +15,7 @@ uint16 NTYPE_ELIST = 12
 uint16 NTYPE_LITERAL = 13
 uint16 NTYPE_KEY_TYPE = 14
 uint16 NTYPE_ENUM = 15
+uint16 NTYPE_DECL = 16
 uint16 NTYPE_ASM = 998
 
 struct Node {
@@ -73,6 +74,119 @@ struct Node {
 	print_token(tok`)
 	_printf("\n\0")
 ;/
+
+
+
+# AST values
+
+/; _ast_value (~utils.File fin, ~Node mod, ~Token first)
+
+;/
+
+/; _ast_type (~utils.File fin, ~Node mod, ~Token first)
+
+;/
+
+
+
+# AST lists
+
+/; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first)
+	Node list
+	list.init(NTYPE_DLIST)
+
+	uint8 end = _get_closing_delim(first`.data`)
+
+	first` = produce_next_token(fin, first`)
+
+	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
+		# TODO
+	;/
+
+	mod`.sub.push(~list)
+
+	Token next = produce_next_token(fin, first`)
+	first`.end()
+	first` = next
+;/
+
+/; _ast_list_enum (~utils.File fin, ~Node mod, ~Token first)
+	Node list
+	list.init(NTYPE_ELIST)
+
+	uint8 end = _get_closing_delim(first`.data`)
+
+	first` = produce_next_token(fin, first`)
+
+	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
+		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			Node enum_id
+			enum_id.init(NTYPE_ID, first`.data)
+			
+			first` = produce_next_token(fin, first`)
+
+			/; if (_advance_check(fin, first, "=\0"))
+				_ast_value(fin, ~enum_id, first)
+			;/
+
+			list.sub.push(~enum_id)
+			
+			/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+				_ast_print_err(first, "Expected ',' to continue the enum list or a closing delimiter\0")
+				mod`.sub.push(~list)
+				return
+			;/
+		;; else
+			_ast_print_err(first, "Expected identifier in body of enum declaration\0")
+			mod`.sub.push(~list)
+			return
+		;/
+	;/
+
+	mod`.sub.push(~list)
+
+	Token next = produce_next_token(fin, first`)
+	first`.end()
+	first` = next
+;/
+
+/; _ast_list_type (~utils.File fin, ~Node mod, ~Token first)
+	Node list
+	list.init(NTYPE_TLIST)
+
+	uint8 end = _get_closing_delim(first`.data`)
+
+	first` = produce_next_token(fin, first`)
+
+	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
+
+		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			_ast_type(fin, ~list, first)
+			
+			/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+				_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
+				mod`.sub.push(~list)
+				return
+			;/
+		;; else
+			_ast_print_err(first, "Expected type in type list\0")
+			mod`.sub.push(~list)
+			return
+		;/
+	;/
+
+	mod`.sub.push(~list)
+
+	Token next = produce_next_token(fin, first`)
+	first`.end()
+	first` = next
+;/
+
+
+
+# Method and function blocks
+
+
 
 # Top level directives
 
@@ -158,7 +272,54 @@ struct Node {
 	;/
 
 	# Parse deflist and push root node into module
-	_ast_list_def(fin, mod, first)
+	_ast_list_decl(fin, ~sct, first)
+	mod`.sub.push(~sct)
+	
+	Token tmp = produce_next_token(fin, first`)
+	first`.end()
+	first` = tmp
+;/
+
+/; _ast_enum (~utils.File fin, ~Node mod, ~Token first)
+	# Identifier check
+	/; if (first`._type !== TTYPE_USRWD)
+		_ast_print_err(first, "Expected new identifier for def after 'enum'\0")
+
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+		
+		return
+	;/
+
+	# Root struct node
+	Node sct
+	sct.init(NTYPE_ENUM, first`.data)
+	first` = produce_next_token(fin, first`)
+
+	# Check for enum type
+	/; if (first`.data` == '[')
+		_ast_list_type(fin, ~sct, first)
+
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
+
+	# Check for def list
+	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
+		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
+		mod`.sub.push(~sct)
+
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+		
+		return
+	;/
+
+	# Parse deflist and push root node into module
+	_ast_list_enum(fin, ~sct, first)
 	mod`.sub.push(~sct)
 	
 	Token tmp = produce_next_token(fin, first`)
@@ -167,10 +328,40 @@ struct Node {
 ;/
 
 /; _ast_decl (~utils.File fin, ~Node mod, ~Token first)
-	Token tmp = produce_next_token(fin, first`)
-	first`.end()
-	first` = tmp
+	Node decl
+	decl.init(NTYPE_DECL, utils.strcpy("\0"))
+	
+	_ast_type(fin, ~decl, first)
 
+	/; loop (bool run = true; run == true)
+		/; if (first`._type == TTYPE_USRWD)
+			Node var
+			var.init(NTYPE_ID, first`.data)
+
+			first` = produce_next_token(fin, first`)
+			/; if (first`.eq("=\0"))
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+				_ast_value(fin, ~var, first)
+			;/
+
+			decl.sub.push(~var)
+
+			/; if (first`.eq(",\0") == false)
+				run = false
+			;; else
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;/
+		;; else
+			_ast_print_err("Expected variable name in declaration\0")
+			run = false
+		;/
+	;/
+
+	mod`.sub.push(~decl)
 ;/
 
 /; _ast_top_block(~utils.File fin, ~Node mod, ~Token first)
@@ -200,7 +391,7 @@ struct Node {
 			_ast_asm(fin, mod, ~first)
 		;; else if (first.eq("/;\0") == true)
 			_ast_top_block(fin, mod, ~first)
-		;; else if (first._type == TTYPE_KEYTP || first._type == TTYPE_USRWD || first.eq("~\0") == true)
+		;; else if (first._type == TTYPE_KEYTP || first._type == TTYPE_USRWD || first.eq("~\0") == true || first.eq("{\0") == true)
 			_ast_decl(fin, mod, ~first)
 		;; else
 			_printf("Expected 'import', 'struct', 'asm', block, or declaration in top level:\n\0")
