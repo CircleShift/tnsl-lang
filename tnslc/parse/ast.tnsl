@@ -91,6 +91,9 @@ struct Node {
 
 # AST lists
 
+/; _maybe_helper_decl (~utils.File fin, ~Node mod, )
+;/
+
 /; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first)
 	Node list
 	list.init(NTYPE_DLIST)
@@ -100,7 +103,16 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		# TODO
+		/; if (first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			_ast_type(fin, ~list, first)
+		;; else if (first`._type == TTYPE_USRWD)
+			_maybe_helper_decl(fin, ~list, first)
+		;; else
+			_ast_print_err(first, "Expected type or parameter name in declaration list\0")
+			mod`.sub.push(~list)
+			return
+		;/
+
 	;/
 
 	mod`.sub.push(~list)
