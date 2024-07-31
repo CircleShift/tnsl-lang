@@ -83,15 +83,67 @@ struct Node {
 
 ;/
 
+
+
+# AST types 
+
+/; _type_helper_pre (~utils.File fin, ~Node mod, ~Token first)
+
+;/
+
+/; _type_helper_func (~utils.File fin, ~Node mod, ~Token first)
+
+;/
+
+/; _type_helper_usertype (~utils.File fin, ~Node mod, ~Token first)
+;/
+
 /; _ast_type (~utils.File fin, ~Node mod, ~Token first)
 
+	Node typ
+	typ.init(NTYPE_TYPE, utils.strcpy("\0"))
+
+	# Prefix values (~, {}, {#})
+	_type_helper_pre(fin, ~typ, first)
+
+	# Check to see if this is a function pointer type
+	/; if (first`.eq("void\0") && typ.sub.count == 0)
+		_type_helper_func(fin, ~typ, first)
+		mod`.sub.push(~typ)
+		return
+	;/
+
+	# user type or keytype
+	/; if (first`._type == TTYPE_USRWD)
+		_type_helper_usertype(fin, ~typ, first)
+	;; else if (first`._type == TTYPE_KEYTP)
+		Node ktp
+		ktp.init(NTYPE_ID, first`.data)
+		typ.sub.push(~ktp)
+		first` = produce_next_token(fin, first`)
+	;; else
+		_ast_print_err(first, "Expected keytype or usertype when parsing type\0")
+		mod`.sub.push(~typ)
+		return
+	;/
+
+	# The ol' reference
+	/; if (first`.eq("`\0"))
+		Node post
+		post.init(NTYPE_POST_OP, first`.data)
+		typ.sub.push(~post)
+		first` = produce_next_token(fin, first`)
+	;/
+
+	mod`.sub.push(~typ)
 ;/
 
 
 
 # AST lists
 
-/; _maybe_helper_decl (~utils.File fin, ~Node mod, )
+/; _maybe_helper_decl (~utils.File fin, ~Node mod, ~Token first)
+	
 ;/
 
 /; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first)
@@ -113,6 +165,11 @@ struct Node {
 			return
 		;/
 
+		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+			_ast_print_err(first, "Expected ',' to continue the declaration list or a closing delimiter\0")
+			mod`.sub.push(~list)
+			return
+		;/
 	;/
 
 	mod`.sub.push(~list)
@@ -143,13 +200,14 @@ struct Node {
 
 			list.sub.push(~enum_id)
 			
-			/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
-				_ast_print_err(first, "Expected ',' to continue the enum list or a closing delimiter\0")
-				mod`.sub.push(~list)
-				return
-			;/
 		;; else
 			_ast_print_err(first, "Expected identifier in body of enum declaration\0")
+			mod`.sub.push(~list)
+			return
+		;/
+
+		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.sub.push(~list)
 			return
 		;/
@@ -174,14 +232,14 @@ struct Node {
 
 		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
 			_ast_type(fin, ~list, first)
-			
-			/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
-				_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
-				mod`.sub.push(~list)
-				return
-			;/
 		;; else
 			_ast_print_err(first, "Expected type in type list\0")
+			mod`.sub.push(~list)
+			return
+		;/
+
+		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.sub.push(~list)
 			return
 		;/
@@ -368,8 +426,11 @@ struct Node {
 				first` = tmp
 			;/
 		;; else
-			_ast_print_err("Expected variable name in declaration\0")
+			_ast_print_err(first, "Expected variable name in declaration\0")
 			run = false
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
 		;/
 	;/
 
@@ -399,6 +460,8 @@ struct Node {
 			_ast_import(fin, mod, ~first)
 		;; else if (_advance_check(fin, ~first, "struct\0") == true)
 			_ast_struct(fin, mod, ~first)
+		;; else if (_advance_check(fin, ~first, "enum\0") == true)
+			_ast_enum(fin, mod, ~first)
 		;; else if (_advance_check(fin, ~first, "asm\0") == true)
 			_ast_asm(fin, mod, ~first)
 		;; else if (first.eq("/;\0") == true)
