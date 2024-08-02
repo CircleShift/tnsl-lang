@@ -333,7 +333,13 @@ uint   MAX_MULTI  = 3
 	/; if (first == '\'' || first == '\"')
 		return produce_string_token(fin, prev)
 	;; else if (is_reserved(first) == true)
-		return produce_reserved_token(fin, prev)
+		Token out = produce_reserved_token(fin, prev)
+		/; loop (out._type == TTYPE_COMNT)
+			Token tmp = produce_next_token(fin, out)
+			out.end()
+			out = tmp
+		;/
+		return out
 	;; else if (is_numeric(first) == true)
 		return produce_numeric_token(fin, prev)
 	;; else if (first !== 0)

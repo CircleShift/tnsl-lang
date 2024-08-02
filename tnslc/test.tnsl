@@ -1,5 +1,7 @@
 # should not be included
 
+~uint lmao
+
 /; whatev (~uint8 a) [uint8]
 	return a{0}
 ;/

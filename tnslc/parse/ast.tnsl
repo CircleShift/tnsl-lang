@@ -49,10 +49,10 @@ struct Node {
 		return ';'
 	;; else if (ch == '(')
 		return ')'
-	;; else if (ch == '{')
-		return '}'
 	;; else if (ch == '[')
 		return ']'
+	;; else if (ch == '{')
+		return '}'
 	;/
 	return 0
 ;/
@@ -85,9 +85,52 @@ struct Node {
 
 
 
-# AST types 
+# AST types
 
 /; _type_helper_pre (~utils.File fin, ~Node mod, ~Token first)
+
+	/; loop (bool run = true; first`._type !== TTYPE_ERR && run == true)
+		/; if (first`._type == TTYPE_AUG && first`.eq("~\0") == true)
+			# Pointer
+			Node ptr
+			ptr.init(NTYPE_PRE_OP, first`.data)
+			mod`.sub.push(~ptr)
+			first` = produce_next_token(fin, first`)
+		;; else if (first`._type == TTYPE_DELIM && first`.eq("{\0") == true)
+			# Array
+			Node arr
+			arr.init(NTYPE_PRE_OP, first`.data)
+			first` = produce_next_token(fin, first`)
+			
+			/; if (first`._type == TTYPE_LITRL && is_numeric(first`.data`) == true)
+				Node num
+				num.init(NTYPE_LITERAL, first`.data)
+				arr.sub.push(~num)
+				
+				first` = produce_next_token(fin, first`)
+				/; if (first`.eq("}\0") == true)
+					Token tmp = produce_next_token(fin, first`)
+					first`.end()
+					first` = tmp
+				;; else
+					_ast_print_err(first, "Expected closing '}' after integer in type declaration\0")
+					run = false
+				;/
+			;; else if (first`.eq("}\0") == true)
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;; else
+				_ast_print_err(first, "Expected integer or '}' to define either a fixed sized array or pointer to unknown sized array\0")
+				run = false
+			;/
+
+			mod`.sub.push(~arr)
+
+		;; else
+			run = false
+		;/
+	;/
 
 ;/
 
@@ -502,25 +545,41 @@ struct Node {
 
 /; print_node_type (~Node n)
 	/; if (n`._type == NTYPE_MODULE)
-		_printf("Mod\0")
+		_printf("NTYPE_MODULE\0")
 	;; else if (n`._type == NTYPE_EXPORT)
-		_printf("Exported Module\0")
+		_printf("NTYPE_EXPORT\0")
 	;; else if (n`._type == NTYPE_STRUCT)
-		_printf("Struct\0")
+		_printf("NTYPE_STRUCT\0")
+	;; else if (n`._type == NTYPE_TYPE)
+		_printf("NTYPE_TYPE\0")
 	;; else if (n`._type == NTYPE_ID)
-		_printf("ID\0")
+		_printf("NTYPE_ID\0")
 	;; else if (n`._type == NTYPE_BIN_OP)
-		_printf("Binary OP\0")
+		_printf("NTYPE_BIN_OP\0")
 	;; else if (n`._type == NTYPE_PRE_OP)
-		_printf("Pre OP\0")
+		_printf("NTYPE_PRE_OP\0")
 	;; else if (n`._type == NTYPE_POST_OP)
-		_printf("Post OP\0")
+		_printf("NTYPE_POST_OP\0")
 	;; else if (n`._type == NTYPE_FUNCTION)
-		_printf("Function\0")
+		_printf("NTYPE_FUNCTION\0")
 	;; else if (n`._type == NTYPE_METHOD)
-		_printf("Method\0")
+		_printf("NTYPE_METHOD\0")
+	;; else if (n`._type == NTYPE_TLIST)
+		_printf("NTYPE_TLIST\0")
+	;; else if (n`._type == NTYPE_DLIST)
+		_printf("NTYPE_DLIST\0")
+	;; else if (n`._type == NTYPE_ELIST)
+		_printf("NTYPE_ELIST\0")
+	;; else if (n`._type == NTYPE_LITERAL)
+		_printf("NTYPE_LITERAL\0")
+	;; else if (n`._type == NTYPE_KEY_TYPE)
+		_printf("NTYPE_KEY_TYPE\0")
+	;; else if (n`._type == NTYPE_ENUM)
+		_printf("NTYPE_ENUM\0")
+	;; else if (n`._type == NTYPE_DECL)
+		_printf("NTYPE_DECL\0")
 	;; else if (n`._type == NTYPE_ASM)
-		_printf("ASM\0")
+		_printf("NTYPE_ASM\0")
 	;/
 ;/
 
