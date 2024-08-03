@@ -16,6 +16,7 @@ uint16 NTYPE_LITERAL = 13
 uint16 NTYPE_KEY_TYPE = 14
 uint16 NTYPE_ENUM = 15
 uint16 NTYPE_DECL = 16
+uint16 NTYPE_VLIST = 17
 uint16 NTYPE_ASM = 998
 
 struct Node {
@@ -58,7 +59,7 @@ struct Node {
 ;/
 
 /; _advance_check(~utils.File fin, ~Token tok, ~uint8 eq) [bool]
-	/; if (tok`.eq(eq) == true)
+	/; if (tok`._type !== TTYPE_ERR && tok`.eq(eq) == true)
 		Token tmp = produce_next_token(fin, tok`)
 		tok`.end()
 		tok` = tmp
@@ -220,6 +221,38 @@ struct Node {
 
 # AST lists
 
+/; _ast_list_value (~utils.File fin, ~Node mod, ~Token first)
+	Node list
+	list.init(NTYPE_VLIST, first`.data)
+
+	uint8 end = _get_closing_delim(first`.data`)
+
+	first` = produce_next_token(fin, first`)
+
+	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
+
+		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			_ast_type(fin, ~list, first)
+		;; else
+			_ast_print_err(first, "Expected type in type list\0")
+			mod`.sub.push(~list)
+			return
+		;/
+
+		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
+			mod`.sub.push(~list)
+			return
+		;/
+	;/
+
+	mod`.sub.push(~list)
+
+	Token next = produce_next_token(fin, first`)
+	first`.end()
+	first` = next
+;/
+
 /; _maybe_helper_decl (~utils.File fin, ~Node mod, ~Token first)
 	
 ;/
@@ -334,7 +367,11 @@ struct Node {
 
 # Method and function blocks
 
+/; _ast_method (~utils.File fin, ~Node mod, ~Token first)
+;/
 
+/; _ast_function (~utils.File fin, ~Node mod, ~Token first)
+;/
 
 # Top level directives
 
@@ -516,17 +553,96 @@ struct Node {
 ;/
 
 /; _ast_top_block(~utils.File fin, ~Node mod, ~Token first)
-	Token tmp = produce_next_token(fin, first`)
-	first`.end()
-	first` = tmp
 
+	Token blf = first`
+	first` = produce_next_token(fin, first`)
+
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`.eq("module\0") == true || first`.eq("export\0") == true)
+			_ast_module(fin, mod, first)
+		;; else if (_advance_check(fin, first, "method\0") == true)
+			_ast_method(fin, mod, first)
+		;; else if (first`._type == TTYPE_USRWD)
+			_ast_function(fin, mod, first)
+		;; else
+			_ast_print_err(first, "Expected module, method, or function for top level block\0")
+		;/
+
+		run = _advance_check(fin, first, ";;\0")
+		/; if (run == false && first`.eq(";/\0") == false)
+			_ast_print_err(first, "Block being skipped. Parsing will pick up after the end\0")
+		;/
+	;/
+
+	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
+		/; if (first`.eq(";/\0"))
+			deep = deep - 1
+		;; else if (first`.eq("/;\0"))
+			deep = deep + 1
+		;/
+
+		/; if (deep > 0)
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+
+	/; if (_advance_check(fin, first`, ";/\0") == false)
+		_ast_print_err(~blf, "Could not find closing ;/ for top block\0")
+		_ast_print_err(first, "^^^ Last token before previous error\0")
+	;/
+	blf.end()
 ;/
 
 /; _ast_module(~utils.File fin, ~Node mod, ~Token first)
-	Token tmp = produce_next_token(fin, first`)
-	first`.end()
-	first` = tmp
+	uint16 nt = NTYPE_MODULE
 
+	/; if (_advance_check(fin, first, "export\0") == true)
+		/; if (_advance_check(fin, first, "module\0") == false)
+			_ast_print_err(first, "Expected 'module' keyword after 'export'\0")
+			return
+		;/
+		nt = NTYPE_EXPORT
+	;; else if (_advance_check(fin, first, "module\0") == false)
+		_printf("[FATAL] The following issue is with the compiler, not your program.\n\0")
+		_printf("[FATAL] Please report the following issue to tnslc upstream.\n\0")
+		_ast_print_err(first, "[FATAL] [CMPERR] Should only call _ast_module when 'module' or 'export' are seen\0")
+	;/
+
+	/; if (first`._type !== TTYPE_USRWD)
+		_ast_print_err(first, "Expected module name (identifier) after 'module'\0")
+	;/
+
+	Node nmod
+	nmod.init(nt, first`.data)
+	first` = produce_next_token(fin, first`)
+
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (_advance_check(fin, first, "import\0") == true)
+			_ast_import(fin, ~nmod, first)
+		;; else if (_advance_check(fin, first, "struct\0") == true)
+			_ast_struct(fin, ~nmod, first)
+		;; else if (_advance_check(fin, first, "enum\0") == true)
+			_ast_enum(fin, ~nmod, first)
+		;; else if (_advance_check(fin, first, "asm\0") == true)
+			_ast_asm(fin, ~nmod, first)
+		;; else if (first`.eq("/;\0") == true)
+			_ast_top_block(fin, ~nmod, first)
+		;; else if (first`._type == TTYPE_KEYTP || first`._type == TTYPE_USRWD || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			_ast_decl(fin, ~nmod, first)
+		;; else if (first`.eq(";/\0") == true)
+			run = false
+		;; else
+			_ast_print_err(first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
+
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+
+	mod`.sub.push(~nmod)
 ;/
 
 /; _ast_file (~utils.File fin, ~Node mod)
@@ -547,10 +663,7 @@ struct Node {
 		;; else if (first._type == TTYPE_KEYTP || first._type == TTYPE_USRWD || first.eq("~\0") == true || first.eq("{\0") == true)
 			_ast_decl(fin, mod, ~first)
 		;; else
-			_printf("Expected 'import', 'struct', 'asm', block, or declaration in top level:\n\0")
-			_printf("  \0")
-			print_token(first)
-			_printf("\n\0")
+			_ast_print_err(~first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
 
 			Token tmp = produce_next_token(fin, first)
 			first.end()
@@ -580,41 +693,43 @@ struct Node {
 
 /; print_node_type (~Node n)
 	/; if (n`._type == NTYPE_MODULE)
-		_printf("NTYPE_MODULE\0")
+		_printf("MODULE\0")
 	;; else if (n`._type == NTYPE_EXPORT)
-		_printf("NTYPE_EXPORT\0")
+		_printf("EXPORT\0")
 	;; else if (n`._type == NTYPE_STRUCT)
-		_printf("NTYPE_STRUCT\0")
+		_printf("STRUCT\0")
 	;; else if (n`._type == NTYPE_TYPE)
-		_printf("NTYPE_TYPE\0")
+		_printf("TYPE\0")
 	;; else if (n`._type == NTYPE_ID)
-		_printf("NTYPE_ID\0")
+		_printf("ID\0")
 	;; else if (n`._type == NTYPE_BIN_OP)
-		_printf("NTYPE_BIN_OP\0")
+		_printf("BIN_OP\0")
 	;; else if (n`._type == NTYPE_PRE_OP)
-		_printf("NTYPE_PRE_OP\0")
+		_printf("PRE_OP\0")
 	;; else if (n`._type == NTYPE_POST_OP)
-		_printf("NTYPE_POST_OP\0")
+		_printf("POST_OP\0")
 	;; else if (n`._type == NTYPE_FUNCTION)
-		_printf("NTYPE_FUNCTION\0")
+		_printf("FUNCTION\0")
 	;; else if (n`._type == NTYPE_METHOD)
-		_printf("NTYPE_METHOD\0")
+		_printf("METHOD\0")
 	;; else if (n`._type == NTYPE_TLIST)
-		_printf("NTYPE_TLIST\0")
+		_printf("TLIST\0")
 	;; else if (n`._type == NTYPE_DLIST)
-		_printf("NTYPE_DLIST\0")
+		_printf("DLIST\0")
 	;; else if (n`._type == NTYPE_ELIST)
-		_printf("NTYPE_ELIST\0")
+		_printf("ELIST\0")
 	;; else if (n`._type == NTYPE_LITERAL)
-		_printf("NTYPE_LITERAL\0")
+		_printf("LITERAL\0")
 	;; else if (n`._type == NTYPE_KEY_TYPE)
-		_printf("NTYPE_KEY_TYPE\0")
+		_printf("KEY_TYPE\0")
 	;; else if (n`._type == NTYPE_ENUM)
-		_printf("NTYPE_ENUM\0")
+		_printf("ENUM\0")
 	;; else if (n`._type == NTYPE_DECL)
-		_printf("NTYPE_DECL\0")
+		_printf("DECL\0")
+	;; else if (n`._type == NTYPE_VLIST)
+		_printf("VLIST\0")
 	;; else if (n`._type == NTYPE_ASM)
-		_printf("NTYPE_ASM\0")
+		_printf("ASM\0")
 	;/
 ;/
 

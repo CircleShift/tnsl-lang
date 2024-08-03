@@ -1,0 +1,1144 @@
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 1, col: 1, type: UNKNOWN}
+
+Importing utils/utils.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 1, col: 1, type: UNKNOWN}
+
+Importing utils/c_wrap_linux.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"Alert!\n\0", line: 4, col: 18, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"0\n\0", line: 5, col: 16, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"(nil)\n\0", line: 6, col: 16, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {0, line: 8, col: 14, type: LITRL}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_alloc, line: 9, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_realloc, line: 34, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_delete, line: 59, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_printf, line: 79, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_print_num, line: 99, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_create_file, line: 121, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_open_file, line: 145, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_close_file, line: 168, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_read_byte, line: 182, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_fseek, line: 204, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_write_byte, line: 228, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_perror, line: 249, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_alert, line: 269, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 5, col: 2, type: UNKNOWN}
+
+Importing utils/vector.tnsl
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {data, line: 2, col: 8, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {,, line: 2, col: 12, type: SEP}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {}, line: 7, col: 1, type: DELIM}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {4, line: 9, col: 28, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {256, line: 10, col: 24, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"Num 0\n\0", line: 12, col: 18, type: LITRL}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {Vector, line: 14, col: 11, type: USRWD}
+
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {strings, line: 100, col: 10, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {,, line: 100, col: 17, type: SEP}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {}, line: 104, col: 1, type: DELIM}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {Artifact, line: 106, col: 11, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 6, col: 2, type: UNKNOWN}
+
+Importing utils/file.tnsl
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {Artifact, line: 2, col: 2, type: USRWD}
+
+Expected variable name in declaration:
+  Token {,, line: 2, col: 15, type: SEP}
+
+Expected variable name in declaration:
+  Token {uint, line: 4, col: 2, type: KEYTP}
+
+Expected variable name in declaration:
+  Token {,, line: 4, col: 10, type: SEP}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {}, line: 6, col: 1, type: DELIM}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"Handle: (nil)\n\0", line: 8, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"..", line: 9, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {".", line: 10, col: 22, type: LITRL}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {File, line: 12, col: 11, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 7, col: 2, type: UNKNOWN}
+
+Importing utils/algo.tnsl
+Block being skipped. Parsing will pick up after the end:
+  Token {strcmp, line: 2, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {strlen, line: 12, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {base_for_char, line: 17, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {decode_bin, line: 29, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {decode_oct, line: 35, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {decode_hex, line: 41, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {decode_dec, line: 51, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {cstr_to_int, line: 58, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {cstr_to_uint, line: 91, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {reverse_str, line: 122, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {uint_to_hex_str, line: 132, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {int_to_str, line: 158, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {strcpy, line: 186, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {unquote_cha, line: 192, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {unquote_str, line: 215, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 8, col: 2, type: UNKNOWN}
+
+Importing utils/iterator.tnsl
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {v, line: 2, col: 10, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {,, line: 2, col: 11, type: SEP}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {}, line: 4, col: 1, type: DELIM}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {Iterator, line: 6, col: 11, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 2, col: 1, type: UNKNOWN}
+
+Importing parse/parse.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 2, col: 2, type: UNKNOWN}
+
+Importing parse/tokenizer.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {0, line: 2, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {1, line: 2, col: 40, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {2, line: 3, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {3, line: 4, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {4, line: 5, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {5, line: 6, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {6, line: 7, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {7, line: 8, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {998, line: 10, col: 22, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {999, line: 11, col: 20, type: LITRL}
+
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {_type, line: 14, col: 7, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {,, line: 14, col: 12, type: SEP}
+
+Expected variable name in declaration:
+  Token {uint, line: 16, col: 2, type: KEYTP}
+
+Expected variable name in declaration:
+  Token {,, line: 17, col: 7, type: SEP}
+
+Expected variable name in declaration:
+  Token {}, line: 19, col: 1, type: DELIM}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {Token, line: 21, col: 11, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_in_csv, line: 31, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_str_contains, line: 47, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"import,using,module,export,struct,method,implements,interface,operator,enum,if,else,loop,continue,break,return,label,goto,asm\0", line: 57, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,void,vect,type\0", line: 58, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"false,true,null\0", line: 59, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"~`!@#$%^&*()[]{}-+=\"\'\\|;:/?.>,<\0", line: 61, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"`~!%^&|*-=+./><\0", line: 63, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"==,&&,||,^^,!==,!&&,!||,!^^,!<,!>,<<,>>,!&,!|,!^,++,--,>==,<==\0", line: 64, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {3, line: 65, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"is,len\0", line: 66, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"()[]{}\0", line: 68, col: 21, type: LITRL}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_word_token, line: 71, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_string_token, line: 105, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {comment_line, line: 136, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {comment_block, line: 148, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {is_comment_block, line: 166, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {is_multi_delim, line: 170, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_reserved_token, line: 181, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_numeric_token, line: 244, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {is_whitespace, line: 290, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {is_reserved, line: 299, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {is_numeric, line: 303, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_next_token, line: 310, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {produce_first_token, line: 348, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {gen_token_list, line: 357, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_token_type, line: 379, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_token, line: 405, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_token_list, line: 414, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {end_token_list, line: 422, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 3, col: 2, type: UNKNOWN}
+
+Importing parse/ast.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {0, line: 2, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {1, line: 2, col: 46, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {2, line: 3, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {3, line: 4, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {4, line: 5, col: 19, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {5, line: 6, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {6, line: 7, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {7, line: 8, col: 24, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {8, line: 9, col: 25, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {9, line: 10, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {10, line: 11, col: 22, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {11, line: 12, col: 22, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {12, line: 13, col: 22, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {13, line: 14, col: 24, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {14, line: 15, col: 25, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {15, line: 16, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {16, line: 17, col: 21, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {998, line: 18, col: 20, type: LITRL}
+
+Expected ',' to continue the declaration list or a closing delimiter:
+  Token {_type, line: 21, col: 9, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {,, line: 21, col: 14, type: SEP}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {., line: 23, col: 7, type: AUG}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {}, line: 24, col: 1, type: DELIM}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {Node, line: 26, col: 11, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_get_closing_delim, line: 46, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_advance_check, line: 58, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_print_err, line: 68, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_value, line: 80, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_type_helper_pre, line: 88, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_type_helper_func, line: 135, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_type_helper_usertype, line: 145, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_type, line: 172, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_maybe_helper_decl, line: 221, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_list_decl, line: 225, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_list_enum, line: 258, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_list_type, line: 299, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_method, line: 335, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_function, line: 338, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_import, line: 343, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_asm, line: 373, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_struct, line: 394, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_enum, line: 433, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_decl, line: 480, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_top_block, line: 520, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_module, line: 563, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {_ast_file, line: 613, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {generate_ast, line: 642, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_node_type, line: 659, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_node_head, line: 699, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_ast_rec, line: 707, col: 4, type: USRWD}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {print_ast, line: 724, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 3, col: 1, type: UNKNOWN}
+
+Importing compile/compile.tnsl
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {:, line: 2, col: 2, type: UNKNOWN}
+
+Importing compile/generate.tnsl
+Block being skipped. Parsing will pick up after the end:
+  Token {generate, line: 1, col: 4, type: USRWD}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"out.asm\0", line: 5, col: 23, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"
+TNSLC v0.6.0 (C) 2024 CircleShift (MPL 2.0)
+
+usage:
+	tnslc (file in) [file out]
+	
+\0", line: 13, col: 16, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"Error opening file\n\0", line: 15, col: 20, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {" \0", line: 17, col: 19, type: LITRL}
+
+Expected 'import', 'struct', 'asm', block, or declaration in top level:
+  Token {"\n\0", line: 18, col: 18, type: LITRL}
+
+Block being skipped. Parsing will pick up after the end:
+  Token {main, line: 20, col: 4, type: USRWD}
+
+{ NODE_TYPE: NTYPE_MODULE, DATA: 
+  { NODE_TYPE: NTYPE_ASM, DATA: extern malloc, realloc, free, printf, open, close, read, write, lseek, perror
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: {
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: _alert
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: {
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: _dec
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: {
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: _ptr
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: void
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: NULL
+    }
+  }
+  { NODE_TYPE: NTYPE_MODULE, DATA: utils
+    { NODE_TYPE: NTYPE_STRUCT, DATA: Vector
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+        { NODE_TYPE: NTYPE_TYPE, DATA: 
+          { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+          }
+          { NODE_TYPE: NTYPE_ID, DATA: void
+          }
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: count
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: size
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: _elsz
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: VECTOR_MIN_ELEMENTS
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: VECTOR_MAX_GROW
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NUM_STR
+      }
+    }
+    { NODE_TYPE: NTYPE_STRUCT, DATA: Artifact
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+        { NODE_TYPE: NTYPE_TYPE, DATA: 
+          { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+          }
+          { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+          }
+          { NODE_TYPE: NTYPE_ID, DATA: uint8
+          }
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: size
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: count
+      }
+    }
+    { NODE_TYPE: NTYPE_STRUCT, DATA: File
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: path
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: int32
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: handle
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: pos
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: bool
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: at_end
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: PT_HANDLE
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: PARENT_DIR
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: CURRENT_DIR
+      }
+    }
+    { NODE_TYPE: NTYPE_STRUCT, DATA: Iterator
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+        { NODE_TYPE: NTYPE_TYPE, DATA: 
+          { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+          }
+          { NODE_TYPE: NTYPE_ID, DATA: Vector
+          }
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: int
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: pos
+      }
+    }
+  }
+  { NODE_TYPE: NTYPE_MODULE, DATA: parse
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_DELIM
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_SEP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_KEYWD
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_KEYTP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_LITRL
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_AUG
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_USRWD
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_COMNT
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_UNKNOWN
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: TTYPE_ERR
+      }
+    }
+    { NODE_TYPE: NTYPE_STRUCT, DATA: Token
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+        { NODE_TYPE: NTYPE_TYPE, DATA: 
+          { NODE_TYPE: NTYPE_ID, DATA: uint
+          }
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: data
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: line
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: col
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: KEYWORDS
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: KEYTYPES
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: LITERALS
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: RESERVED
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: OP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: MULTI_OP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: MAX_MULTI
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: MULTI_OP_W
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: DELIMS
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_MODULE
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_EXPORT
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_STRUCT
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_TYPE
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_ID
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_BIN_OP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_PRE_OP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_POST_OP
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_FUNCTION
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_METHOD
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_TLIST
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_DLIST
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_ELIST
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_LITERAL
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_KEY_TYPE
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_ENUM
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_DECL
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: uint16
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: NTYPE_ASM
+      }
+    }
+    { NODE_TYPE: NTYPE_STRUCT, DATA: Node
+      { NODE_TYPE: NTYPE_DLIST, DATA: {
+        { NODE_TYPE: NTYPE_TYPE, DATA: 
+          { NODE_TYPE: NTYPE_ID, DATA: uint16
+          }
+        }
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+        }
+        { NODE_TYPE: NTYPE_ID, DATA: uint8
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: data
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: utils
+      }
+    }
+    { NODE_TYPE: NTYPE_DECL, DATA: 
+      { NODE_TYPE: NTYPE_TYPE, DATA: 
+        { NODE_TYPE: NTYPE_ID, DATA: Vector
+        }
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: sub
+      }
+    }
+  }
+  { NODE_TYPE: NTYPE_MODULE, DATA: compile
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: DEFAULT_FOUT
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: USAGE
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: FOPEN_ERR
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: char_str
+    }
+  }
+  { NODE_TYPE: NTYPE_DECL, DATA: 
+    { NODE_TYPE: NTYPE_TYPE, DATA: 
+      { NODE_TYPE: NTYPE_PRE_OP, DATA: ~
+      }
+      { NODE_TYPE: NTYPE_ID, DATA: uint8
+      }
+    }
+    { NODE_TYPE: NTYPE_ID, DATA: newline
+    }
+  }
+}
