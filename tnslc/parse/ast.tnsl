@@ -135,10 +135,39 @@ struct Node {
 ;/
 
 /; _type_helper_func (~utils.File fin, ~Node mod, ~Token first)
+	/; if (first`.eq("(\0") == true)
+		_ast_list_type(fin, mod, first)
+	;/
 
+	/; if (first.eq("[\0") == true)
+		_ast_list_type(fin, mod, first)
+	;/
 ;/
 
 /; _type_helper_usertype (~utils.File fin, ~Node mod, ~Token first)
+	
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_USRWD)
+			Node utp
+			utp.init(NTYPE_ID, first`.data)
+			first` = produce_next_token(fin, first`)
+
+			/; if (first`._type !== TTYPE_AUG || first`.eq(".\0") == false)
+				run = false
+			;; else
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;/
+		;; else
+			_ast_print_err(first, "Expected identifier in fully qualified type chain\0")
+			run = false
+		;/
+	;/
+
+	/; if (first`._type == TTYPE_DELIM && first`.eq("(\0") == true)
+		_ast_list_type(fin, mod, first)
+	;/
 ;/
 
 /; _ast_type (~utils.File fin, ~Node mod, ~Token first)
@@ -151,6 +180,11 @@ struct Node {
 
 	# Check to see if this is a function pointer type
 	/; if (first`.eq("void\0") && typ.sub.count == 0)
+		Node ktp
+		ktp.init(NTYPE_ID, first`.data)
+		typ.sub.push(~ktp)
+		first` = produce_next_token(fin, first`)
+		
 		_type_helper_func(fin, ~typ, first)
 		mod`.sub.push(~typ)
 		return

@@ -1,0 +1,4 @@
+/; module x86
+	include "math.tnsl"
+	include "call.tnsl"
+;/
