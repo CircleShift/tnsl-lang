@@ -350,6 +350,7 @@ uint   MAX_MULTI  = 3
 	out.line = prev.line
 	out.col = prev.col
 	out._type = TTYPE_ERR
+	out.data = utils.strcpy("\0")
 	return out
 ;/
 
@@ -379,6 +380,7 @@ uint   MAX_MULTI  = 3
 			com.end()
 		;/
 	;/
+	tmp.end()
 	fin`.close()
 
 	return out

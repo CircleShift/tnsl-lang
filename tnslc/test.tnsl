@@ -2,20 +2,22 @@
 
 ~uint lmao
 
-user.tp a
-
-user.tp(asd, asd) b
 
 ~{2}user c
 
 struct user {
 	~int abcd,
-	Geko efg,
 	~Geko hij
 }
 
-/; whatev (~uint8 a) [uint8]
-	return a{0}
+struct Geko {
+	int i
+}
+
+/; module mod
+	/; whatev (~uint8 a) [uint8]
+		return a{0}
+	;/
 ;/
 
 /; main [int]

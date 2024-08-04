@@ -7,7 +7,7 @@ mkdir -p $BUILD_DIR
 mkdir -p $ARTIFACT_DIR
 filename=tnslc.tnsl
 filename="${filename%.*}"
-valgrind ./ctc $filename.tnsl $ARTIFACT_DIR/$filename.asm
+./ctc $filename.tnsl $ARTIFACT_DIR/$filename.asm
 nasm -g -f elf64 -o $ARTIFACT_DIR/$filename.o $ARTIFACT_DIR/$filename.asm
 gcc -ggdb -o $BUILD_DIR/$filename $ARTIFACT_DIR/$filename.o
 
