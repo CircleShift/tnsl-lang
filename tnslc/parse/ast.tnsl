@@ -17,6 +17,7 @@ uint16 NTYPE_KEY_TYPE = 14
 uint16 NTYPE_ENUM = 15
 uint16 NTYPE_DECL = 16
 uint16 NTYPE_VLIST = 17
+uint16 NTYPE_VALUE = 18
 uint16 NTYPE_ASM = 998
 
 struct Node {
@@ -79,6 +80,80 @@ struct Node {
 
 
 # AST values
+
+/; _op_prefix(~Token op) [bool]
+	int l = utils.strlen(op`.data)
+	
+	/; if (l !== 1)
+		return false
+	;/
+
+	/; if (op`.data` == '-' || op`.data` == '!' || op`.data` == '~')
+		return true
+	;/
+
+	return false
+;/
+
+/; _op_order(~Token op) [int]
+	/; if (op`._type !== TTYPE_AUG)
+		_ast_print_err(op, "[FATAL] [CMPERR] _op_order was called on a non-aug token\0")
+		return 999
+	;/
+
+	int l = utils.strlen(op`.data)
+
+	/; if (l == 1)
+		uint8 ch = op`.data`
+		/; if (ch == '`')
+			return 0
+		;; else if (ch == '.')
+			return 1
+		;; else if (ch == '~')
+			return 2
+		;; else if (ch == '*' || ch == '/' || ch == '%')
+			return 5
+		;; else if (ch == '+' || ch == '-')
+			return 6
+		;; else if (ch == '!' || ch == '&' || ch == '|' || ch == '^')
+			return 7
+		;; else if (ch == '<' || ch == '>')
+			return 8
+		;; else if (ch == '=')
+			return 10
+		;/
+	;; else if (l == 2)
+		/; if (op`.data{0} == op`.data{1})
+			uint8 ch = op`.data`
+			/; if (ch == '+' || ch == '-')
+				return 3
+			;; else if (ch == '<' || ch == '>')
+				return 7
+			;; else if (ch == '=')
+				return 8
+			;/
+			return 9
+		;/
+
+		/; if (op`.data{1} == '<' || op`.data{1} == '>')
+			return 8
+		;; else if (op`.data{1} == '=')
+			return 10
+		;; else if (op`.data{0} == '!')
+			return 7
+		;/
+	;; else if (l == 3)
+		/; if (op`.eq("len\0"))
+			return 4
+		;; else if (op`.data{1} == '=')
+			return 8
+		;/
+		return 9
+	;/
+
+	_ast_print_err(op, "[FATAL] [CMPERR] _op_order: Augment not implemented in ordering\0")
+	return 999
+;/
 
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
 	/; if (first`.eq("{\0") == true)
@@ -232,17 +307,10 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
+		_ast_type(fin, mod, first)
 
-		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
-			_ast_type(fin, ~list, first)
-		;; else
-			_ast_print_err(first, "Expected type in type list\0")
-			mod`.sub.push(~list)
-			return
-		;/
-
-		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
-			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
+		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
+			_ast_print_err(first, "Expected ',' to continue the value list or a closing delimiter\0")
 			mod`.sub.push(~list)
 			return
 		;/
@@ -256,7 +324,74 @@ struct Node {
 ;/
 
 /; _maybe_helper_decl (~utils.File fin, ~Node mod, ~Token first)
-	
+	# either a continuation of prev type or a new type then an id
+	Token next = produce_next_token(fin, first`)
+	/; if (next._type !== TTYPE_ERR && next.eq(",\0"))
+		# Another id
+		Node id
+		id.init(NTYPE_ID, first`.data)
+		mod`.sub.push(~id)
+
+		first` = next
+		return
+	;/
+
+	# have to parse as a type
+	Node tp
+	tp.init(NTYPE_TYPE, utils.strcpy("\0"))
+
+	Node utmp
+	utmp.init(NTYPE_ID, first`.data)
+
+	tp.sub.push(~utmp)
+	first` = next
+
+	bool run = true
+	/; if (first`._type !== TTYPE_AUG || first`.eq(".\0") == false)
+		run = false
+	;; else
+		next = produce_next_token(fin, first`)
+		first`.end()
+		first` = next
+	;/
+
+	# Adapted from _type_helper_usertype
+	/; loop (run == true && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_USRWD)
+			Node utp
+			utp.init(NTYPE_ID, first`.data)
+			first` = produce_next_token(fin, first`)
+			tp.sub.push(~utp)
+
+			/; if (first`._type !== TTYPE_AUG || first`.eq(".\0") == false)
+				run = false
+			;; else
+				next = produce_next_token(fin, first`)
+				first`.end()
+				first` = next
+			;/
+		;; else
+			_ast_print_err(first, "Expected identifier in fully qualified type chain\0")
+			run = false
+		;/
+	;/
+
+	/; if (first`._type == TTYPE_DELIM && first`.eq("(\0") == true)
+		_ast_list_type(fin, ~tp, first)
+	;/
+
+	mod`.sub.push(~tp)
+
+	/; if (first`._type !== TTYPE_USRWD)
+		_ast_print_err(first, "Expected identifier after user type in type list\0")
+		return
+	;/
+
+	Node id
+	id.init(NTYPE_ID, first`.data)
+	mod`.sub.push(~id)
+
+	first` = produce_next_token(fin, first`)
 ;/
 
 /; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first)
@@ -266,10 +401,30 @@ struct Node {
 	uint8 end = _get_closing_delim(first`.data`)
 
 	first` = produce_next_token(fin, first`)
+	bool seen = false
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		/; if (first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+		/; if (seen == false || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
 			_ast_type(fin, ~list, first)
+
+			/; if (first`._type !== TTYPE_USRWD)
+				/; if (seen == false)
+					_ast_print_err(first, "Expected type then identifier as first items in declaration list\0")
+				;; else
+					_ast_print_err(first, "Expected identifier after type in params/struct def\0")
+				;/
+				mod`.sub.push(~list)
+				return
+			;/
+
+			seen = true
+
+			Node id
+			id.init(NTYPE_ID, first`.data)
+
+			list.sub.push(~id)
+			first` = produce_next_token(fin, first`)
+
 		;; else if (first`._type == TTYPE_USRWD)
 			_maybe_helper_decl(fin, ~list, first)
 		;; else
@@ -351,7 +506,7 @@ struct Node {
 			return
 		;/
 
-		/; if (_advance_check(fin, first, ",\0") == false && first`._type !== TTYPE_DELIM)
+		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
 			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.sub.push(~list)
 			return
@@ -373,6 +528,8 @@ struct Node {
 ;/
 
 /; _ast_function (~utils.File fin, ~Node mod, ~Token first)
+
+
 ;/
 
 # Top level directives
@@ -730,6 +887,8 @@ struct Node {
 		_printf("DECL\0")
 	;; else if (n`._type == NTYPE_VLIST)
 		_printf("VLIST\0")
+	;; else if (n`._type == NTYPE_VALUE)
+		_printf("VALUE\0")
 	;; else if (n`._type == NTYPE_ASM)
 		_printf("ASM\0")
 	;/
