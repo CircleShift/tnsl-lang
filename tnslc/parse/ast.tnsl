@@ -202,8 +202,9 @@ struct Node {
 				Node num
 				num.init(NTYPE_LITERAL, first`.data)
 				arr.sub.push(~num)
-				
+
 				first` = produce_next_token(fin, first`)
+
 				/; if (first`.eq("}\0") == true)
 					Token tmp = produce_next_token(fin, first`)
 					first`.end()
@@ -325,7 +326,7 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		_ast_type(fin, mod, first)
+		_ast_value(fin, ~list, first)
 
 		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
 			_ast_print_err(first, "Expected ',' to continue the value list or a closing delimiter\0")

@@ -265,7 +265,11 @@ uint   MAX_MULTI  = 3
 		/; if (ch == 0)
 			out.data = tmp.as_cstr()
 			return out
-		;; else if (is_reserved(ch) == false && is_whitespace(ch) == false && is_numeric(ch) == false)
+		;; else if (is_reserved(ch) == true || is_whitespace(ch) == true)
+			fin`.unread()
+			out.data = tmp.as_cstr()
+			return out
+		;; else if (is_numeric(ch) == false)
 			base = true
 			tmp.push(~ch)
 		;/
