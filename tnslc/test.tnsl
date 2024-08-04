@@ -2,6 +2,12 @@
 
 ~uint lmao
 
+user.tp a
+
+user.tp(asd, asd) b
+
+~{2}user c
+
 /; whatev (~uint8 a) [uint8]
 	return a{0}
 ;/

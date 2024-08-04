@@ -81,7 +81,9 @@ struct Node {
 # AST values
 
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
-
+	/; if (first`.eq("{\0") == true)
+		_ast_list_value(fin, mod, first)
+	;/
 ;/
 
 
@@ -181,7 +183,7 @@ struct Node {
 	_type_helper_pre(fin, ~typ, first)
 
 	# Check to see if this is a function pointer type
-	/; if (first`.eq("void\0") && typ.sub.count == 0)
+	/; if (first`.eq("void\0") == true)
 		Node ktp
 		ktp.init(NTYPE_ID, first`.data)
 		typ.sub.push(~ktp)
