@@ -99,7 +99,7 @@ struct Node {
 		return false
 	;/
 	
-	/; if (op`.eq("len\0") || op`.eq("--\0"), op`.eq("++\0"))
+	/; if (op`.eq("len\0") || op`.eq("--\0") || op`.eq("++\0"))
 		return true
 	;/
 
@@ -120,6 +120,7 @@ struct Node {
 	;/
 	return false
 ;/
+
 
 /; _op_order(~Token op) [int]
 	/; if (op`._type !== TTYPE_AUG)
@@ -181,40 +182,81 @@ struct Node {
 	return 999
 ;/
 
-/; _ast_value_singlet(~utils.File fin, ~Node mod, ~Token first) [bool]
+/; _ast_post_id (~utils.File fin, ~Node mod, ~Token first)
+;/
+
+/; _ast_value_bare(~utils.File fin, ~Node mod, ~Token first) [bool]
 
 	~Node cur = mod
-	/; if (_advance_check(fin, first, "(\0") == true)
-		_ast_value(fin, mod, first)
-		/; if (_advance_check(fin, first, ")\0") == false)
-			_ast_print_err(first, "Expected closing parenthesis for singlet\0")
+	/; if (first`.eq("{\0") == true)
+		_ast_list_value(fin, mod, first)
+		/; if (_advance_check(fin, first, "}\0") == false)
+			_ast_print_err(first, "Expected closing '}' for singlet\0")
 			return false
 		;/
-		cur = mod`.sub.get(mod`.sub.count - 1)
+	;; else if (_advance_check(fin, first, "(\0") == true)
+		_ast_value(fin, mod, first)
+		/; if (_advance_check(fin, first, ")\0") == false)
+			_ast_print_err(first, "Expected closing ')' for singlet\0")
+			return false
+		;/
 	;; else
 		/; loop (first`._type == TTYPE_AUG)
 			/; if (_op_prefix(first) == false)
-				_ast_print_err(first, "\0")
+				_ast_print_err(first, "Only certain augments (-, !, ~, --, ++, len) can be used as prefixes for bare values\0")
 				return false
 			;/
 			Node pre
 			pre.init(NTYPE_PRE_OP, first`.data)
+
+			cur`.sub.push(~pre)
+			cur = cur`.sub.get(cur`.sub.count - 1)
+			first` = produce_next_token(fin, first`)
 		;/
+		
+		Node val
+		
+		/; if (first`._type == TTYPE_USRWD)
+			val.init(NTYPE_ID, first`.data)
+			first` = produce_next_token(fin, first`)
+			_ast_post_id(fin, ~val, first)
+		;; else if (first`._type == TTYPE_LITRL)
+			val.init(NTYPE_LITERAL, first`.data)
+			first` = produce_next_token(fin, first`)
+		;; else
+			_ast_print_err(first, "Expected identifier or literal in bare value\0")
+			return false
+		;/
+
+		cur`.sub.push(~val)
 	;/
 
 	/; loop (_advance_check(fin, first, ".\0") == true)
 		/; if (first`._type !== TTYPE_USRWD)
-			_ast_err(first, "Expected identifier/member name after '.'")
-
+			_ast_print_err(first, "Expected method/member name after '.'\0")
+			return false
 		;/
 		
+		~Node repl = cur`.sub.get(cur`.sub.count - 1)
+		Node dot
+		dot.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
+		dot.sub.push(repl)
+
+		Node val
+		val.init(NTYPE_ID, first`.data)
+		first` = produce_next_token(fin, first`)
+		_ast_post_id(fin, ~val, first)
+		dot.sub.push(~val)
+
+		cur`.sub.pop()
+		cur`.sub.push(~dot)
+		cur = cur`.sub.get(cur`.sub.count - 1)
 	;/
+
+	return true
 ;/
 
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
-	/; if (first`.eq("{\0") == true)
-		_ast_list_value(fin, mod, first)
-	;/
 
 	Node val
 	val.init(NTYPE_VALUE, utils.strcpy("\0"))
@@ -222,7 +264,7 @@ struct Node {
 	~Node cur = ~val
 
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		_ast_value_singlet(fin, ~cur, first)
+		_ast_value_bare(fin, ~cur, first)
 	;/
 
 	mod`.sub.push(~val)
@@ -291,7 +333,7 @@ struct Node {
 		_ast_list_type(fin, mod, first)
 	;/
 
-	/; if (first.eq("[\0") == true)
+	/; if (first`.eq("[\0") == true)
 		_ast_list_type(fin, mod, first)
 	;/
 ;/
@@ -1088,3 +1130,5 @@ struct Node {
 /; print_ast (~Node n)
 	print_ast_rec(n, 0)
 ;/
+
+
