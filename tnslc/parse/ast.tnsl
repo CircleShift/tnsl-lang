@@ -18,6 +18,7 @@ uint16 NTYPE_ENUM = 15
 uint16 NTYPE_DECL = 16
 uint16 NTYPE_VLIST = 17
 uint16 NTYPE_VALUE = 18
+uint16 NTYPE_CAST = 19
 uint16 NTYPE_ASM = 998
 
 struct Node {
@@ -99,7 +100,7 @@ struct Node {
 		return false
 	;/
 	
-	/; if (op`.eq("len\0") || op`.eq("--\0") || op`.eq("++\0"))
+	/; if (op`.eq("len\0") == true || op`.eq("--\0") == true || op`.eq("++\0") == true)
 		return true
 	;/
 
@@ -115,23 +116,27 @@ struct Node {
 ;/
 
 /; _op_postfix(~Token op) [bool]
-	/; if (op`.eq("`\0") || op`.eq("++\0") || op`.eq("--\0"))
+	/; if (op`.eq("`\0") == true || op`.eq("++\0") == true || op`.eq("--\0") == true)
 		return true
 	;/
 	return false
 ;/
 
-
-/; _op_order(~Token op) [int]
-	/; if (op`._type !== TTYPE_AUG)
-		_ast_print_err(op, "[FATAL] [CMPERR] _op_order was called on a non-aug token\0")
-		return 999
+/; _op_bin(~Token op) [bool]
+	/; if (op`.eq("-\0") == true)
+		return true
 	;/
+	/; if (_op_prefix(op) == true || _op_postfix(op) == true)
+		return false
+	;/
+	return true
+;/
 
-	int l = utils.strlen(op`.data)
+/; _op_order(~uint8 op) [int]
+	int l = utils.strlen(op)
 
 	/; if (l == 1)
-		uint8 ch = op`.data`
+		uint8 ch = op`
 		/; if (ch == '`')
 			return 0
 		;; else if (ch == '.')
@@ -150,8 +155,8 @@ struct Node {
 			return 10
 		;/
 	;; else if (l == 2)
-		/; if (op`.data{0} == op`.data{1})
-			uint8 ch = op`.data`
+		/; if (op{0} == op{1})
+			uint8 ch = op`
 			/; if (ch == '+' || ch == '-')
 				return 3
 			;; else if (ch == '<' || ch == '>')
@@ -162,76 +167,123 @@ struct Node {
 			return 9
 		;/
 
-		/; if (op`.data{1} == '<' || op`.data{1} == '>')
+		/; if (op{1} == '<' || op{1} == '>')
 			return 8
-		;; else if (op`.data{1} == '=')
+		;; else if (op{1} == '=')
 			return 10
-		;; else if (op`.data{0} == '!')
+		;; else if (op{0} == '!')
 			return 7
 		;/
 	;; else if (l == 3)
-		/; if (op`.eq("len\0"))
+		/; if (utils.strcmp(op, "len\0") == true)
 			return 4
-		;; else if (op`.data{1} == '=')
+		;; else if (op{1} == '=')
 			return 8
 		;/
 		return 9
 	;/
 
-	_ast_print_err(op, "[FATAL] [CMPERR] _op_order: Augment not implemented in ordering\0")
+	_printf("[FATAL] [CMPERR] _op_order: Augment not implemented in ordering \0")
+	_print_num("'%s'\n\0", op)
 	return 999
 ;/
 
-/; _ast_post_id (~utils.File fin, ~Node mod, ~Token first)
+/; _astv_pre_id (~utils.File fin, ~Node cur, ~Token first) [~Node]
+	/; loop (first`._type == TTYPE_AUG)
+		/; if (_op_prefix(first) == false)
+			_ast_print_err(first, "Only certain augments (-, !, ~, --, ++, len) can be used as prefixes for bare values\0")
+			return cur
+		;/
+		Node pre
+		pre.init(NTYPE_PRE_OP, first`.data)
+
+		cur`.sub.push(~pre)
+		cur = cur`.sub.get(cur`.sub.count - 1)
+		first` = produce_next_token(fin, first`)
+	;/
+
+	return cur
+;/
+
+/; _astv_cast (~utils.File fin, ~Node mod, ~Token first) [int]
+	int out = first`.line
+	/; if (first`.eq("[\0"))
+		Node cast
+		cast.init(NTYPE_CAST, utils.strcpy("\0"))
+		out = _ast_list_type(fin, ~cast, first)
+		~Node tmp = mod`.sub.get(mod`.sub.count - 1)
+		cast.sub.push(tmp)
+		mod`.sub.pop()
+		mod`.sub.push(~cast)
+	;/
+	return out
+;/
+
+/; _astv_post_id (~utils.File fin, ~Node mod, ~Token first)
+	int ln = first`.line
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (ln !== first`.line)
+			run = false
+		;; else if (_op_postfix(first) == true)
+			Node post
+			post.init(NTYPE_POST_OP, first`.data)
+			mod`.sub.push(~post)
+			first` = produce_next_token(fin, first`)
+		;; else if (first`.eq("(\0") == true)
+			ln = _ast_list_value(fin, mod, first)
+		;; else
+			run = false
+		;/
+	;/
 ;/
 
 /; _ast_value_bare(~utils.File fin, ~Node mod, ~Token first) [bool]
 
 	~Node cur = mod
+	
+	cur = _astv_pre_id(fin, cur, first)
+
+	int ln = first`.line
+
+	# Pre-flight check
 	/; if (first`.eq("{\0") == true)
-		_ast_list_value(fin, mod, first)
-		/; if (_advance_check(fin, first, "}\0") == false)
-			_ast_print_err(first, "Expected closing '}' for singlet\0")
-			return false
-		;/
+		ln = _ast_list_value(fin, cur, first)
 	;; else if (_advance_check(fin, first, "(\0") == true)
-		_ast_value(fin, mod, first)
+		_ast_value(fin, cur, first)
+		ln = first`.line
 		/; if (_advance_check(fin, first, ")\0") == false)
 			_ast_print_err(first, "Expected closing ')' for singlet\0")
 			return false
 		;/
-	;; else
-		/; loop (first`._type == TTYPE_AUG)
-			/; if (_op_prefix(first) == false)
-				_ast_print_err(first, "Only certain augments (-, !, ~, --, ++, len) can be used as prefixes for bare values\0")
-				return false
-			;/
-			Node pre
-			pre.init(NTYPE_PRE_OP, first`.data)
-
-			cur`.sub.push(~pre)
-			cur = cur`.sub.get(cur`.sub.count - 1)
-			first` = produce_next_token(fin, first`)
+		/; if (ln == first`.line)
+			ln = _astv_cast(fin, cur, first)
+			~Node tmp = cur`.sub.get(cur`.sub.count - 1)
 		;/
-		
+	;; else if (first`._type == TTYPE_USRWD)
 		Node val
-		
-		/; if (first`._type == TTYPE_USRWD)
-			val.init(NTYPE_ID, first`.data)
-			first` = produce_next_token(fin, first`)
-			_ast_post_id(fin, ~val, first)
-		;; else if (first`._type == TTYPE_LITRL)
-			val.init(NTYPE_LITERAL, first`.data)
-			first` = produce_next_token(fin, first`)
-		;; else
-			_ast_print_err(first, "Expected identifier or literal in bare value\0")
-			return false
-		;/
-
+		val.init(NTYPE_ID, first`.data)
+		first` = produce_next_token(fin, first`)
 		cur`.sub.push(~val)
+	;; else if (first`._type == TTYPE_LITRL)
+		Node val
+		val.init(NTYPE_LITERAL, first`.data)
+		first` = produce_next_token(fin, first`)
+		cur`.sub.push(~val)
+	;; else
+		_ast_print_err(first, "Expected compound, parenthetical, literal, or identifier for bare value\0")
+		return false
+	;/
+	
+	/; if (ln == first`.line)
+		ln = _astv_post_id(fin, cur`.sub.get(cur`.sub.count - 1), first)
+	;; else
+		return true
 	;/
 
-	/; loop (_advance_check(fin, first, ".\0") == true)
+	bool run = ln == first`.line
+
+	# Methods and members
+	/; loop (bool run = true; run == true && _advance_check(fin, first, ".\0") == true)
 		/; if (first`._type !== TTYPE_USRWD)
 			_ast_print_err(first, "Expected method/member name after '.'\0")
 			return false
@@ -244,8 +296,15 @@ struct Node {
 
 		Node val
 		val.init(NTYPE_ID, first`.data)
+		int ln = first`.line
 		first` = produce_next_token(fin, first`)
-		_ast_post_id(fin, ~val, first)
+
+		/; if (first`.line !== ln)
+			run = false
+		;; else
+			_astv_post_id(fin, ~val, first)
+		;/
+
 		dot.sub.push(~val)
 
 		cur`.sub.pop()
@@ -257,14 +316,64 @@ struct Node {
 ;/
 
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
-
+	
 	Node val
 	val.init(NTYPE_VALUE, utils.strcpy("\0"))
 
 	~Node cur = ~val
 
-	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		_ast_value_bare(fin, ~cur, first)
+	bool run = _ast_value_bare(fin, cur, first)
+	
+	/; loop (run == true && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_SEP || _is_closing(first) == true)
+			run = false
+		;; else if (first`.eq(".\0") == true)
+			run = false
+		;; else if (first`._type == TTYPE_AUG && _op_bin(first) == true)
+			Node bin
+			bin.init(NTYPE_BIN_OP, first`.data)
+			
+			_ast_print_err(first, "[DEBUG] BIN_TEST")
+			int i = _op_order(first`.data)
+			_print_num("    OP_ORD %d\n\0", i)
+			bool gt = false
+			/; if (cur`._type == NTYPE_BIN_OP)
+				int j = _op_order(cur`.data)
+				_print_num("    OTH %s\n\0", cur`.data)
+				_print_num("    OP_ORD %d\n\0", j)
+				_print_num("    GT %b\n\0", i > j)
+				gt = i > j
+			;/
+
+			# Start from the top and work our way down
+			/; if (gt == true)
+				/; loop (cur = ~val; gt == true)
+					~Node sub = cur`.sub.get(cur`.sub.count - 1)
+					
+					/; if (sub`._type == NTYPE_BIN_OP)
+						int j = _op_order(sub`.data)
+						gt = j > i
+					;/
+
+					/; if (gt)
+						_print_num("[debug] Going down... '%s'\n\0", sub`.data)
+						cur = sub
+					;/
+				;/
+			;/
+
+			# Replace the last value in the current
+			bin.sub.push(cur`.sub.get(cur`.sub.count - 1))
+			cur`.sub.pop()
+			cur`.sub.push(~bin)
+			cur = cur`.sub.get(cur`.sub.count - 1)
+			
+			first` = produce_next_token(fin, first`)
+			run = _ast_value_bare(fin, cur, first)
+
+		;; else
+			run = false
+		;/
 	;/
 
 	mod`.sub.push(~val)
@@ -414,7 +523,7 @@ struct Node {
 
 # AST lists
 
-/; _ast_list_value (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_list_value (~utils.File fin, ~Node mod, ~Token first) [int]
 	Node list
 	list.init(NTYPE_VLIST, first`.data)
 
@@ -428,15 +537,19 @@ struct Node {
 		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
 			_ast_print_err(first, "Expected ',' to continue the value list or a closing delimiter\0")
 			mod`.sub.push(~list)
-			return
+			return first`.line
 		;/
 	;/
 
 	mod`.sub.push(~list)
 
+	int ln = first`.line
+	
 	Token next = produce_next_token(fin, first`)
 	first`.end()
 	first` = next
+	
+	return ln
 ;/
 
 /; _maybe_helper_decl (~utils.File fin, ~Node mod, ~Token first)
@@ -510,7 +623,7 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 ;/
 
-/; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_list_decl (~utils.File fin, ~Node mod, ~Token first) [int]
 	Node list
 	list.init(NTYPE_DLIST, first`.data)
 
@@ -530,7 +643,7 @@ struct Node {
 					_ast_print_err(first, "Expected identifier after type in params/struct def\0")
 				;/
 				mod`.sub.push(~list)
-				return
+				return first`.line
 			;/
 
 			seen = true
@@ -546,24 +659,28 @@ struct Node {
 		;; else
 			_ast_print_err(first, "Expected type or parameter name in declaration list\0")
 			mod`.sub.push(~list)
-			return
+			return first`.line
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the declaration list or a closing delimiter\0")
 			mod`.sub.push(~list)
-			return
+			return first`.line
 		;/
 	;/
 
 	mod`.sub.push(~list)
 	
+	int ln = first`.line
+
 	Token next = produce_next_token(fin, first`)
 	first`.end()
 	first` = next
+
+	return ln
 ;/
 
-/; _ast_list_enum (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_list_enum (~utils.File fin, ~Node mod, ~Token first) [int]
 	Node list
 	list.init(NTYPE_ELIST, first`.data)
 
@@ -571,8 +688,12 @@ struct Node {
 
 	first` = produce_next_token(fin, first`)
 
+	int ln = first`.line
+
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+		/; if (first`._type == TTYPE_USRWD)
+			ln = first`.line
+
 			Node enum_id
 			enum_id.init(NTYPE_ID, first`.data)
 			
@@ -587,24 +708,32 @@ struct Node {
 		;; else
 			_ast_print_err(first, "Expected identifier in body of enum declaration\0")
 			mod`.sub.push(~list)
-			return
+			return ln
+		;/
+		
+		/; if (first`.eq(",\0") == true)
+			ln = first`.line
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.sub.push(~list)
-			return
+			return ln
 		;/
 	;/
 
 	mod`.sub.push(~list)
 
+	ln = first`.line
+	
 	Token next = produce_next_token(fin, first`)
 	first`.end()
 	first` = next
+
+	return ln
 ;/
 
-/; _ast_list_type (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_list_type (~utils.File fin, ~Node mod, ~Token first) [int]
 	Node list
 	list.init(NTYPE_TLIST, first`.data)
 
@@ -612,28 +741,35 @@ struct Node {
 
 	first` = produce_next_token(fin, first`)
 
+	int ln = first`.line
+
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
 
 		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+			ln = first`.line
 			_ast_type(fin, ~list, first)
 		;; else
 			_ast_print_err(first, "Expected type in type list\0")
 			mod`.sub.push(~list)
-			return
+			return ln
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.sub.push(~list)
-			return
+			return ln
 		;/
 	;/
 
 	mod`.sub.push(~list)
 
+	ln = first`.line
+
 	Token next = produce_next_token(fin, first`)
 	first`.end()
 	first` = next
+
+	return ln
 ;/
 
 

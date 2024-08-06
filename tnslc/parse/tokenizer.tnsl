@@ -61,7 +61,7 @@ struct Token {
 
 ~uint8 KEYWORDS   = "import,using,module,export,struct,method,implements,interface,operator,enum,if,else,loop,continue,break,return,label,goto,asm\0"
 ~uint8 KEYTYPES   = "uint8,uint16,uint32,uint64,uint,int8,int16,int32,int64,int,float32,float64,float,bool,void,vect,type\0"
-~uint8 LITERALS   = "false,true,null\0"
+~uint8 LITERALS   = "false,true,null,iota\0"
 
 ~uint8 RESERVED   = "~`!@#$%^&*()[]{}-+=\"\'\\|;:/?.>,<\0"
 
