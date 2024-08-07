@@ -1,5 +1,5 @@
 # Must be included at the top of the file
-asm "extern malloc, realloc, free, printf, open, close, read, write, lseek, perror"
+asm "extern malloc, realloc, free, printf, putchar, open, close, read, write, lseek, perror"
 
 {}uint8 _alert = "Alert!\n\0"
 {}uint8 _dec = "%d\n\0"
@@ -77,7 +77,7 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek, perr
     # there's no more to do 'cause free returns nothing 
 ;/
 
-/; _printf (~void str)
+/; _putchar (uint8 char)
 
     asm "mov rax, rsp"
     asm "xor rdx, rdx"
@@ -92,9 +92,16 @@ asm "extern malloc, realloc, free, printf, open, close, read, write, lseek, perr
     asm "xor rax, rax"
     
     # do call
-    asm "call printf wrt ..plt"
+    asm "call putchar wrt ..plt"
     
-    # there's no more to do 'cause printf returns nothing 
+    # there's no more to do 'cause I don't care about putchar's output
+;/
+
+# wrap around putchar ( I was dumb and was using printf when I shouldn't have been )
+/; _printf (~uint8 str)
+	/; loop (str` !== 0) [str++]
+		_putchar(str`)
+	;/
 ;/
 
 /; _print_num (~void str, int num)

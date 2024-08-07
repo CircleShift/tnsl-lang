@@ -1,0 +1,28 @@
+# should not be included
+
+~uint lmao
+
+~{2}user c
+
+struct user {
+	~int abcd,
+	~Geko hij
+}
+
+struct Geko {
+	int i
+}
+
+/; module mod
+	int i = 0
+	/; whatev (~uint8 a) [uint8]
+		# return a{0}
+	;/
+;/
+
+/; main [int]
+	# ~uint8 a = "asdf\0"
+	#whatev(a)
+	#whatev("asdf\0")
+	#return 0
+;/

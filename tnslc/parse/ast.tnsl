@@ -19,6 +19,8 @@ uint16 NTYPE_DECL = 16
 uint16 NTYPE_VLIST = 17
 uint16 NTYPE_VALUE = 18
 uint16 NTYPE_CAST = 19
+uint16 NTYPE_FLOW_CONTROL = 20
+uint16 NTYPE_CONTROL_BLOCK = 21
 uint16 NTYPE_ASM = 998
 
 struct Node {
@@ -231,6 +233,16 @@ struct Node {
 			first` = produce_next_token(fin, first`)
 		;; else if (first`.eq("(\0") == true)
 			ln = _ast_list_value(fin, mod, first)
+		;; else if (first`.eq("{\0") == true)
+			Node ind
+			ind.init(NTYPE_POST_OP, first`.data)
+			first` = produce_next_token(fin, first`)
+			_ast_value(fin, ~ind, first)
+			mod`.sub.push(~ind)
+			/; if (_advance_check(fin, first, "}\0") == false)
+				_ast_print_err(first, "Expected '}' to close index post op\0")
+				run = false
+			;/
 		;; else
 			run = false
 		;/
@@ -333,15 +345,10 @@ struct Node {
 			Node bin
 			bin.init(NTYPE_BIN_OP, first`.data)
 			
-			_ast_print_err(first, "[DEBUG] BIN_TEST")
 			int i = _op_order(first`.data)
-			_print_num("    OP_ORD %d\n\0", i)
 			bool gt = false
 			/; if (cur`._type == NTYPE_BIN_OP)
 				int j = _op_order(cur`.data)
-				_print_num("    OTH %s\n\0", cur`.data)
-				_print_num("    OP_ORD %d\n\0", j)
-				_print_num("    GT %b\n\0", i > j)
 				gt = i > j
 			;/
 
@@ -352,11 +359,10 @@ struct Node {
 					
 					/; if (sub`._type == NTYPE_BIN_OP)
 						int j = _op_order(sub`.data)
-						gt = j > i
+						gt = j !< i
 					;/
 
 					/; if (gt)
-						_print_num("[debug] Going down... '%s'\n\0", sub`.data)
 						cur = sub
 					;/
 				;/
@@ -380,9 +386,25 @@ struct Node {
 ;/
 
 /; _ast_keyword_expr (~utils.File fin, ~Node mod, ~Token first)
-	Token tmp = produce_next_token(fin, first`)
-	first`.end()
-	first` = tmp
+	int ln = first`.line
+
+	/; if (first`.eq("return\0") == true || first`.eq("continue\0") == true || first`.eq("break\0") == true)
+		Node ret
+		ret.init(NTYPE_FLOW_CONTROL, first`.data)
+		first` = produce_next_token(fin, first`)
+		
+		/; if (first`.line == ln && _is_closing(first) == false && first`._type !== TTYPE_ERR)
+			_ast_value(fin, ~ret, first)
+		;/
+		mod`.sub.push(~ret)
+
+		return
+	;; else
+		_ast_print_err(first, "Unsupported keyword statement\0")
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
 ;/
 
 
@@ -857,15 +879,15 @@ struct Node {
 	
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
 		/; if (_advance_check(fin, first, "asm\0") == true)
-			_ast_asm(fin, mod, first)
+			_ast_asm(fin, ~fn, first)
 		;; else if (first`.eq("/;\0") == true)
-			_ast_fun_block(fin, mod, first)
+			_ast_fun_block(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
-			_ast_decl(fin, mod, first)
+			_ast_decl(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
-			_maybe_helper_fun(fin, mod, first)
+			_maybe_helper_fun(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_KEYWD)
-			_ast_keyword_expr(fin, mod, first)
+			_ast_keyword_expr(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_DELIM && first`.data` == ';')
 			run = false
 		;; else

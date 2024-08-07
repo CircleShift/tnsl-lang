@@ -16,15 +16,15 @@ struct Geko {
 /; module mod
 	int i = 0
 	/; whatev (~uint8 a) [uint8]
-		# return a{0}
+		return a{0}
 	;/
 ;/
-
-int i = mod.i * 2 + 1 * 4 - 2
 
 /; main [int]
 	# ~uint8 a = "asdf\0"
 	#whatev(a)
 	#whatev("asdf\0")
-	#return 0
+	return 0
 ;/
+
+~uint8 printf = "Unmatched closing delimiter at {line %d, col %d, %s}"
