@@ -92,6 +92,24 @@ struct Node {
 	_printf("\n\0")
 ;/
 
+/; _ast_block_pass(~utils.File fin, ~Token first)
+	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
+		/; if (first`.eq(";/\0") == true)
+			deep = deep - 1
+		;; else if (first`.eq("/;\0") == true)
+			deep = deep + 1
+		;; else if (first`.eq(";;\0") == true && deep == 1)
+			deep = deep - 1
+		;/
+
+		/; if (deep > 0)
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+;/
+
 
 
 # AST values
@@ -801,39 +819,29 @@ struct Node {
 /; _block_helper_method(~utils.File fin, ~Node mod, ~Token first)
 	Token blf = first`
 
-	/; loop (first`.eq("/;\0") == true || first`.eq(";;\0") == true)
-		Token tmp = produce_next_token(fin, first`)
-		/; if (first`.eq("/;\0") == false)
-			first`.end()
-		;/
-		first` = tmp
+	first` = produce_next_token(fin, first`)
 
+	/; loop (bool run = true; run == true)
 		/; if (first`._type == TTYPE_USRWD)
 			_ast_function(fin, mod, first)
 		;; else
-			_ast_print_err(first, "Expected function or operator in method block\0")
+			_ast_print_err(first, "Expected function or operator overload in method block\0")
 		;/
 
-		/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-			/; if (first`.eq(";/\0") == true)
-				deep = deep - 1
-			;; else if (first`.eq("/;\0") == true)
-				deep = deep + 1
-			;; else if (first`.eq(";;\0") == true && deep == 1)
-				deep = deep - 1
-			;/
+		_ast_block_pass(fin, first)
 
-			/; if (deep > 0)
-				tmp = produce_next_token(fin, first`)
-				first`.end()
-				first` = tmp
+		/; if (_advance_check(fin, first, ";/\0") == true)
+			/; if (first`.data` == ';')
+				run = false
+			;; else if (_advance_check(fin, first, "/;\0") == false)
+				_ast_print_err(first, "Expected opening block in method block\0")
 			;/
+		;; else if (_advance_check(fin, first, ";;\0") == false)
+			_ast_print_err(~blf, "Could not find closing ;/ for function in method block\0")
+			run = false
 		;/
 	;/
 
-	/; if (_advance_check(fin, first`, ";/\0") == false)
-		_ast_print_err(~blf, "Could not find closing ;/ for function in method block\0")
-	;/
 	blf.end()
 ;/
 
@@ -860,21 +868,9 @@ struct Node {
 		;/
 	;/
 
-	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(";/\0") == true)
-			deep = deep - 1
-		;; else if (first`.eq("/;\0") == true)
-			deep = deep + 1
-		;/
+	_ast_block_pass(fin, first)
 
-		/; if (deep > 0)
-			Token tmp = produce_next_token(fin, first`)
-			first`.end()
-			first` = tmp
-		;/
-	;/
-
-	/; if (_advance_check(fin, first`, ";/\0") == false)
+	/; if (first`.eq(";/\0") == false)
 		_ast_print_err(~blf, "Could not find closing ;/ for method block\0")
 	;/
 
@@ -912,19 +908,7 @@ struct Node {
 		;/
 	;/
 
-	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(";/\0") == true)
-			deep = deep - 1
-		;; else if (first`.eq("/;\0") == true)
-			deep = deep + 1
-		;/
-
-		/; if (deep > 0)
-			Token tmp = produce_next_token(fin, first`)
-			first`.end()
-			first` = tmp
-		;/
-	;/
+	_ast_block_pass(fin, first)
 
 	/; if (_advance_check(fin, first`, ";/\0") == false)
 		_ast_print_err(~blf, "Could not find closing ;/ for top block\0")
@@ -1172,27 +1156,19 @@ struct Node {
 		;/
 
 		run = _advance_check(fin, first, ";;\0")
-		/; if (run == false && first`.eq(";/\0") == false)
+		/; if (run == false && first`.eq(";/\0") == false && first`.eq(";;\0") == false)
 			_ast_print_err(first, "Block being skipped. Parsing will pick up after the end\0")
 		;/
 	;/
 
-	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(";/\0") == true)
-			deep = deep - 1
-		;; else if (first`.eq("/;\0") == true)
-			deep = deep + 1
-		;/
+	_ast_block_pass(fin, first)
 
-		/; if (deep > 0)
-			Token tmp = produce_next_token(fin, first`)
-			first`.end()
-			first` = tmp
-		;/
-	;/
-
-	/; if (_advance_check(fin, first`, ";/\0") == false)
+	/; if (first`.eq(";/\0") == false && first`.eq(";;\0") == false)
 		_ast_print_err(~blf, "Could not find closing ;/ for top block\0")
+	;; else
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
 	;/
 	blf.end()
 ;/
