@@ -20,6 +20,10 @@ struct Geko {
 	;/
 ;/
 
+int i = {a, b, c} * (whatev + 1)[int]
+
+bool j = _op_order(f`.data) < _op_order(g`.data)
+
 /; main [int]
 	# ~uint8 a = "asdf\0"
 	#whatev(a)

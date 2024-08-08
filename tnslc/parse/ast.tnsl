@@ -1255,6 +1255,12 @@ struct Node {
 		_printf("VLIST\0")
 	;; else if (n`._type == NTYPE_VALUE)
 		_printf("VALUE\0")
+	;; else if (n`._type == NTYPE_CAST)
+		_printf("CAST\0")
+	;; else if (n`._type == NTYPE_FLOW_CONTROL)
+		_printf("FLOW_CONTROL\0")
+	;; else if (n`._type == NTYPE_CONTROL_BLOCK)
+		_printf("CONTROL_BLOCK\0")
 	;; else if (n`._type == NTYPE_ASM)
 		_printf("ASM\0")
 	;/
