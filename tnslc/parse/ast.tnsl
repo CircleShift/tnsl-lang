@@ -798,8 +798,87 @@ struct Node {
 
 # Method blocks
 
-/; _ast_method (~utils.File fin, ~Node mod, ~Token first)
+/; _block_helper_method(~utils.File fin, ~Node mod, ~Token first)
+	Token blf = first`
 
+	/; loop (first`.eq("/;\0") == true || first`.eq(";;\0") == true)
+		Token tmp = produce_next_token(fin, first`)
+		/; if (first`.eq("/;\0") == false)
+			first`.end()
+		;/
+		first` = tmp
+
+		/; if (first`._type == TTYPE_USRWD)
+			_ast_function(fin, mod, first)
+		;; else
+			_ast_print_err(first, "Expected function or operator in method block\0")
+		;/
+
+		/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
+			/; if (first`.eq(";/\0") == true)
+				deep = deep - 1
+			;; else if (first`.eq("/;\0") == true)
+				deep = deep + 1
+			;; else if (first`.eq(";;\0") == true && deep == 1)
+				deep = deep - 1
+			;/
+
+			/; if (deep > 0)
+				tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;/
+		;/
+	;/
+
+	/; if (_advance_check(fin, first`, ";/\0") == false)
+		_ast_print_err(~blf, "Could not find closing ;/ for function in method block\0")
+	;/
+	blf.end()
+;/
+
+/; _ast_method (~utils.File fin, ~Node mod, ~Token first)
+	Token blf = first`
+
+	/; if (first`._type !== TTYPE_USRWD)
+		_ast_print_err(first, "Expected identifier of struct after 'method'\0")
+		return
+	;/
+
+	Node mth
+	mth.init(NTYPE_METHOD, first`.data)
+	first` = produce_next_token(fin, first`)
+
+	/; loop (bool run = true; run == true && first`._type == TTYPE_DELIM)
+		/; if (first`.eq("/;\0") == true)
+			_block_helper_method(fin, ~mth, first)
+		;; else
+			/; if (first`.data` !== ';')
+				_ast_print_err(first, "Method block being skipped. Parsing will resume after the end\0")
+			;/
+			run = false
+		;/
+	;/
+
+	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
+		/; if (first`.eq(";/\0") == true)
+			deep = deep - 1
+		;; else if (first`.eq("/;\0") == true)
+			deep = deep + 1
+		;/
+
+		/; if (deep > 0)
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+
+	/; if (_advance_check(fin, first`, ";/\0") == false)
+		_ast_print_err(~blf, "Could not find closing ;/ for method block\0")
+	;/
+
+	mod`.sub.push(~mth)
 ;/
 
 
@@ -834,9 +913,9 @@ struct Node {
 	;/
 
 	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(";/\0"))
+		/; if (first`.eq(";/\0") == true)
 			deep = deep - 1
-		;; else if (first`.eq("/;\0"))
+		;; else if (first`.eq("/;\0") == true)
 			deep = deep + 1
 		;/
 
@@ -869,11 +948,11 @@ struct Node {
 	fn.init(NTYPE_FUNCTION, first`.data)
 	first` = produce_next_token(fin, first`)
 
-	/; if (first`.eq("(\0"))
+	/; if (first`.eq("(\0") == true)
 		_ast_list_decl(fin, ~fn, first)
 	;/
 
-	/; if (first`.eq("[\0"))
+	/; if (first`.eq("[\0") == true)
 		_ast_list_type(fin, ~fn, first)
 	;/
 	
@@ -1099,9 +1178,9 @@ struct Node {
 	;/
 
 	/; loop (int deep = 1; deep > 0 && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(";/\0"))
+		/; if (first`.eq(";/\0") == true)
 			deep = deep - 1
-		;; else if (first`.eq("/;\0"))
+		;; else if (first`.eq("/;\0") == true)
 			deep = deep + 1
 		;/
 

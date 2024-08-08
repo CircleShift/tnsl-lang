@@ -1,34 +1,201 @@
-# should not be included
-
-~uint lmao
-
-~{2}user c
-
-struct user {
-	~int abcd,
-	~Geko hij
+struct Vector {
+	~void data,
+	uint
+		count,
+		size,
+		_elsz
 }
 
-struct Geko {
-	int i
-}
+uint VECTOR_MIN_ELEMENTS = 4
+uint VECTOR_MAX_GROW = 256
 
-/; module mod
-	int i = 0
-	/; whatev (~uint8 a) [uint8]
-		return a{0}
+~uint8 NUM_STR = "Num %d\n\0"
+
+/; method Vector
+	
+	/; init (uint elsz)
+		self._elsz = elsz
+		self.size = VECTOR_MIN_ELEMENTS
+		self.count = 0
+		self.data = _alloc(self.size * self._elsz)
+	;/
+
+	/; from_cstr(~uint8 cstr)
+		self.init(1)
+		self.push_cstr(cstr)
+	;/
+
+	/; _grow (uint i)
+		self.size = self.size + i
+		self.data = _realloc(self.data, self.size * self._elsz)
+	;/
+
+	/; get (uint index) [~void]
+		/; if (index !< self.count)
+			return NULL
+		;/
+
+		return self.data + index * self._elsz
+	;/
+
+	/; push (~void el)
+		/; if (self.size == self.count + 1)
+			/; if (self.size < VECTOR_MAX_GROW)
+				self._grow(self.size)
+			;; else
+				self._grow(VECTOR_MAX_GROW)
+			;/
+		;/
+
+		~void start = self.data + self.count * self._elsz
+		/; loop (int i = 0; i < self._elsz) [i++]
+			~uint8 to = start + i
+			~uint8 from = el + i
+			to` = from`
+		;/
+		self.count++
+	;/
+
+	/; _shrink(uint i)
+		/; if (i !< self.size)
+			self.size = 1
+		;; else
+			self.size = self.size - i
+		;/
+
+		self.data = _realloc(self.data, self.size * self._elsz)
+	;/
+
+	/; pop
+		self.count--
+
+		/; if (self.count < self.size / 2)
+			self._shrink(self.size / 3)
+		;/
+	;/
+
+	/; push_char (uint8 ch)
+		self.push(~ch)
+	;/
+
+	/; push_cstr(~uint8 ch)
+		/; loop (ch` !== 0) [ch++]
+			self.push(ch)
+		;/
+	;/
+
+	/; as_cstr [~uint8]
+		~uint8 z = self.data + self.count
+		z` = 0
+		return self.data
+	;/
+
+	/; end
+		self.count = 0
+		self.size = 0
+		self._elsz = 0
+		_delete(self.data)
 	;/
 ;/
 
-int i = {a, b, c} * (whatev + 1)[int]
 
-bool j = _op_order(f`.data) < _op_order(g`.data)
+# Artifacts
 
-/; main [int]
-	# ~uint8 a = "asdf\0"
-	#whatev(a)
-	#whatev("asdf\0")
-	return 0
+struct Artifact {
+	~~uint8 strings,
+	uint
+		size,
+		count
+}
+
+/; method Artifact
+
+	/; init
+		self.size = VECTOR_MIN_ELEMENTS
+		self.count = 0
+		self.strings = _alloc(len self.strings * self.size)
+	;/
+
+	/; split_cstr (~uint8 str, uint8 split)
+		Vector track
+		track.init(1)
+
+		/; loop (str` !== 0) [str++]
+			/; if (str` == split)
+				self.push(track.as_cstr())
+				track.init(1)
+			;; else
+				track.push(str)
+			;/
+		;/
+
+		self.push(track.as_cstr())
+	;/
+
+	/; _grow (uint i)
+		self.size = self.size + i
+		self.strings = _realloc(self.strings, self.size * len self.strings)
+	;/
+
+	/; push (~uint8 str)
+		/; if (self.size == self.count + 1)
+			/; if (self.size < VECTOR_MAX_GROW)
+				self._grow(self.size)
+			;; else
+				self._grow(VECTOR_MAX_GROW)
+			;/
+		;/
+
+		self.strings{self.count} = str
+		self.count++
+	;/
+
+	/; _shrink(uint i)
+		/; if (i !< self.size)
+			self.size = 1
+		;; else
+			self.size = self.size - i
+		;/
+
+		self.strings = _realloc(self.strings, self.size * len self.strings)
+	;/
+
+	/; pop
+		_delete(self.get(self.count - 1))
+		self.count--
+
+		/; if (self.count < self.size / 2)
+			self._shrink(self.size / 3)
+		;/
+	;/
+
+	/; get (uint index) [~uint8]
+		/; if (index !< self.count)
+			return NULL
+		;/
+
+		return self.strings{index}
+	;/
+	
+	/; to_cstr (uint8 join) [~uint8]
+		Vector out
+		out.init(1)
+
+		/; loop (int i = 0; i < self.count) [i++]
+			out.push_cstr(self.get(i))
+			/; if (i < self.count - 1)
+				out.push(~join)
+			;/
+		;/
+
+		return out.as_cstr()
+	;/
+
+	/; end
+		/; loop (int i = 0; i < self.count) [i++]
+			_delete(self.get(i))
+		;/
+		_delete(self.strings)
+	;/
 ;/
 
-~uint8 printf = "Unmatched closing delimiter at {line %d, col %d, %s}"
