@@ -393,7 +393,11 @@ struct Node {
 			cur = cur`.sub.get(cur`.sub.count - 1)
 			
 			first` = produce_next_token(fin, first`)
-			run = _ast_value_bare(fin, cur, first)
+			/; if (utils.strcmp(bin.data, "is\0"))
+				_ast_type(fin, cur, first)
+			;; else
+				run = _ast_value_bare(fin, cur, first)
+			;/
 
 		;; else
 			run = false
@@ -916,10 +920,46 @@ struct Node {
 	blf.end()
 ;/
 
+/; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [bool]
+	return false
+;/
+
+/; _mhf_transform (~Node _type)
+;/
+
+/; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first)
+;/
+
+/; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first)
+;/
+
 /; _maybe_helper_fun (~utils.File fin, ~Node mod, ~Token first)
-	Token next = produce_next_token(fin, first`)
-	first`.end()
-	first` = next
+	# Try parsing as a type first, and if we encounter something weird we will transform
+	# the output into a value before proceeding
+	Node out
+	out.init(NTYPE_TYPE, utils.strcpy("\0"))
+
+	_type_helper_pre(fin, ~out, first)
+
+	/; if (first`.eq("(\0"))
+		_mhf_transform(~out)
+		_mhf_finish_value(fin, ~out, first)
+		
+	;; else if (first`._type == TTYPE_KEYTP)
+		_mhf_finish_decl(fin, ~out, first)
+
+	;; else if (first`._type !== TTYPE_USRWD)
+		_ast_print_err(first, "Unexpected token. Expected the completion of a declaration or value\0")
+
+	;; else if (_mhf_post(fin, ~out, first))
+		_mhf_finish_decl(fin, ~out, first)
+
+	;; else
+		_mhf_transform(~out)
+		_mhf_finish_value(fin, ~out, first)
+	;/
+
+	mod`.sub.push(~out)
 ;/
 
 /; _ast_function (~utils.File fin, ~Node mod, ~Token first)
