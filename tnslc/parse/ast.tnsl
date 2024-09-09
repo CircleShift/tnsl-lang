@@ -38,6 +38,13 @@ struct Node {
 		self.sub.init(len n)
 	;/
 
+	/; eq (~uint8 cstr) [bool]
+		/; if (utils.strcmp(self.data, cstr) == true)
+			return true
+		;/
+		return false
+	;/
+
 	/; end
 		_delete(self.data)
 		
@@ -924,7 +931,81 @@ struct Node {
 	return false
 ;/
 
+# Transform type nodes into value nodes
 /; _mhf_transform (~Node _type)
+	Node out
+	out.init(NTYPE_VALUE, utils.strcpy("\0"))
+	
+	~Node sub, cur
+	cur = ~out
+	int idx = 0
+	
+	/; loop (bool run = true; run == true && idx < _type`.sub.count)
+		sub = _type`.sub.get(idx)
+		/; if (sub`._type !== NTYPE_PRE_OP)
+			run = false
+		;; else
+			Node new
+			new.init(NTYPE_PRE_OP, utils.strcpy(sub`.data))
+			cur`.sub.push(~new)
+			int last = cur`.sub.count - 1
+			cur = cur`.sub.get(last)
+			idx++
+		;/
+	;/
+
+	/; loop (idx < _type`.sub.count && sub`._type == NTYPE_ID)
+		/; if (idx < _type`.sub.count - 1)
+			sub = _type`.sub.get(idx + 1)
+			/; if (sub`._type == NTYPE_ID)
+				Node op, n
+				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
+				n.init(NTYPE_ID, utils.strcpy(sub`.data))
+				op.sub.push(~n)
+				cur`.sub.push(~op)
+				int last = cur`.sub.count - 1
+				cur = cur`.sub.get(last)
+			;; else
+				Node n
+				n.init(NTYPE_ID, utils.strcpy(sub`.data))
+				cur`.sub.push(~n)
+				int last = cur`.sub.count - 1
+				cur = cur`.sub.get(last)
+			;/
+		;; else
+			Node n
+			n.init(NTYPE_ID, utils.strcpy(sub`.data))
+			cur`.sub.push(~n)
+			int last = cur`.sub.count - 1
+			cur = cur`.sub.get(last)
+		;/
+
+		idx++
+
+		/; if (idx < _type`.sub.count)
+			sub = _type`.sub.get(idx)
+		;/
+	;/
+	
+	/; if (sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
+		Node lst
+		lst.init(NTYPE_VLIST, "(\0")
+		
+		/; loop (int i = 0; i < sub`.sub.count) [i++]
+			~Node lsub = sub`.sub.get(i)
+			_mhf_transform(lsub)
+			lst.sub.push(lsub)
+		;/
+		
+		/; loop (sub`.sub.count > 0)
+			sub`.sub.pop()
+		;/
+
+		cur`.sub.push(~lst)
+	;/
+
+	_type`.end()
+	_type` = out
 ;/
 
 /; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first)
