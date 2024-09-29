@@ -67,8 +67,10 @@ struct Node {
 	/; add_child(~Node n) [~Node]
 		n`.parent = ~self
 		self.sub.push(n)
-		n = self.sub.get(self.sub.count - 1)
-		n`.update_children()
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			n = self.sub.get(i)
+			n`.update_children()
+		;/
 		return n
 	;/
 ;/
@@ -255,8 +257,8 @@ struct Node {
 		cast.init(NTYPE_CAST, utils.strcpy("\0"))
 		out = _ast_list_type(fin, ~cast, first)
 		~Node tmp = mod`.sub.get(mod`.sub.count - 1)
-		mod`.sub.pop()
 		cast.add_child(tmp)
+		mod`.sub.pop()
 		mod`.add_child(~cast)
 	;/
 	return out
@@ -427,7 +429,7 @@ struct Node {
 		;/
 	;/
 
-	mod`.sub.push(~val)
+	mod`.add_child(~val)
 ;/
 
 /; _ast_keyword_expr (~utils.File fin, ~Node mod, ~Token first)
@@ -997,9 +999,7 @@ struct Node {
 		;; else
 			Node new
 			new.init(NTYPE_PRE_OP, utils.strcpy(sub`.data))
-			cur`.add_child(~new)
-			int last = cur`.sub.count - 1
-			cur = cur`.sub.get(last)
+			cur = cur`.add_child(~new)
 			idx++
 		;/
 	;/
@@ -1519,6 +1519,38 @@ struct Node {
 
 /; print_ast (~Node n)
 	print_ast_rec(n, 0)
+	/; if (verify_ast_integrity(n) == false)
+		_printf("Integrity test failed\n\0")
+	;; else
+		_printf("Integrity test passed\n\0")
+	;/
 ;/
 
+/; verify_ast_integrity (~Node n) [bool]
+	/; loop (int i = 0; i < n`.sub.count) [i++]
+		~Node s = n`.sub.get(i)
+		
+		/; if (s`.parent !== n)
+			_printf("Test failed at: \n\0")
+			print_node_head(s)
+			_printf("}\n\0")
+			_printf("Parent: \n\0")
+			print_node_head(n)
+			_printf("}\n\0")
+			~int p = n
+			int ptr = p
+			_print_num("Expected: %p\n\0", ptr)
+			~int p = s`.parent
+			ptr = p
+			_print_num("Got: %p\n\0", ptr)
+			return false
+		;/
+
+		/; if (verify_ast_integrity(s) == false)
+			return false
+		;/
+	;/
+
+	return true
+;/
 
