@@ -188,15 +188,15 @@ struct Node {
 		;; else if (ch == '~')
 			return 2
 		;; else if (ch == '*' || ch == '/' || ch == '%')
-			return 5
-		;; else if (ch == '+' || ch == '-')
 			return 6
-		;; else if (ch == '!' || ch == '&' || ch == '|' || ch == '^')
+		;; else if (ch == '+' || ch == '-')
 			return 7
-		;; else if (ch == '<' || ch == '>')
+		;; else if (ch == '!' || ch == '&' || ch == '|' || ch == '^')
 			return 8
+		;; else if (ch == '<' || ch == '>')
+			return 9
 		;; else if (ch == '=')
-			return 10
+			return 11
 		;/
 	;; else if (l == 2)
 		/; if (op{0} == op{1})
@@ -204,27 +204,27 @@ struct Node {
 			/; if (ch == '+' || ch == '-')
 				return 3
 			;; else if (ch == '<' || ch == '>')
-				return 7
+				return 4
 			;; else if (ch == '=')
-				return 8
+				return 9
 			;/
-			return 9
+			return 10
 		;/
 
 		/; if (op{1} == '<' || op{1} == '>')
-			return 8
+			return 9
 		;; else if (op{1} == '=')
-			return 10
+			return 11
 		;; else if (op{0} == '!')
-			return 7
+			return 8
 		;/
 	;; else if (l == 3)
 		/; if (utils.strcmp(op, "len\0") == true)
-			return 4
+			return 5
 		;; else if (op{1} == '=')
-			return 8
+			return 9
 		;/
-		return 9
+		return 10
 	;/
 
 	_printf("[FATAL] [CMPERR] _op_order: Augment not implemented in ordering \0")
