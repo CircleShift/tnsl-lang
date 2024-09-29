@@ -26,7 +26,8 @@ uint16 NTYPE_ASM = 998
 struct Node {
 	uint16 _type,
 	~uint8 data,
-	utils.Vector sub
+	utils.Vector sub,
+	~Node parent
 }
 
 /; method Node
@@ -36,6 +37,7 @@ struct Node {
 
 		Node n
 		self.sub.init(len n)
+		self.parent = NULL
 	;/
 
 	/; eq (~uint8 cstr) [bool]
@@ -53,6 +55,21 @@ struct Node {
 			cur`.end()
 		;/
 		self.sub.end()
+	;/
+
+	/; update_children
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			~Node cur = self.sub.get(i)
+			cur`.parent = ~self
+		;/
+	;/
+
+	/; add_child(~Node n) [~Node]
+		n`.parent = ~self
+		self.sub.push(n)
+		n = self.sub.get(self.sub.count - 1)
+		n`.update_children()
+		return n
 	;/
 ;/
 
@@ -224,8 +241,7 @@ struct Node {
 		Node pre
 		pre.init(NTYPE_PRE_OP, first`.data)
 
-		cur`.sub.push(~pre)
-		cur = cur`.sub.get(cur`.sub.count - 1)
+		cur = cur`.add_child(~pre)
 		first` = produce_next_token(fin, first`)
 	;/
 
@@ -239,9 +255,9 @@ struct Node {
 		cast.init(NTYPE_CAST, utils.strcpy("\0"))
 		out = _ast_list_type(fin, ~cast, first)
 		~Node tmp = mod`.sub.get(mod`.sub.count - 1)
-		cast.sub.push(tmp)
 		mod`.sub.pop()
-		mod`.sub.push(~cast)
+		cast.add_child(tmp)
+		mod`.add_child(~cast)
 	;/
 	return out
 ;/
@@ -254,7 +270,7 @@ struct Node {
 		;; else if (_op_postfix(first) == true)
 			Node post
 			post.init(NTYPE_POST_OP, first`.data)
-			mod`.sub.push(~post)
+			mod`.add_child(~post)
 			first` = produce_next_token(fin, first`)
 		;; else if (first`.eq("(\0") == true)
 			ln = _ast_list_value(fin, mod, first)
@@ -263,7 +279,7 @@ struct Node {
 			ind.init(NTYPE_POST_OP, first`.data)
 			first` = produce_next_token(fin, first`)
 			_ast_value(fin, ~ind, first)
-			mod`.sub.push(~ind)
+			mod`.add_child(~ind)
 			/; if (_advance_check(fin, first, "}\0") == false)
 				_ast_print_err(first, "Expected '}' to close index post op\0")
 				run = false
@@ -300,12 +316,12 @@ struct Node {
 		Node val
 		val.init(NTYPE_ID, first`.data)
 		first` = produce_next_token(fin, first`)
-		cur`.sub.push(~val)
+		cur`.add_child(~val)
 	;; else if (first`._type == TTYPE_LITRL)
 		Node val
 		val.init(NTYPE_LITERAL, first`.data)
 		first` = produce_next_token(fin, first`)
-		cur`.sub.push(~val)
+		cur`.add_child(~val)
 	;; else
 		_ast_print_err(first, "Expected compound, parenthetical, literal, or identifier for bare value\0")
 		return false
@@ -329,7 +345,7 @@ struct Node {
 		~Node repl = cur`.sub.get(cur`.sub.count - 1)
 		Node dot
 		dot.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
-		dot.sub.push(repl)
+		dot.add_child(repl)
 
 		Node val
 		val.init(NTYPE_ID, first`.data)
@@ -342,16 +358,16 @@ struct Node {
 			_astv_post_id(fin, ~val, first)
 		;/
 
-		dot.sub.push(~val)
+		dot.add_child(~val)
 
 		cur`.sub.pop()
-		cur`.sub.push(~dot)
-		cur = cur`.sub.get(cur`.sub.count - 1)
+		cur = cur`.add_child(~dot)
 	;/
 
 	return true
 ;/
 
+# Needs to be re-done to respect left and right associativity rules
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
 	
 	Node val
@@ -425,7 +441,7 @@ struct Node {
 		/; if (first`.line == ln && _is_closing(first) == false && first`._type !== TTYPE_ERR)
 			_ast_value(fin, ~ret, first)
 		;/
-		mod`.sub.push(~ret)
+		mod`.add_child(~ret)
 
 		return
 	;; else
@@ -447,7 +463,7 @@ struct Node {
 			# Pointer
 			Node ptr
 			ptr.init(NTYPE_PRE_OP, first`.data)
-			mod`.sub.push(~ptr)
+			mod`.add_child(~ptr)
 			first` = produce_next_token(fin, first`)
 		;; else if (first`._type == TTYPE_DELIM && first`.eq("{\0") == true)
 			# Array
@@ -458,7 +474,7 @@ struct Node {
 			/; if (first`._type == TTYPE_LITRL && is_numeric(first`.data`) == true)
 				Node num
 				num.init(NTYPE_LITERAL, first`.data)
-				arr.sub.push(~num)
+				arr.add_child(~num)
 
 				first` = produce_next_token(fin, first`)
 
@@ -479,7 +495,7 @@ struct Node {
 				run = false
 			;/
 
-			mod`.sub.push(~arr)
+			mod`.add_child(~arr)
 
 		;; else
 			run = false
@@ -505,7 +521,7 @@ struct Node {
 			Node utp
 			utp.init(NTYPE_ID, first`.data)
 			first` = produce_next_token(fin, first`)
-			mod`.sub.push(~utp)
+			mod`.add_child(~utp)
 
 			/; if (first`._type !== TTYPE_AUG || first`.eq(".\0") == false)
 				run = false
@@ -537,11 +553,11 @@ struct Node {
 	/; if (first`.eq("void\0") == true)
 		Node ktp
 		ktp.init(NTYPE_ID, first`.data)
-		typ.sub.push(~ktp)
+		typ.add_child(~ktp)
 		first` = produce_next_token(fin, first`)
 		
 		_type_helper_func(fin, ~typ, first)
-		mod`.sub.push(~typ)
+		mod`.add_child(~typ)
 		return
 	;/
 
@@ -551,11 +567,11 @@ struct Node {
 	;; else if (first`._type == TTYPE_KEYTP)
 		Node ktp
 		ktp.init(NTYPE_ID, first`.data)
-		typ.sub.push(~ktp)
+		typ.add_child(~ktp)
 		first` = produce_next_token(fin, first`)
 	;; else
 		_ast_print_err(first, "Expected keytype or usertype when parsing type\0")
-		mod`.sub.push(~typ)
+		mod`.add_child(~typ)
 		return
 	;/
 
@@ -563,11 +579,11 @@ struct Node {
 	/; if (first`.eq("`\0"))
 		Node post
 		post.init(NTYPE_POST_OP, first`.data)
-		typ.sub.push(~post)
+		typ.add_child(~post)
 		first` = produce_next_token(fin, first`)
 	;/
 
-	mod`.sub.push(~typ)
+	mod`.add_child(~typ)
 ;/
 
 
@@ -587,12 +603,12 @@ struct Node {
 
 		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
 			_ast_print_err(first, "Expected ',' to continue the value list or a closing delimiter\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return first`.line
 		;/
 	;/
 
-	mod`.sub.push(~list)
+	mod`.add_child(~list)
 
 	int ln = first`.line
 	
@@ -610,7 +626,7 @@ struct Node {
 		# Another id
 		Node id
 		id.init(NTYPE_ID, first`.data)
-		mod`.sub.push(~id)
+		mod`.add_child(~id)
 
 		first` = next
 		return
@@ -623,7 +639,7 @@ struct Node {
 	Node utmp
 	utmp.init(NTYPE_ID, first`.data)
 
-	tp.sub.push(~utmp)
+	tp.add_child(~utmp)
 	first` = next
 
 	bool run = true
@@ -641,7 +657,7 @@ struct Node {
 			Node utp
 			utp.init(NTYPE_ID, first`.data)
 			first` = produce_next_token(fin, first`)
-			tp.sub.push(~utp)
+			tp.add_child(~utp)
 
 			/; if (first`._type !== TTYPE_AUG || first`.eq(".\0") == false)
 				run = false
@@ -660,7 +676,7 @@ struct Node {
 		_ast_list_type(fin, ~tp, first)
 	;/
 
-	mod`.sub.push(~tp)
+	mod`.add_child(~tp)
 
 	/; if (first`._type !== TTYPE_USRWD)
 		_ast_print_err(first, "Expected identifier after user type in type list\0")
@@ -669,7 +685,7 @@ struct Node {
 
 	Node id
 	id.init(NTYPE_ID, first`.data)
-	mod`.sub.push(~id)
+	mod`.add_child(~id)
 
 	first` = produce_next_token(fin, first`)
 ;/
@@ -693,7 +709,7 @@ struct Node {
 				;; else
 					_ast_print_err(first, "Expected identifier after type in params/struct def\0")
 				;/
-				mod`.sub.push(~list)
+				mod`.add_child(~list)
 				return first`.line
 			;/
 
@@ -702,25 +718,25 @@ struct Node {
 			Node id
 			id.init(NTYPE_ID, first`.data)
 
-			list.sub.push(~id)
+			list.add_child(~id)
 			first` = produce_next_token(fin, first`)
 
 		;; else if (first`._type == TTYPE_USRWD)
 			_maybe_helper_decl(fin, ~list, first)
 		;; else
 			_ast_print_err(first, "Expected type or parameter name in declaration list\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return first`.line
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the declaration list or a closing delimiter\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return first`.line
 		;/
 	;/
 
-	mod`.sub.push(~list)
+	mod`.add_child(~list)
 	
 	int ln = first`.line
 
@@ -754,11 +770,11 @@ struct Node {
 				_ast_value(fin, ~enum_id, first)
 			;/
 
-			list.sub.push(~enum_id)
+			list.add_child(~enum_id)
 			
 		;; else
 			_ast_print_err(first, "Expected identifier in body of enum declaration\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return ln
 		;/
 		
@@ -768,12 +784,12 @@ struct Node {
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return ln
 		;/
 	;/
 
-	mod`.sub.push(~list)
+	mod`.add_child(~list)
 
 	ln = first`.line
 	
@@ -801,18 +817,18 @@ struct Node {
 			_ast_type(fin, ~list, first)
 		;; else
 			_ast_print_err(first, "Expected type in type list\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return ln
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
 			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
-			mod`.sub.push(~list)
+			mod`.add_child(~list)
 			return ln
 		;/
 	;/
 
-	mod`.sub.push(~list)
+	mod`.add_child(~list)
 
 	ln = first`.line
 
@@ -885,7 +901,7 @@ struct Node {
 		_ast_print_err(~blf, "Could not find closing ;/ for method block\0")
 	;/
 
-	mod`.sub.push(~mth)
+	mod`.add_child(~mth)
 ;/
 
 
@@ -903,14 +919,15 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (_advance_check(fin, first, "if\0") == true)
+		/; if (first`.eq("if\0") == true || first`.eq("else\0") == true)
 			_ast_if(fin, mod, first)
-		;; else if (_advance_check(fin, first, "loop\0") == true)
+		;; else if (first`.eq("loop\0") == true)
 			_ast_loop(fin, mod, first)
 		# ;; else if (first`._type == TTYPE_USRWD)
+		# TODO: Functions in functions
 		#	_ast_function(fin, mod, first)
 		;; else
-			_ast_print_err(first, "Expected 'if' or 'loop' for function level block\0")
+			_ast_print_err(first, "Expected 'if', 'else', or 'loop' for function level block\0")
 		;/
 
 		run = _advance_check(fin, first, ";;\0")
@@ -927,8 +944,41 @@ struct Node {
 	blf.end()
 ;/
 
-/; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [bool]
-	return false
+/; _mhf_post_list (~utils.File fin, ~Node mod, ~Token first) [~Node]
+	return NULL
+;/
+
+/; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [~Node]
+	
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_USRWD)
+			Node id
+			id.init(NTYPE_ID, first`.data)
+			mod`.add_child(~id)
+			first` = produce_next_token(fin, first`)
+		;; else
+			return mod
+		;/
+
+		/; if (first`.eq(".\0") == true)
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;; else if (first`.eq("(\0") == true || first`._type == TTYPE_USRWD)
+			run = false
+		;; else
+			return mod
+		;/
+	;/
+
+	/; if (first`.eq("(\0") == true)
+		return _mhf_post_list(fin, mod, first)
+	;/
+
+	/; if (first`._type == TTYPE_USRWD)
+		return NULL
+	;/
+	return mod
 ;/
 
 # Transform type nodes into value nodes
@@ -947,7 +997,7 @@ struct Node {
 		;; else
 			Node new
 			new.init(NTYPE_PRE_OP, utils.strcpy(sub`.data))
-			cur`.sub.push(~new)
+			cur`.add_child(~new)
 			int last = cur`.sub.count - 1
 			cur = cur`.sub.get(last)
 			idx++
@@ -961,23 +1011,17 @@ struct Node {
 				Node op, n
 				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
 				n.init(NTYPE_ID, utils.strcpy(sub`.data))
-				op.sub.push(~n)
-				cur`.sub.push(~op)
-				int last = cur`.sub.count - 1
-				cur = cur`.sub.get(last)
+				op.add_child(~n)
+				cur = cur`.add_child(~op)
 			;; else
 				Node n
 				n.init(NTYPE_ID, utils.strcpy(sub`.data))
-				cur`.sub.push(~n)
-				int last = cur`.sub.count - 1
-				cur = cur`.sub.get(last)
+				cur = cur`.add_child(~n)
 			;/
 		;; else
 			Node n
 			n.init(NTYPE_ID, utils.strcpy(sub`.data))
-			cur`.sub.push(~n)
-			int last = cur`.sub.count - 1
-			cur = cur`.sub.get(last)
+			cur = cur`.add_child(~n)
 		;/
 
 		idx++
@@ -987,28 +1031,28 @@ struct Node {
 		;/
 	;/
 	
-	/; if (sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
+	/; if (idx < _type`.sub.count && sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
 		Node lst
 		lst.init(NTYPE_VLIST, "(\0")
 		
 		/; loop (int i = 0; i < sub`.sub.count) [i++]
 			~Node lsub = sub`.sub.get(i)
 			_mhf_transform(lsub)
-			lst.sub.push(lsub)
+			lst.add_child(lsub)
 		;/
 		
 		/; loop (sub`.sub.count > 0)
 			sub`.sub.pop()
 		;/
 
-		cur`.sub.push(~lst)
+		cur`.add_child(~lst)
 	;/
 
 	_type`.end()
 	_type` = out
 ;/
 
-/; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first)
+/; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
 ;/
 
 /; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first)
@@ -1024,23 +1068,29 @@ struct Node {
 
 	/; if (first`.eq("(\0"))
 		_mhf_transform(~out)
-		_mhf_finish_value(fin, ~out, first)
+		_mhf_finish_value(fin, ~out, first, ~out)
 		
 	;; else if (first`._type == TTYPE_KEYTP)
 		_mhf_finish_decl(fin, ~out, first)
 
 	;; else if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Unexpected token. Expected the completion of a declaration or value\0")
-
-	;; else if (_mhf_post(fin, ~out, first))
-		_mhf_finish_decl(fin, ~out, first)
+		_ast_print_err(first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
 
 	;; else
-		_mhf_transform(~out)
-		_mhf_finish_value(fin, ~out, first)
-	;/
+		# Post is a bit of a weird function.  It returns a pointer the node where
+		# _mhf_finish_value should begin merging in values, or zero in the case
+		# that this looks like a proper declaration
+		~Node cur = _mhf_post(fin, ~out, first)
+		/; if (cur == NULL)
+			_mhf_finish_decl(fin, ~out, first)
 
-	mod`.sub.push(~out)
+		;; else
+			_mhf_transform(~out)
+			_mhf_finish_value(fin, ~out, first, cur)
+		;/
+	;/
+	
+	mod`.add_child(~out)
 ;/
 
 /; _ast_function (~utils.File fin, ~Node mod, ~Token first)
@@ -1083,7 +1133,7 @@ struct Node {
 		;/
 	;/
 
-	mod`.sub.push(~fn)
+	mod`.add_child(~fn)
 ;/
 
 
@@ -1134,7 +1184,7 @@ struct Node {
 	
 	Node an
 	an.init(NTYPE_ASM, utils.unquote_str(first`.data))
-	mod`.sub.push(~an)
+	mod`.add_child(~an)
 
 	Token tmp = produce_next_token(fin, first`)
 	first`.end()
@@ -1162,7 +1212,7 @@ struct Node {
 	# Check for def list
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
 		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
-		mod`.sub.push(~sct)
+		mod`.add_child(~sct)
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1173,7 +1223,7 @@ struct Node {
 
 	# Parse deflist and push root node into module
 	_ast_list_decl(fin, ~sct, first)
-	mod`.sub.push(~sct)
+	mod`.add_child(~sct)
 ;/
 
 /; _ast_enum (~utils.File fin, ~Node mod, ~Token first)
@@ -1205,7 +1255,7 @@ struct Node {
 	# Check for def list
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
 		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
-		mod`.sub.push(~sct)
+		mod`.add_child(~sct)
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1216,7 +1266,7 @@ struct Node {
 
 	# Parse deflist and push root node into module
 	_ast_list_enum(fin, ~sct, first)
-	mod`.sub.push(~sct)
+	mod`.add_child(~sct)
 	
 	Token tmp = produce_next_token(fin, first`)
 	first`.end()
@@ -1242,7 +1292,7 @@ struct Node {
 				_ast_value(fin, ~var, first)
 			;/
 
-			decl.sub.push(~var)
+			decl.add_child(~var)
 
 			/; if (first`.eq(",\0") == false)
 				run = false
@@ -1257,7 +1307,7 @@ struct Node {
 		;/
 	;/
 
-	mod`.sub.push(~decl)
+	mod`.add_child(~decl)
 ;/
 
 /; _ast_top_block(~utils.File fin, ~Node mod, ~Token first)
@@ -1341,7 +1391,7 @@ struct Node {
 		;/
 	;/
 
-	mod`.sub.push(~nmod)
+	mod`.add_child(~nmod)
 ;/
 
 /; _ast_file (~utils.File fin, ~Node mod)
