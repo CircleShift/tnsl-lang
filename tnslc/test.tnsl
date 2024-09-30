@@ -1,3 +1,7 @@
 
 int i = 1 + 2 * 4 - 3 + 4
 
+~uint8 a = b{}
+
+/; main ({}{}uint8 args) [int]
+;/

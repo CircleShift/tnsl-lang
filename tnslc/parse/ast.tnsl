@@ -115,10 +115,14 @@ struct Node {
 	return false
 ;/
 
-/; _ast_print_err (~Token tok, ~uint8 msg)
+/; _ast_print_err (~utils.File fin, ~Token tok, ~uint8 msg)
 	_printf(msg)
 	_printf(":\n\0")
-	_printf("  \0")
+	_printf("  File: \0")
+	~uint8 p = fin`.path.to_cstr('/')
+	_printf(p)
+	_delete(p)
+	_printf("\n  At: \0")
 	print_token(tok`)
 	_printf("\n\0")
 ;/
@@ -246,7 +250,7 @@ struct Node {
 /; _astv_pre_id (~utils.File fin, ~Node cur, ~Token first) [~Node]
 	/; loop (first`._type == TTYPE_AUG)
 		/; if (_op_prefix(first) == false)
-			_ast_print_err(first, "Only certain augments (-, !, ~, --, ++, len) can be used as prefixes for bare values\0")
+			_ast_print_err(fin, first, "Only certain augments (-, !, ~, --, ++, len) can be used as prefixes for bare values\0")
 			return cur
 		;/
 		Node pre
@@ -289,10 +293,12 @@ struct Node {
 			Node ind
 			ind.init(NTYPE_POST_OP, first`.data)
 			first` = produce_next_token(fin, first`)
-			_ast_value(fin, ~ind, first)
+			/; if (_ast_value(fin, ~ind, first) == false)
+				_ast_print_err(fin, first, "Expected index value after '{'\0")
+			;/
 			mod`.add_child(~ind)
 			/; if (_advance_check(fin, first, "}\0") == false)
-				_ast_print_err(first, "Expected '}' to close index post op\0")
+				_ast_print_err(fin, first, "Expected '}' to close index post op\0")
 				run = false
 			;/
 		;; else
@@ -316,7 +322,7 @@ struct Node {
 		_ast_value(fin, cur, first)
 		ln = first`.line
 		/; if (_advance_check(fin, first, ")\0") == false)
-			_ast_print_err(first, "Expected closing ')' for singlet\0")
+			_ast_print_err(fin, first, "Expected closing ')' for singlet\0")
 			return false
 		;/
 		/; if (ln == first`.line)
@@ -334,7 +340,7 @@ struct Node {
 		first` = produce_next_token(fin, first`)
 		cur`.add_child(~val)
 	;; else
-		_ast_print_err(first, "Expected compound, parenthetical, literal, or identifier for bare value\0")
+		_ast_print_err(fin, first, "Expected compound, parenthetical, literal, or identifier for bare value\0")
 		return false
 	;/
 	
@@ -349,7 +355,7 @@ struct Node {
 	# Methods and members
 	/; loop (bool run = true; run == true && _advance_check(fin, first, ".\0") == true)
 		/; if (first`._type !== TTYPE_USRWD)
-			_ast_print_err(first, "Expected method/member name after '.'\0")
+			_ast_print_err(fin, first, "Expected method/member name after '.'\0")
 			return false
 		;/
 		
@@ -399,7 +405,7 @@ struct Node {
 ;/
 
 # Needs to be re-done to respect left and right associativity rules
-/; _ast_value (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_value (~utils.File fin, ~Node mod, ~Token first) [bool]
 	
 	Node val
 	val.init(NTYPE_VALUE, utils.strcpy("\0"))
@@ -407,12 +413,14 @@ struct Node {
 	~Node cur = ~val
 
 	bool run = _ast_value_bare(fin, cur, first)
+	bool valid = run
 	
 	/; loop (run == true && first`._type !== TTYPE_ERR)
 		/; if (first`._type == TTYPE_SEP || _is_closing(first) == true)
 			run = false
 		;; else if (first`.eq(".\0") == true)
 			run = false
+			valid = false
 		;; else if (first`._type == TTYPE_AUG && _op_bin(first) == true)
 			Node bin
 			bin.init(NTYPE_BIN_OP, first`.data)
@@ -444,6 +452,7 @@ struct Node {
 				_ast_type(fin, cur, first)
 			;; else
 				run = _ast_value_bare(fin, cur, first)
+				valid = run
 			;/
 
 		;; else
@@ -452,6 +461,7 @@ struct Node {
 	;/
 
 	mod`.add_child(~val)
+	return valid
 ;/
 
 /; _ast_keyword_expr (~utils.File fin, ~Node mod, ~Token first)
@@ -469,7 +479,7 @@ struct Node {
 
 		return
 	;; else
-		_ast_print_err(first, "Unsupported keyword statement\0")
+		_ast_print_err(fin, first, "Unsupported keyword statement\0")
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
 		first` = tmp
@@ -507,7 +517,7 @@ struct Node {
 					first`.end()
 					first` = tmp
 				;; else
-					_ast_print_err(first, "Expected closing '}' after integer in type declaration\0")
+					_ast_print_err(fin, first, "Expected closing '}' after integer in type declaration\0")
 					run = false
 				;/
 			;; else if (first`.eq("}\0") == true)
@@ -515,7 +525,7 @@ struct Node {
 				first`.end()
 				first` = tmp
 			;; else
-				_ast_print_err(first, "Expected integer or '}' to define either a fixed sized array or pointer to unknown sized array\0")
+				_ast_print_err(fin, first, "Expected integer or '}' to define either a fixed sized array or pointer to unknown sized array\0")
 				run = false
 			;/
 
@@ -555,7 +565,7 @@ struct Node {
 				first` = tmp
 			;/
 		;; else
-			_ast_print_err(first, "Expected identifier in fully qualified type chain\0")
+			_ast_print_err(fin, first, "Expected identifier in fully qualified type chain\0")
 			run = false
 		;/
 	;/
@@ -594,7 +604,7 @@ struct Node {
 		typ.add_child(~ktp)
 		first` = produce_next_token(fin, first`)
 	;; else
-		_ast_print_err(first, "Expected keytype or usertype when parsing type\0")
+		_ast_print_err(fin, first, "Expected keytype or usertype when parsing type\0")
 		mod`.add_child(~typ)
 		return
 	;/
@@ -626,7 +636,7 @@ struct Node {
 		_ast_value(fin, ~list, first)
 
 		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
-			_ast_print_err(first, "Expected ',' to continue the value list or a closing delimiter\0")
+			_ast_print_err(fin, first, "Expected ',' to continue the value list or a closing delimiter\0")
 			mod`.add_child(~list)
 			return first`.line
 		;/
@@ -691,7 +701,7 @@ struct Node {
 				first` = next
 			;/
 		;; else
-			_ast_print_err(first, "Expected identifier in fully qualified type chain\0")
+			_ast_print_err(fin, first, "Expected identifier in fully qualified type chain\0")
 			run = false
 		;/
 	;/
@@ -703,7 +713,7 @@ struct Node {
 	mod`.add_child(~tp)
 
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Expected identifier after user type in type list\0")
+		_ast_print_err(fin, first, "Expected identifier after user type in type list\0")
 		return
 	;/
 
@@ -729,9 +739,9 @@ struct Node {
 
 			/; if (first`._type !== TTYPE_USRWD)
 				/; if (seen == false)
-					_ast_print_err(first, "Expected type then identifier as first items in declaration list\0")
+					_ast_print_err(fin, first, "Expected type then identifier as first items in declaration list\0")
 				;; else
-					_ast_print_err(first, "Expected identifier after type in params/struct def\0")
+					_ast_print_err(fin, first, "Expected identifier after type in params/struct def\0")
 				;/
 				mod`.add_child(~list)
 				return first`.line
@@ -748,13 +758,13 @@ struct Node {
 		;; else if (first`._type == TTYPE_USRWD)
 			_maybe_helper_decl(fin, ~list, first)
 		;; else
-			_ast_print_err(first, "Expected type or parameter name in declaration list\0")
+			_ast_print_err(fin, first, "Expected type or parameter name in declaration list\0")
 			mod`.add_child(~list)
 			return first`.line
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
-			_ast_print_err(first, "Expected ',' to continue the declaration list or a closing delimiter\0")
+			_ast_print_err(fin, first, "Expected ',' to continue the declaration list or a closing delimiter\0")
 			mod`.add_child(~list)
 			return first`.line
 		;/
@@ -797,7 +807,7 @@ struct Node {
 			list.add_child(~enum_id)
 			
 		;; else
-			_ast_print_err(first, "Expected identifier in body of enum declaration\0")
+			_ast_print_err(fin, first, "Expected identifier in body of enum declaration\0")
 			mod`.add_child(~list)
 			return ln
 		;/
@@ -807,7 +817,7 @@ struct Node {
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
-			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
+			_ast_print_err(fin, first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.add_child(~list)
 			return ln
 		;/
@@ -840,13 +850,13 @@ struct Node {
 			ln = first`.line
 			_ast_type(fin, ~list, first)
 		;; else
-			_ast_print_err(first, "Expected type in type list\0")
+			_ast_print_err(fin, first, "Expected type in type list\0")
 			mod`.add_child(~list)
 			return ln
 		;/
 
 		/; if (_advance_check(fin, first, ",\0") == false && _is_closing(first) == false)
-			_ast_print_err(first, "Expected ',' to continue the type list or a closing delimiter\0")
+			_ast_print_err(fin, first, "Expected ',' to continue the type list or a closing delimiter\0")
 			mod`.add_child(~list)
 			return ln
 		;/
@@ -886,7 +896,7 @@ struct Node {
 			empty.init(NTYPE_EMPTY, utils.strcpy("\0"))
 			list.add_child(~empty)
 		;; else
-			_ast_print_err(first, "Expected definition, expression, or ';' in statement list\0")
+			_ast_print_err(fin, first, "Expected definition, expression, or ';' in statement list\0")
 			run = false
 			Token tmp = produce_next_token(fin, first`)
 			first`.end()
@@ -903,7 +913,7 @@ struct Node {
 	ln = first`.line
 	
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== end)
-		_ast_print_err(first, "Expected closing at end of statement list")
+		_ast_print_err(fin, first, "Expected closing at end of statement list")
 	;; else
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -925,7 +935,7 @@ struct Node {
 		/; if (first`._type == TTYPE_USRWD)
 			_ast_function(fin, mod, first)
 		;; else
-			_ast_print_err(first, "Expected function or operator overload in method block\0")
+			_ast_print_err(fin, first, "Expected function or operator overload in method block\0")
 		;/
 
 		_ast_block_pass(fin, first)
@@ -934,10 +944,10 @@ struct Node {
 			/; if (first`.data` == ';')
 				run = false
 			;; else if (_advance_check(fin, first, "/;\0") == false)
-				_ast_print_err(first, "Expected opening block in method block\0")
+				_ast_print_err(fin, first, "Expected opening block in method block\0")
 			;/
 		;; else if (_advance_check(fin, first, ";;\0") == false)
-			_ast_print_err(~blf, "Could not find closing ;/ for function in method block\0")
+			_ast_print_err(fin, ~blf, "Could not find closing ;/ for function in method block\0")
 			run = false
 		;/
 	;/
@@ -949,7 +959,7 @@ struct Node {
 	Token blf = first`
 
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Expected identifier of struct after 'method'\0")
+		_ast_print_err(fin, first, "Expected identifier of struct after 'method'\0")
 		return
 	;/
 
@@ -962,7 +972,7 @@ struct Node {
 			_block_helper_method(fin, ~mth, first)
 		;; else
 			/; if (first`.data` !== ';')
-				_ast_print_err(first, "Method block being skipped. Parsing will resume after the end\0")
+				_ast_print_err(fin, first, "Method block being skipped. Parsing will resume after the end\0")
 			;/
 			run = false
 		;/
@@ -971,7 +981,7 @@ struct Node {
 	_ast_block_pass(fin, first)
 
 	/; if (first`.eq(";/\0") == false)
-		_ast_print_err(~blf, "Could not find closing ;/ for method block\0")
+		_ast_print_err(fin, ~blf, "Could not find closing ;/ for method block\0")
 	;/
 
 	mod`.add_child(~mth)
@@ -1019,7 +1029,7 @@ struct Node {
 		;; else if (first`._type == TTYPE_KEYWD)
 			_ast_keyword_expr(fin, ~out, first)
 		;; else
-			_ast_print_err(first, "Expected definition, expression, or sub block in flow block\0")
+			_ast_print_err(fin, first, "Expected definition, expression, or sub block in flow block\0")
 
 			Token tmp = produce_next_token(fin, first`)
 			first`.end()
@@ -1042,19 +1052,19 @@ struct Node {
 		# TODO: Functions in functions
 		#	_ast_function(fin, mod, first)
 		;; else
-			_ast_print_err(first, "Expected 'if', 'else', or 'loop' for function level block\0")
+			_ast_print_err(fin, first, "Expected 'if', 'else', or 'loop' for function level block\0")
 		;/
 
 		run = _advance_check(fin, first, ";;\0")
 		/; if (run == false && first`.eq(";/\0") == false)
-			_ast_print_err(first, "Block being skipped. Parsing will pick up after the end\0")
+			_ast_print_err(fin, first, "Block being skipped. Parsing will pick up after the end\0")
 		;/
 	;/
 
 	_ast_block_pass(fin, first)
 
 	/; if (_advance_check(fin, first`, ";/\0") == false)
-		_ast_print_err(~blf, "Could not find closing ;/ for top block\0")
+		_ast_print_err(fin, ~blf, "Could not find closing ;/ for top block\0")
 	;/
 	blf.end()
 ;/
@@ -1196,7 +1206,7 @@ struct Node {
 				first` = tmp
 			;/
 		;; else
-			_ast_print_err(first, "Expected variable name in declaration\0")
+			_ast_print_err(fin, first, "Expected variable name in declaration\0")
 			run = false
 		;/
 	;/
@@ -1219,7 +1229,7 @@ struct Node {
 		_mhf_finish_decl(fin, ~out, first)
 
 	;; else if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
+		_ast_print_err(fin, first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
 
 	;; else
 		# Post is a bit of a weird function.  It returns a pointer the node where
@@ -1240,7 +1250,7 @@ struct Node {
 
 /; _ast_function (~utils.File fin, ~Node mod, ~Token first)
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "[FATAL] [CMPERR] Expected function name\0")
+		_ast_print_err(fin, first, "[FATAL] [CMPERR] Expected function name\0")
 		return
 	;/
 
@@ -1270,7 +1280,7 @@ struct Node {
 		;; else if (first`._type == TTYPE_DELIM && first`.data` == ';')
 			run = false
 		;; else
-			_ast_print_err(first, "Expected definition, expression, or sub block in function\0")
+			_ast_print_err(fin, first, "Expected definition, expression, or sub block in function\0")
 
 			Token tmp = produce_next_token(fin, first`)
 			first`.end()
@@ -1288,7 +1298,7 @@ struct Node {
 /; _ast_import (~utils.File fin, ~Node mod, ~Token first)
 
 	/; if (first`._type !== TTYPE_LITRL || first`.data` !== '"')
-		_ast_print_err(first, "Expected string or import literal after 'import'\0")
+		_ast_print_err(fin, first, "Expected string or import literal after 'import'\0")
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1318,7 +1328,7 @@ struct Node {
 /; _ast_asm (~utils.File fin, ~Node mod, ~Token first)
 
 	/; if (first`._type !== TTYPE_LITRL || first`.data` !== '"')
-		_ast_print_err(first, "Expected string literal after 'ast'\0")
+		_ast_print_err(fin, first, "Expected string literal after 'ast'\0")
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1340,7 +1350,7 @@ struct Node {
 	
 	# Identifier check
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
+		_ast_print_err(fin, first, "Expected new identifier for typedef after 'struct'\0")
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1356,7 +1366,7 @@ struct Node {
 
 	# Check for def list
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
-		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
+		_ast_print_err(fin, first, "Expected new identifier for typedef after 'struct'\0")
 		mod`.add_child(~sct)
 
 		Token tmp = produce_next_token(fin, first`)
@@ -1374,7 +1384,7 @@ struct Node {
 /; _ast_enum (~utils.File fin, ~Node mod, ~Token first)
 	# Identifier check
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Expected new identifier for def after 'enum'\0")
+		_ast_print_err(fin, first, "Expected new identifier for def after 'enum'\0")
 
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1399,7 +1409,7 @@ struct Node {
 
 	# Check for def list
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
-		_ast_print_err(first, "Expected new identifier for typedef after 'struct'\0")
+		_ast_print_err(fin, first, "Expected new identifier for typedef after 'struct'\0")
 		mod`.add_child(~sct)
 
 		Token tmp = produce_next_token(fin, first`)
@@ -1447,7 +1457,7 @@ struct Node {
 				first` = tmp
 			;/
 		;; else
-			_ast_print_err(first, "Expected variable name in declaration\0")
+			_ast_print_err(fin, first, "Expected variable name in declaration\0")
 			run = false
 		;/
 	;/
@@ -1468,19 +1478,19 @@ struct Node {
 		;; else if (first`._type == TTYPE_USRWD)
 			_ast_function(fin, mod, first)
 		;; else
-			_ast_print_err(first, "Expected module, method, or function for top level block\0")
+			_ast_print_err(fin, first, "Expected module, method, or function for top level block\0")
 		;/
 
 		run = _advance_check(fin, first, ";;\0")
 		/; if (run == false && first`.eq(";/\0") == false && first`.eq(";;\0") == false)
-			_ast_print_err(first, "Block being skipped. Parsing will pick up after the end\0")
+			_ast_print_err(fin, first, "Block being skipped. Parsing will pick up after the end\0")
 		;/
 	;/
 
 	_ast_block_pass(fin, first)
 
 	/; if (first`.eq(";/\0") == false && first`.eq(";;\0") == false)
-		_ast_print_err(~blf, "Could not find closing ;/ for top block\0")
+		_ast_print_err(fin, ~blf, "Could not find closing ;/ for top block\0")
 	;; else
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1494,18 +1504,18 @@ struct Node {
 
 	/; if (_advance_check(fin, first, "export\0") == true)
 		/; if (_advance_check(fin, first, "module\0") == false)
-			_ast_print_err(first, "Expected 'module' keyword after 'export'\0")
+			_ast_print_err(fin, first, "Expected 'module' keyword after 'export'\0")
 			return
 		;/
 		nt = NTYPE_EXPORT
 	;; else if (_advance_check(fin, first, "module\0") == false)
 		_printf("[FATAL] The following issue is with the compiler, not your program.\n\0")
 		_printf("[FATAL] Please report the following issue to tnslc upstream.\n\0")
-		_ast_print_err(first, "[FATAL] [CMPERR] Should only call _ast_module when 'module' or 'export' are seen\0")
+		_ast_print_err(fin, first, "[FATAL] [CMPERR] Should only call _ast_module when 'module' or 'export' are seen\0")
 	;/
 
 	/; if (first`._type !== TTYPE_USRWD)
-		_ast_print_err(first, "Expected module name (identifier) after 'module'\0")
+		_ast_print_err(fin, first, "Expected module name (identifier) after 'module'\0")
 	;/
 
 	Node nmod
@@ -1528,7 +1538,7 @@ struct Node {
 		;; else if (first`._type == TTYPE_DELIM && first`.data` == ';')
 			run = false
 		;; else
-			_ast_print_err(first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
+			_ast_print_err(fin, first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
 
 			Token tmp = produce_next_token(fin, first`)
 			first`.end()
@@ -1557,7 +1567,7 @@ struct Node {
 		;; else if (first._type == TTYPE_KEYTP || first._type == TTYPE_USRWD || first.eq("~\0") == true || first.eq("{\0") == true)
 			_ast_decl(fin, mod, ~first)
 		;; else
-			_ast_print_err(~first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
+			_ast_print_err(fin, ~first, "Expected 'import', 'struct', 'asm', block, or declaration in top level\0")
 
 			Token tmp = produce_next_token(fin, first)
 			first.end()
