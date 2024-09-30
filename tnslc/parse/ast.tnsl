@@ -34,6 +34,7 @@ struct Node {
 	/; init (uint16 _type, ~uint8 data)
 		self.data = data
 		self._type = _type
+		self.parent = NULL
 
 		Node n
 		self.sub.init(len n)
@@ -392,7 +393,7 @@ struct Node {
 			bool gt = false
 			/; if (cur`._type == NTYPE_BIN_OP)
 				int j = _op_order(cur`.data)
-				gt = i > j
+				gt = _assoc(first`.data, i, j)
 			;/
 
 			# Start from the top and work our way down
@@ -402,7 +403,7 @@ struct Node {
 					
 					/; if (sub`._type == NTYPE_BIN_OP)
 						int j = _op_order(sub`.data)
-						gt = j !< i
+						gt = _assoc(first`.data, i, j)
 					;/
 
 					/; if (gt)
@@ -411,12 +412,19 @@ struct Node {
 				;/
 			;/
 
-			# Replace the last value in the current
-			bin.sub.push(cur`.sub.get(cur`.sub.count - 1))
-			cur`.sub.pop()
-			cur`.sub.push(~bin)
-			cur = cur`.sub.get(cur`.sub.count - 1)
-			
+			/; if (_assoc_right(first`.data) == true)
+				# Replace the last value in the current subnode
+				bin.sub.push(cur`.sub.get(cur`.sub.count - 1))
+				cur`.sub.pop()
+				cur`.sub.push(~bin)
+				cur = cur`.sub.get(cur`.sub.count - 1)
+			;; else
+				# Replace the subnode itself
+				bin.sub.push(cur)
+				cur`.data = bin.data
+				cur`.sub = bin.sub
+			;/
+
 			first` = produce_next_token(fin, first`)
 			/; if (utils.strcmp(bin.data, "is\0"))
 				_ast_type(fin, cur, first)
@@ -1056,6 +1064,38 @@ struct Node {
 ;/
 
 /; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first)
+
+	/; loop (bool run = true; run == true)
+		/; if (first`._type == TTYPE_USRWD)
+			Node var
+			var.init(NTYPE_ID, first`.data)
+			int ln = first`.line
+
+			first` = produce_next_token(fin, first`)
+			/; if (first`.eq("=\0") && first`.line == ln)
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+				_ast_value(fin, ~var, first)
+			;; else if (first`.line !== ln)
+				run = false
+			;/
+
+			mod`.add_child(~var)
+
+			/; if (first`.eq(",\0") == false)
+				run = false
+			;; else if (run == true)
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;/
+		;; else
+			_ast_print_err(first, "Expected variable name in declaration\0")
+			run = false
+		;/
+	;/
+
 ;/
 
 /; _maybe_helper_fun (~utils.File fin, ~Node mod, ~Token first)

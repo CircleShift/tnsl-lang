@@ -1,17 +1,3 @@
 
-struct Fin {
-	~void fd,
-	int state
-}
-
-/; main (int argc, {}{}uint8 argv) [int]
-	uint8 a = 1
-	~uint8 b = ~a
-	Fin c
-	~Fin d = ~c
-	b` = 2
-	c.state = a
-	d`.state = 0
-	return c.state
-;/
+int i = 1 + 2 * 4 - 3 + 4
 
