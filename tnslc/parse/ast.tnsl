@@ -20,8 +20,12 @@ uint16 NTYPE_VLIST = 17
 uint16 NTYPE_VALUE = 18
 uint16 NTYPE_CAST = 19
 uint16 NTYPE_FLOW_CONTROL = 20
-uint16 NTYPE_CONTROL_BLOCK = 21
+uint16 NTYPE_IF_BLOCK = 21
+uint16 NTYPE_ELIF_BLOCK = 22
+uint16 NTYPE_ELSE_BLOCK = 23
+uint16 NTYPE_LOOP_BLOCK = 24
 uint16 NTYPE_ASM = 998
+uint16 NTYPE_EMPTY = 999
 
 struct Node {
 	uint16 _type,
@@ -859,6 +863,55 @@ struct Node {
 	return ln
 ;/
 
+/; _ast_list_stmt (~utils.File fin, ~Node mod, ~Token first)
+	Node list
+	list.init(NTYPE_TLIST, first`.data)
+
+	uint8 end = _get_closing_delim(first`.data`)
+	first` = produce_next_token(fin, first`)
+
+	int ln = first`.line
+
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR && first`.data` !== end)
+		/; if (_advance_check(fin, first, "asm\0") == true)
+			_ast_asm(fin, ~list, first)
+		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
+			_ast_decl(fin, ~list, first)
+		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
+			_maybe_helper_fun(fin, ~list, first)
+		;; else if (first`._type == TTYPE_KEYWD)
+			_ast_keyword_expr(fin, ~list, first)
+		;; else if (first`.eq(";\0") == true)
+			Node empty
+			empty.init(NTYPE_EMPTY, utils.strcpy("\0"))
+			list.add_child(~empty)
+		;; else
+			_ast_print_err(first, "Expected definition, expression, or ';' in statement list\0")
+			run = false
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+
+		/; if (_advance_check(fin, first, ";\0") == false)
+			run = false
+		;/
+	;/
+
+	mod`.add_child(~list)
+
+	ln = first`.line
+	
+	/; if (first`._type !== TTYPE_DELIM || first`.data` !== end)
+		_ast_print_err(first, "Expected closing at end of statement list")
+	;; else
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
+
+	return ln
+;/
 
 
 # Method blocks
@@ -928,21 +981,63 @@ struct Node {
 
 # function blocks
 
-/; _ast_if (~utils.File fin, ~Node mod, ~Token first)
+/; _ast_flow (~utils.File fin, ~Node mod, ~Token first)
+	uint16 block_type = NTYPE_IF_BLOCK
+	/; if (_advance_check(fin, first, "else\0") == true)
+		/; if (_advance_check(fin, first, "if\0") == true)
+			block_type = NTYPE_ELIF_BLOCK
+		;; else
+			block_type = NTYPE_ELSE_BLOCK
+		;/
+	;; else if (_advance_check(fin, first, "loop\0") == true)
+		block_type = NTYPE_LOOP_BLOCK
+	;; else
+		first` = produce_next_token(fin, first`)
+	;/
+
+	Node out
+
+	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
+		_ast_list_stmt(fin, ~out, first)
+	;/
+
+	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("[\0") == true)
+		_ast_list_stmt(fin, ~out, first)
+	;/
+
+	/; loop (bool run = true; run && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_DELIM && first`.data` == ';')
+			run = false
+		;; else if (_advance_check(fin, first, "asm\0") == true)
+			_ast_asm(fin, ~out, first)
+		;; else if (first`.eq("/;\0") == true)
+			_ast_fun_block(fin, ~out, first)
+		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
+			_ast_decl(fin, ~out, first)
+		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
+			_maybe_helper_fun(fin, ~out, first)
+		;; else if (first`._type == TTYPE_KEYWD)
+			_ast_keyword_expr(fin, ~out, first)
+		;; else
+			_ast_print_err(first, "Expected definition, expression, or sub block in flow block\0")
+
+			Token tmp = produce_next_token(fin, first`)
+			first`.end()
+			first` = tmp
+		;/
+	;/
+
+	mod`.add_child(out)
 ;/
 
-/; _ast_loop (~utils.File fin, ~Node mod, ~Token first)
-;/
 
 /; _ast_fun_block (~utils.File fin, ~Node mod, ~Token first)
 	Token blf = first`
 	first` = produce_next_token(fin, first`)
 
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (first`.eq("if\0") == true || first`.eq("else\0") == true)
-			_ast_if(fin, mod, first)
-		;; else if (first`.eq("loop\0") == true)
-			_ast_loop(fin, mod, first)
+		/; if (first`.eq("if\0") == true || first`.eq("else\0") == true || first`.eq("loop\0") == true)
+			_ast_flow(fin, mod, first)
 		# ;; else if (first`._type == TTYPE_USRWD)
 		# TODO: Functions in functions
 		#	_ast_function(fin, mod, first)
@@ -1535,10 +1630,18 @@ struct Node {
 		_printf("CAST\0")
 	;; else if (n`._type == NTYPE_FLOW_CONTROL)
 		_printf("FLOW_CONTROL\0")
-	;; else if (n`._type == NTYPE_CONTROL_BLOCK)
-		_printf("CONTROL_BLOCK\0")
+	;; else if (n`._type == NTYPE_IF_BLOCK)
+		_printf("IF_BLOCK\0")
+	;; else if (n`._type == NTYPE_ELIF_BLOCK)
+		_printf("ELIF_BLOCK\0")
+	;; else if (n`._type == NTYPE_ELSE_BLOCK)
+		_printf("ELSE_BLOCK\0")
+	;; else if (n`._type == NTYPE_LOOP_BLOCK)
+		_printf("LOOP_BLOCK\0")
 	;; else if (n`._type == NTYPE_ASM)
 		_printf("ASM\0")
+	;; else if (n`._type == NTYPE_EMPTY)
+		_printf("EMPTY\0")
 	;/
 ;/
 
