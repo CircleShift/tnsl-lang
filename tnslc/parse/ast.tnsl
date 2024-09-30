@@ -202,6 +202,10 @@ struct Node {
 			return 11
 		;/
 	;; else if (l == 2)
+		/; if (utils.strcmp(op, "is\0"))
+			return 2
+		;/
+
 		/; if (op{0} == op{1})
 			uint8 ch = op`
 			/; if (ch == '+' || ch == '-')
@@ -370,6 +374,26 @@ struct Node {
 	return true
 ;/
 
+/; _assoc_right(~uint8 op) [bool]
+	int order = _op_order(op)
+	/; if (order == 11)
+		return true
+	;/
+	return false
+;/
+
+# op - operator to compare against
+# i - op order of inserting op
+/; _assoc (~uint8 op, int i) [bool]
+	int j = _op_order(op)
+
+	/; if (_assoc_right(op) && i == j)
+		return false
+	;/
+
+	return i !< j
+;/
+
 # Needs to be re-done to respect left and right associativity rules
 /; _ast_value (~utils.File fin, ~Node mod, ~Token first)
 	
@@ -392,38 +416,24 @@ struct Node {
 			int i = _op_order(first`.data)
 			bool gt = false
 			/; if (cur`._type == NTYPE_BIN_OP)
-				int j = _op_order(cur`.data)
-				gt = _assoc(first`.data, i, j)
+				gt = _assoc(cur`.data, i)
 			;/
 
 			# Start from the top and work our way down
-			/; if (gt == true)
-				/; loop (cur = ~val; gt == true)
-					~Node sub = cur`.sub.get(cur`.sub.count - 1)
-					
-					/; if (sub`._type == NTYPE_BIN_OP)
-						int j = _op_order(sub`.data)
-						gt = _assoc(first`.data, i, j)
-					;/
+			/; loop (gt == true)
+				cur = cur`.parent
 
-					/; if (gt)
-						cur = sub
-					;/
+				/; if (cur`._type == NTYPE_BIN_OP)
+					gt = _assoc(cur`.data, i)
+				;; else
+					gt = false
 				;/
 			;/
-
-			/; if (_assoc_right(first`.data) == true)
-				# Replace the last value in the current subnode
-				bin.sub.push(cur`.sub.get(cur`.sub.count - 1))
-				cur`.sub.pop()
-				cur`.sub.push(~bin)
-				cur = cur`.sub.get(cur`.sub.count - 1)
-			;; else
-				# Replace the subnode itself
-				bin.sub.push(cur)
-				cur`.data = bin.data
-				cur`.sub = bin.sub
-			;/
+			
+			~Node rhs = cur`.sub.get(cur`.sub.count - 1)
+			bin.add_child(rhs)
+			cur`.sub.pop()
+			cur = cur`.add_child(~bin)
 
 			first` = produce_next_token(fin, first`)
 			/; if (utils.strcmp(bin.data, "is\0"))
