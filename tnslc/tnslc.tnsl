@@ -36,6 +36,7 @@ usage:
 	;/
 
 	parse.Node n = parse.generate_ast(~fin)
+	n.update_children()
 	parse.print_ast(~n)
 	n.end()
 
