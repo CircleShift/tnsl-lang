@@ -71,9 +71,18 @@ struct Node {
 
 	/; add_child(~Node n) [~Node]
 		n`.parent = ~self
+		~int chk = self.sub.data
 		self.sub.push(n)
-		/; loop (int i = 0; i < self.sub.count) [i++]
-			n = self.sub.get(i)
+		~int cmp = self.sub.data
+		/; if (chk != cmp)
+			# Only update children when the reallocation
+			# returns a new memory block
+			/; loop (int i = 0; i < self.sub.count) [i++]
+				n = self.sub.get(i)
+				n`.update_children()
+			;/
+		;; else
+			n = self.sub.get(self.sub.count - 1)
 			n`.update_children()
 		;/
 		return n
@@ -734,7 +743,7 @@ struct Node {
 	bool seen = false
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		/; if (seen == false || first`._type == TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
+		/; if (seen == false || first`._type ==TTYPE_KEYTP || first`.eq("~\0") == true || first`.eq("{\0") == true)
 			_ast_type(fin, ~list, first)
 
 			/; if (first`._type !== TTYPE_USRWD)
@@ -1069,8 +1078,102 @@ struct Node {
 	blf.end()
 ;/
 
+# The following code (mhf_post_list and mhf_post)
+# are a convoluted hellscape of terrible
+# design choices.  Both functions may recursively call
+# the other, and both produce a multitude of different
+# output values based on what they think the AST should
+# be (sometimes based on the next token, sometimes not).
+
+# For instance, mhf_post tries to return NULL when it
+# thinks the next token means we are in a state where we
+# can parse a declaration (we have seen a valid type and
+# the next token is an identifier) but if we are calling
+# this function from mhf_post_list, we are inside a list,
+# making this an invalid next token in either the case
+# where we are parsing a declaraion OR the case where we
+# are parsing a value.  It should blow up, so mhf_post_list
+# checks to see if it's null and returns whatever output
+# list it has created instead so something higher up the
+# chain (mhf_finish_value) can catch it and explode instead.
+# It's almost like an exception. Fuck me.
+
+# Otherwise, mhf_post will return whatever node the mhf_finish_value
+# should use as the node to start stitching together with binary operators
+# and values. Even worse, the node it should return may be a sub-node
+# FROM MHF_POST_LIST!!!
+
+# _mhf_post_list, however, should NEVER return NULL.  In the case
+# where it suceeded in parsing a list of types, it will return
+# the passed in ~Node (which SHOULD be a type node), but otherwise,
+# it will return the node it was trying to generate when the failure
+# occurred.  That's at least slightly fewer possible options,
+# but it is very important to remember that the token it ends on is
+# the end of the list, which allows checking whether the line
+# number of the next token is the same.  If it's not, this WHOLE THING
+# was a FUNCTION CALL, and the ENTIRE FUCKING TREE NEEDS TO BE
+# RE-WORKED THROUGH THE TRANSFORM FUNCTION TO REPRESENT THAT.
+
+# Both functions try to compensate by checking the output
+# state of the other, and it creates a clusterfuck of strange
+# if statements and pointer logic that I wrote in an exremely
+# sleep deprived state.  I'm just really hoping this
+# works.  It will all probably get refactored later when
+# the standard library is fully flushed out and the compiler
+# is more mature.  For now, may this warning be a sufficient
+# deterrant for the common programmar looking to refactor.
+
+# The only saving grace of this is I guess that it's 
+
+# If you want to skip the most hellish spaghetti code I have ever
+# had the displesure of writing, just search for "maybe_helper_fun"
+# and have your editor of choice skip to that point.
+
 /; _mhf_post_list (~utils.File fin, ~Node mod, ~Token first) [~Node]
-	return NULL
+	Node out
+	out.init(NTYPE_TLIST, first`.data)
+	first` = produce_next_token(fin, first`)
+	
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		Node _typ
+		_typ.init(NTYPE_TYPE, utils.strcpy("\0"))
+		_type_helper_pre(fin, ~_typ, first)
+
+		/; if (first`.eq("(\0"))
+			# Oh no! We hit a value!
+			out.add_child(~_typ)
+			return mod`.add_child(~out)
+			
+		;; else if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYWD)
+			# Try to keep parsing as a type, if we error out we
+			# will return whatever post returns
+			~Node cur = _mhf_post(fin, ~_typ, first)
+			/; if (cur == ~_typ && first`.eq(",\0"))
+				# Keep going
+				Token tmp = produce_next_token(fin, first`)
+				first`.end()
+				first` = tmp
+			;; else if (cur == ~_typ && first`.eq(")\0"))
+				# Stop here, reached end of list
+				run = false
+			;; else
+				# Some error occurred, mhf_transform will
+				# preserve lists so we return the list we were
+				# creating.
+				# mhf_finish_value can find the last valid parse
+				# before the error occured by getting the last
+				# subnode from the list
+				out.add_child(~_typ)
+				return mod`.add_child(~out)
+			;/
+		;/
+
+		out.add_child(_typ)
+	;/
+
+	mod`.add_child(~out)
+	# Properly parsed type list
+	return mod
 ;/
 
 /; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [~Node]
@@ -1081,6 +1184,10 @@ struct Node {
 			id.init(NTYPE_ID, first`.data)
 			mod`.add_child(~id)
 			first` = produce_next_token(fin, first`)
+		;; else if (first`._type == TTYPE_KEYWD)
+			Node id
+			id.init(NTYPE_ID, first`.data)
+			mod`.add_child(~id)
 		;; else
 			return mod
 		;/
@@ -1091,13 +1198,27 @@ struct Node {
 			first` = tmp
 		;; else if (first`.eq("(\0") == true || first`._type == TTYPE_USRWD)
 			run = false
+		;; else if (first`._type == TTYPE_KEYWD)
+			first` = produce_next_token(fin, first`)
+			run = false
 		;; else
 			return mod
 		;/
 	;/
 
 	/; if (first`.eq("(\0") == true)
-		return _mhf_post_list(fin, mod, first)
+		~Node weird = _mhf_post_list(fin, mod, first)
+		# We get back right at the end paren of the list.
+		# If the next token is a USRWD on the same line,
+		# we want to return NULL, otherwise return the weird
+		# pointer
+		int ln = first`.line
+		/; if (weird == mod && _advance_check(fin, first, ")") == true)
+			/; if (first`._type == TTYPE_USRWD && first`.line == ln)
+				return NULL
+			;/
+		;/
+		return weird
 	;/
 
 	/; if (first`._type == TTYPE_USRWD)
