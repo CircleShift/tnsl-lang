@@ -896,6 +896,8 @@ struct Node {
 			_ast_asm(fin, ~list, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~list, first)
+		;; else if (first`._type == TTYPE_LITRL)
+			_ast_value(fin, ~list, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
 			_maybe_helper_fun(fin, ~list, first)
 		;; else if (first`._type == TTYPE_KEYWD)
@@ -1015,12 +1017,14 @@ struct Node {
 	;/
 
 	Node out
+	out.init(block_type, utils.strcpy("\0"))
+	first` = produce_next_token(fin, first`)
 
 	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
 		_ast_list_stmt(fin, ~out, first)
 	;/
 
-	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("[\0") == true)
+	/; if (block_type == NTYPE_LOOP_BLOCK && first`.eq("[\0") == true)
 		_ast_list_stmt(fin, ~out, first)
 	;/
 
@@ -1033,6 +1037,8 @@ struct Node {
 			_ast_fun_block(fin, ~out, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~out, first)
+		;; else if (first`._type == TTYPE_LITRL)
+			_ast_value(fin, ~out, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
 			_maybe_helper_fun(fin, ~out, first)
 		;; else if (first`._type == TTYPE_KEYWD)
@@ -1046,7 +1052,7 @@ struct Node {
 		;/
 	;/
 
-	mod`.add_child(out)
+	mod`.add_child(~out)
 ;/
 
 
@@ -1123,7 +1129,7 @@ struct Node {
 # is more mature.  For now, may this warning be a sufficient
 # deterrant for the common programmar looking to refactor.
 
-# The only saving grace of this is I guess that it's 
+# The only saving grace of this is I guess that it's O(n)
 
 # If you want to skip the most hellish spaghetti code I have ever
 # had the displesure of writing, just search for "maybe_helper_fun"
@@ -1139,12 +1145,7 @@ struct Node {
 		_typ.init(NTYPE_TYPE, utils.strcpy("\0"))
 		_type_helper_pre(fin, ~_typ, first)
 
-		/; if (first`.eq("(\0"))
-			# Oh no! We hit a value!
-			out.add_child(~_typ)
-			return mod`.add_child(~out)
-			
-		;; else if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYWD)
+		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP)
 			# Try to keep parsing as a type, if we error out we
 			# will return whatever post returns
 			~Node cur = _mhf_post(fin, ~_typ, first)
@@ -1164,11 +1165,20 @@ struct Node {
 				# before the error occured by getting the last
 				# subnode from the list
 				out.add_child(~_typ)
-				return mod`.add_child(~out)
+				/; if (cur == NULL || cur == ~_typ)
+					cur = mod`.add_child(~out)
+				;; else
+					mod`.add_child(~out)
+				;/
+				return cur
 			;/
+		;; else
+			# Oh no! We hit a value!
+			out.add_child(~_typ)
+			return mod`.add_child(~out)
 		;/
 
-		out.add_child(_typ)
+		out.add_child(~_typ)
 	;/
 
 	mod`.add_child(~out)
@@ -1178,28 +1188,46 @@ struct Node {
 
 /; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [~Node]
 	
+	/; if (first`._type == TTYPE_KEYTP)
+		Node id
+		id.init(NTYPE_ID, first`.data)
+		mod`.add_child(~id)
+		first` = produce_next_token(fin, first`)
+
+		/; if (id.eq("void\0") == true)
+			_type_helper_func(fin, mod, first)
+		;; else if (first`.eq("`\0"))
+			Node post
+			post.init(NTYPE_POST_OP, first`.data)
+			mod`.add_child(~post)
+			first` = produce_next_token(fin, first`)
+		;/
+
+		/; if (first`._type == TTYPE_USRWD)
+			return NULL
+		;/
+		return mod
+	;/
+	
+	int ln = first`.line
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
 		/; if (first`._type == TTYPE_USRWD)
 			Node id
 			id.init(NTYPE_ID, first`.data)
 			mod`.add_child(~id)
 			first` = produce_next_token(fin, first`)
-		;; else if (first`._type == TTYPE_KEYWD)
-			Node id
-			id.init(NTYPE_ID, first`.data)
-			mod`.add_child(~id)
 		;; else
 			return mod
 		;/
 
-		/; if (first`.eq(".\0") == true)
+		/; if (first`.line !== ln)
+			return mod
+		;; else if (first`.eq(".\0") == true)
 			Token tmp = produce_next_token(fin, first`)
 			first`.end()
 			first` = tmp
+			ln = first`.line
 		;; else if (first`.eq("(\0") == true || first`._type == TTYPE_USRWD)
-			run = false
-		;; else if (first`._type == TTYPE_KEYWD)
-			first` = produce_next_token(fin, first`)
 			run = false
 		;; else
 			return mod
@@ -1228,7 +1256,7 @@ struct Node {
 ;/
 
 # Transform type nodes into value nodes
-/; _mhf_transform (~Node _type)
+/; _mhf_transform (~Node _type, at) [~Node]
 	Node out
 	out.init(NTYPE_VALUE, utils.strcpy("\0"))
 	
@@ -1277,11 +1305,11 @@ struct Node {
 	
 	/; if (idx < _type`.sub.count && sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
 		Node lst
-		lst.init(NTYPE_VLIST, "(\0")
+		lst.init(NTYPE_VLIST, utils.strcpy("(\0"))
 		
 		/; loop (int i = 0; i < sub`.sub.count) [i++]
 			~Node lsub = sub`.sub.get(i)
-			_mhf_transform(lsub)
+			at = _mhf_transform(lsub, at)
 			lst.add_child(lsub)
 		;/
 		
@@ -1289,17 +1317,38 @@ struct Node {
 			sub`.sub.pop()
 		;/
 
-		cur`.add_child(~lst)
+		~int pt1 = at
+		~int pt2 = sub
+		/; if (pt1 == pt2)
+			at = cur`.add_child(~lst)
+		;; else
+			cur`.add_child(~lst)
+		;/
 	;/
 
 	_type`.end()
 	_type` = out
+	return at
+;/
+
+/; _mhf_escape (~utils.File, ~Node mod, ~Token first, ~Node cur)
+
 ;/
 
 /; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
+	# Q1: What are all the possible states we could have been called from
+	# A: Inside a tlist when we discovered an invalid token for a type
+	#    After an identifier when we discovered an invalid type
+	#    After a valid type where we saw a non-identifier
+	#    After a line break, likely meaning we already saw 
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+	;/
 ;/
 
 /; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first)
+	Node out
+	out.init(NTYPE_DECL, utils.strcpy("\0"))
+	out.add_child(mod)
 
 	/; loop (bool run = true; run == true)
 		/; if (first`._type == TTYPE_USRWD)
@@ -1317,7 +1366,7 @@ struct Node {
 				run = false
 			;/
 
-			mod`.add_child(~var)
+			out.add_child(~var)
 
 			/; if (first`.eq(",\0") == false)
 				run = false
@@ -1331,7 +1380,8 @@ struct Node {
 			run = false
 		;/
 	;/
-
+	
+	mod` = out
 ;/
 
 /; _maybe_helper_fun (~utils.File fin, ~Node mod, ~Token first)
@@ -1345,11 +1395,8 @@ struct Node {
 	/; if (first`.eq("(\0"))
 		_mhf_transform(~out)
 		_mhf_finish_value(fin, ~out, first, ~out)
-		
-	;; else if (first`._type == TTYPE_KEYTP)
-		_mhf_finish_decl(fin, ~out, first)
 
-	;; else if (first`._type !== TTYPE_USRWD)
+	;; else if (first`._type !== TTYPE_USRWD && first`._type !== TTYPE_KEYTP)
 		_ast_print_err(fin, first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
 
 	;; else
@@ -1361,7 +1408,7 @@ struct Node {
 			_mhf_finish_decl(fin, ~out, first)
 
 		;; else
-			_mhf_transform(~out)
+			cur = _mhf_transform(~out, cur)
 			_mhf_finish_value(fin, ~out, first, cur)
 		;/
 	;/
@@ -1394,6 +1441,8 @@ struct Node {
 			_ast_fun_block(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~fn, first)
+		;; else if (first`._type == TTYPE_LITRL)
+			_ast_value(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
 			_maybe_helper_fun(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_KEYWD)
