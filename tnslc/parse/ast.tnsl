@@ -1013,12 +1013,16 @@ struct Node {
 	;; else if (_advance_check(fin, first, "loop\0") == true)
 		block_type = NTYPE_LOOP_BLOCK
 	;; else
-		first` = produce_next_token(fin, first`)
+		Token tok = produce_next_token(fin, first`)
+		first`.end()
+		first` = tok
 	;/
 
 	Node out
 	out.init(block_type, utils.strcpy("\0"))
-	first` = produce_next_token(fin, first`)
+	Token tok = produce_next_token(fin, first`)
+	first`.end()
+	first` = tok
 
 	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
 		_ast_list_stmt(fin, ~out, first)
@@ -1331,16 +1335,17 @@ struct Node {
 	return at
 ;/
 
-/; _mhf_escape (~utils.File, ~Node mod, ~Token first, ~Node cur)
+/; _mhf_escape (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
 
 ;/
 
 /; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
+	return
 	# Q1: What are all the possible states we could have been called from
 	# A: Inside a tlist when we discovered an invalid token for a type
 	#    After an identifier when we discovered an invalid type
 	#    After a valid type where we saw a non-identifier
-	#    After a line break, likely meaning we already saw 
+	#    After a line break, likely meaning the whole thing was likely already transformed
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
 	;/
 ;/
