@@ -1336,7 +1336,26 @@ struct Node {
 ;/
 
 /; _mhf_escape (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
+	int deep = 0
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`.eq(")\0") == true)
+			/; if (deep > 0)
+				deep = deep - 1
+			;; else if (cur`.eq("(\0") == false)
+				cur = cur`.parent
+			;/
 
+			/; if (cur`.eq("(\0") == false)
+				run = false;
+			;/
+		;; else if (first`.eq("(\0") == true)
+			deep = deep + 1
+		;/
+
+		Token tmp = produce_next_token(fin, first`)
+		first`.end()
+		first` = tmp
+	;/
 ;/
 
 /; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
