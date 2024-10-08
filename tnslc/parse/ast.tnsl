@@ -1024,7 +1024,7 @@ int errors_shown = 0
 # function blocks
 
 /; _ast_flow (~utils.File fin, ~Node mod, ~Token first)
-	uint16 block_type = NTYPE_IF_BLOCK
+	int block_type = NTYPE_IF_BLOCK
 	/; if (_advance_check(fin, first, "else\0") == true)
 		/; if (_advance_check(fin, first, "if\0") == true)
 			block_type = NTYPE_ELIF_BLOCK
@@ -1042,7 +1042,7 @@ int errors_shown = 0
 	Node out
 	out.init(block_type, utils.strcpy("\0"))
 
-	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
+	/; if (block_type !== NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
 		_ast_list_stmt(fin, ~out, first)
 	;/
 
@@ -1522,13 +1522,16 @@ int errors_shown = 0
 
 	cur = _mhf_up_to_value(cur)
 
+	bool did_binop = false
+
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (first`.eq(")\0") || first`.eq(",\0"))
+		/; if (first`.eq(")\0") == true || first`.eq(",\0") == true)
 			run = false
 		;; else if (first`.eq(".\0") == true)
-			_ast_print_err(fin, first, "Unexpected token within function call.  Expected binary operator then value, ',', or ')'.\0")
+			_ast_print_err(fin, first, "Unexpected token within function call (1).  Expected binary operator then value, ',', or ')'.\0")
 			return NULL
 		;; else if (first`._type == TTYPE_AUG && _op_bin(first) == true)
+			did_binop = true
 			Node bin
 			bin.init(NTYPE_BIN_OP, first`.data)
 			
@@ -1562,12 +1565,16 @@ int errors_shown = 0
 			;/
 
 		;; else
-			_ast_print_err(fin, first, "Unexpected token within function call.  Expected binary operator then value, ',', or ')'.\0")
+			_ast_print_err(fin, first, "Unexpected token within function call (2).  Expected binary operator then value, ',', or ')'.\0")
 			return NULL
 		;/
 	;/
 
 	cur = cur`.parent
+	/; if (did_binop == true)
+		cur = cur`.parent
+	;/
+
 	/; if (_advance_check(fin, first, ")\0"))
 		/; if (cur`.eq("(\0") == true)
 			cur = _mhf_up_to_value(cur)
