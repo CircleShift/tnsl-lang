@@ -75,15 +75,8 @@ struct Node {
 		~int chk = self.sub.data
 		self.sub.push(n)
 		~int cmp = self.sub.data
-		/; if (chk != cmp)
-			# Only update children when the reallocation
-			# returns a new memory block
-			/; loop (int i = 0; i < self.sub.count) [i++]
-				n = self.sub.get(i)
-				n`.update_children()
-			;/
-		;; else
-			n = self.sub.get(self.sub.count - 1)
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			n = self.sub.get(i)
 			n`.update_children()
 		;/
 		return n
@@ -1401,7 +1394,7 @@ int errors_shown = 0
 			;/
 
 			/; if (cur`.eq("(\0") == false)
-				run = false;
+				run = false
 			;/
 		;; else if (first`.eq("(\0") == true)
 			deep = deep + 1
@@ -1530,6 +1523,13 @@ int errors_shown = 0
 /; _mhf_inner_value(~utils.File fin, ~Node cur, ~Token first, ~int ln) [~Node]
 	cur = _mhf_lower(cur)
 
+	#/; if (cur`._type !== NTYPE_ID && cur`.eq(".\0") == false && cur`.sub.count == 0 && first`._type == TTYPE_LITRL)
+	#	Node lt
+	#	lt.init(NTYPE_LITERAL, first`.data)
+	#	first` = produce_next_token(fin, first`)
+	#	cur = cur`.add_child(~lt)
+	#;/
+
 	cur = _mhf_post_value(fin, cur, first, true)
 	/; if (cur == NULL)
 		return cur
@@ -1634,12 +1634,12 @@ int errors_shown = 0
 		~Node tmp = cur
 		# First loop for while we are in value
 		/; if (tmp`._type == NTYPE_VALUE)
-			tmp = _mhf_inner_value(fin, cur, first, ~ln)
+			tmp = _mhf_inner_value(fin, tmp, first, ~ln)
 		;/
 
 		# Second loop for while we are in val-list
 		/; if (tmp !== NULL && tmp`._type == NTYPE_VLIST)
-			tmp = _mhf_outer_list(fin, cur, first, ~ln)
+			tmp = _mhf_outer_list(fin, tmp, first, ~ln)
 		;/
 
 		/; if (tmp !== NULL && tmp`._type !== NTYPE_VALUE && tmp`._type !== NTYPE_VLIST)
