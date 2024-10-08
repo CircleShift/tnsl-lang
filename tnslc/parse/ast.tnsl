@@ -130,11 +130,11 @@ int errors_shown = 0
 
 /; _ast_print_err (~utils.File fin, ~Token tok, ~uint8 msg)
 	
-	/; if (errors_shown !< MAX_ERR_SHOW)
-		return
-	;/
+	#/; if (errors_shown !< MAX_ERR_SHOW)
+	#	return
+	#;/
 
-	errors_shown = errors_shown + 1
+	#errors_shown = errors_shown + 1
 	
 	_printf(msg)
 	_printf(":\n\0")
@@ -1374,6 +1374,7 @@ int errors_shown = 0
 
 	_type`.end()
 	_type` = out
+	_type`.update_children()
 	return at
 ;/
 
@@ -1440,15 +1441,18 @@ int errors_shown = 0
 	return NULL
 ;/
 
-/; _mhf_inner_value(~utils.File fin, ~Node cur, ~Token first) [~Node]
-	cur = _mhf_lower(cur)
+/; _mhf_post_value(~utils.File fin, ~Node cur, ~Token first, bool lnok) [~Node]
+	int ln = first`.line
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (_advance_check(fin, first, ".\0") == true)
+		/; if (ln !== first`.line && lnok == false)
+			run = false
+		;; else if (_advance_check(fin, first, ".\0") == true)
 			/; if (first`._type == TTYPE_USRWD)
 				Node op, id
 
 				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
 				id.init(NTYPE_ID, first`.data)
+				ln = first`.line
 				
 				cur = cur`.parent
 				~Node sub = cur`.sub.get(cur`.sub.count - 1)
@@ -1482,15 +1486,14 @@ int errors_shown = 0
 		;; else if (first`.eq("(\0") == true)
 			/; if (cur`.eq(".\0") == true)
 				cur = cur`.sub.get(cur`.sub.count - 1)
-				_ast_list_value(fin, first, cur)
+				ln = _ast_list_value(fin, cur, first)
 				cur = cur`.parent
 			;; else if (cur`._type == NTYPE_ID)
-				_ast_list_value(fin, first, cur)
+				ln = _ast_list_value(fin, cur, first)
 			;; else
 				_ast_print_err(fin, first, "Unsure where we are at in the tree ('('). [CMPERR]")
 				return NULL
 			;/
-			first` = produce_next_token(fin, first`)
 		;; else if (first`.eq("{\0") == true)
 			Node ind
 			ind.init(NTYPE_POST_OP, first`.data)
@@ -1511,6 +1514,7 @@ int errors_shown = 0
 				return NULL
 			;/
 
+			ln = first`.line
 			/; if (_advance_check(fin, first, "}\0") == false)
 				_ast_print_err(fin, first, "Expected '}' to show the end of an index operation after the value\0")
 				return NULL
@@ -1518,6 +1522,17 @@ int errors_shown = 0
 		;; else
 			run = false
 		;/
+	;/
+
+	return cur
+;/
+
+/; _mhf_inner_value(~utils.File fin, ~Node cur, ~Token first, ~int ln) [~Node]
+	cur = _mhf_lower(cur)
+
+	cur = _mhf_post_value(fin, cur, first, true)
+	/; if (cur == NULL)
+		return cur
 	;/
 
 	cur = _mhf_up_to_value(cur)
@@ -1574,7 +1589,8 @@ int errors_shown = 0
 	/; if (did_binop == true)
 		cur = cur`.parent
 	;/
-
+	
+	ln` = first`.line
 	/; if (_advance_check(fin, first, ")\0"))
 		/; if (cur`.eq("(\0") == true)
 			cur = _mhf_up_to_value(cur)
@@ -1586,7 +1602,7 @@ int errors_shown = 0
 	return cur
 ;/
 
-/; _mhf_outer_list(~utils.File fin, ~Node cur, ~Token first) [~Node]
+/; _mhf_outer_list(~utils.File fin, ~Node cur, ~Token first, ~int ln) [~Node]
 	/; loop (first`._type !== TTYPE_ERR && first`.eq(")\0") == false)
 		_ast_value(fin, cur, first, true)
 
@@ -1595,6 +1611,8 @@ int errors_shown = 0
 			return NULL
 		;/
 	;/
+
+	ln` = first`.line
 
 	Token next = produce_next_token(fin, first`)
 	first`.end()
@@ -1613,48 +1631,50 @@ int errors_shown = 0
 	
 	# While we are in subtree
 	/; loop (bool run = true; run == true && p1 !== p2 && first`._type !== TTYPE_ERR)
+		~Node tmp = cur
 		# First loop for while we are in value
-		/; if (cur`._type == NTYPE_VALUE)
-			cur = _mhf_inner_value(fin, cur, first)
+		/; if (tmp`._type == NTYPE_VALUE)
+			tmp = _mhf_inner_value(fin, cur, first, ~ln)
 		;/
 
 		# Second loop for while we are in val-list
-		/; if (cur !== NULL && cur`._type == NTYPE_VLIST)
-			cur = _mhf_outer_list(fin, cur, first)
+		/; if (tmp !== NULL && tmp`._type == NTYPE_VLIST)
+			tmp = _mhf_outer_list(fin, cur, first, ~ln)
 		;/
 
-		/; if (cur !== NULL && cur`._type !== NTYPE_VALUE && cur`._type !== NTYPE_VLIST)
+		/; if (tmp !== NULL && tmp`._type !== NTYPE_VALUE && tmp`._type !== NTYPE_VLIST)
 			_ast_print_err(fin, first, "[CMPERR] Unsure where we are in the tree\n\0")
-			print_ast(cur)
+			print_ast(tmp)
 			return
 		;/
 
-		/; if (cur == NULL)
+		/; if (tmp == NULL)
 			# TODO: SOME ERR
-			_ast_print_err(fin, first, "[CMPERR] Should escape but can't\n\0")
-			# _mhf_escape(fin, mod, first, cur)
+			_mhf_escape(fin, mod, first, cur)
 			return
 		;/
+		cur = tmp
 		p1 = cur
 	;/
 
 	cur = _mhf_lower(cur)
-	/; if (cur`.eq(".\0") == true)
-		cur = cur`.sub.get(cur`.sub.count - 1)
-		_astv_post_id(fin, cur, first, lnok)
-		cur = cur`.parent
-	;; else if (cur`._type == NTYPE_ID)
-		_astv_post_id(fin, cur, first, lnok)
-	;; else
-		_ast_print_err(fin, first, "Unsure where we are at in the tree ('postid'). [CMPERR]")
-		return
+	/; if (ln == first`.line || lnok == true)
+		~Node tmp = _mhf_post_value(fin, cur, first, lnok)
+		/; if (tmp == NULL)
+			_ast_print_err(fin, first, "Escaping\0")
+			_mhf_escape(fin, mod, first, cur)
+			return
+		;/
+		cur = tmp
 	;/
 	cur = _mhf_up_to_value(cur)
 	
 	# After, we need to work similarly for the top value, however,
 	# we need to keep track of line numbers so that we properly stop.
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (first`._type == TTYPE_SEP || _is_closing(first) == true)
+		/; if (first`.line !== ln && lnok == false)
+			run = false
+		;; else if (first`._type == TTYPE_SEP || _is_closing(first) == true)
 			run = false
 		;; else if (first`.eq(".\0") == true)
 			run = false
@@ -1745,8 +1765,8 @@ int errors_shown = 0
 	_type_helper_pre(fin, ~out, first)
 
 	/; if (first`.eq("(\0"))
-		_mhf_transform(~out)
-		_mhf_finish_value(fin, ~out, first, ~out, lnok)
+		~Node cur = _mhf_transform(~out, ~out)
+		_mhf_finish_value(fin, ~out, first, cur, lnok)
 
 	;; else if (first`._type !== TTYPE_USRWD && first`._type !== TTYPE_KEYTP)
 		_ast_print_err(fin, first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
