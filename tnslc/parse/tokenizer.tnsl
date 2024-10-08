@@ -100,7 +100,7 @@ uint   MAX_MULTI  = 3
 		out._type = TTYPE_KEYTP
 	;; else if (_in_csv(LITERALS, out.data) == true)
 		out._type = TTYPE_LITRL
-	;; else if (_in_csv(MULTI_OP_W) == true)
+	;; else if (_in_csv(MULTI_OP_W, out.data) == true)
 		out._type = TTYPE_AUG
 	;/
 

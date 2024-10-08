@@ -12,8 +12,9 @@ uint16 NTYPE_METHOD = 9
 uint16 NTYPE_TLIST = 10
 uint16 NTYPE_DLIST = 11
 uint16 NTYPE_ELIST = 12
-uint16 NTYPE_LITERAL = 13
-uint16 NTYPE_KEY_TYPE = 14
+uint16 NTYPE_SLIST = 13
+uint16 NTYPE_LITERAL = 14
+# uint16 NTYPE_KEY_TYPE = 14 # Unused
 uint16 NTYPE_ENUM = 15
 uint16 NTYPE_DECL = 16
 uint16 NTYPE_VLIST = 17
@@ -124,7 +125,17 @@ struct Node {
 	return false
 ;/
 
+int MAX_ERR_SHOW = 15
+int errors_shown = 0
+
 /; _ast_print_err (~utils.File fin, ~Token tok, ~uint8 msg)
+	
+	/; if (errors_shown !< MAX_ERR_SHOW)
+		return
+	;/
+
+	errors_shown = errors_shown + 1
+	
 	_printf(msg)
 	_printf(":\n\0")
 	_printf("  File: \0")
@@ -134,6 +145,10 @@ struct Node {
 	_printf("\n  At: \0")
 	print_token(tok`)
 	_printf("\n\0")
+
+	/; if (errors_shown == MAX_ERR_SHOW)
+		_printf("\nToo many errors to print, other errors will be suppressed\n\0")
+	;/
 ;/
 
 /; _ast_block_pass(~utils.File fin, ~Token first)
@@ -286,10 +301,10 @@ struct Node {
 	return out
 ;/
 
-/; _astv_post_id (~utils.File fin, ~Node mod, ~Token first)
+/; _astv_post_id (~utils.File fin, ~Node mod, ~Token first, bool lnok) [int]
 	int ln = first`.line
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
-		/; if (ln !== first`.line)
+		/; if (ln !== first`.line && lnok == false)
 			run = false
 		;; else if (_op_postfix(first) == true)
 			Node post
@@ -298,25 +313,31 @@ struct Node {
 			first` = produce_next_token(fin, first`)
 		;; else if (first`.eq("(\0") == true)
 			ln = _ast_list_value(fin, mod, first)
+			/; if (first`.eq("[\0") == true && (ln == first`.line || lnok == true))
+				ln = _ast_list_value(fin, mod, first)
+				run = false
+			;/
 		;; else if (first`.eq("{\0") == true)
 			Node ind
 			ind.init(NTYPE_POST_OP, first`.data)
 			first` = produce_next_token(fin, first`)
-			/; if (_ast_value(fin, ~ind, first) == false)
-				_ast_print_err(fin, first, "Expected index value after '{'\0")
+			/; if (_ast_value(fin, ~ind, first, true) == false)
+				_ast_print_err(fin, first, "Expected value for index operation after '{'\0")
 			;/
 			mod`.add_child(~ind)
+			ln = first`.line
 			/; if (_advance_check(fin, first, "}\0") == false)
-				_ast_print_err(fin, first, "Expected '}' to close index post op\0")
+				_ast_print_err(fin, first, "Expected '}' to show the end of an index operation after the value\0")
 				run = false
 			;/
 		;; else
 			run = false
 		;/
 	;/
+	return ln
 ;/
 
-/; _ast_value_bare(~utils.File fin, ~Node mod, ~Token first) [bool]
+/; _ast_value_bare(~utils.File fin, ~Node mod, ~Token first, bool lnok) [bool]
 
 	~Node cur = mod
 	
@@ -328,13 +349,13 @@ struct Node {
 	/; if (first`.eq("{\0") == true)
 		ln = _ast_list_value(fin, cur, first)
 	;; else if (_advance_check(fin, first, "(\0") == true)
-		_ast_value(fin, cur, first)
+		_ast_value(fin, cur, first, true)
 		ln = first`.line
 		/; if (_advance_check(fin, first, ")\0") == false)
 			_ast_print_err(fin, first, "Expected closing ')' for singlet\0")
 			return false
 		;/
-		/; if (ln == first`.line)
+		/; if (ln == first`.line || lnok == true)
 			ln = _astv_cast(fin, cur, first)
 			~Node tmp = cur`.sub.get(cur`.sub.count - 1)
 		;/
@@ -353,8 +374,8 @@ struct Node {
 		return false
 	;/
 	
-	/; if (ln == first`.line)
-		ln = _astv_post_id(fin, cur`.sub.get(cur`.sub.count - 1), first)
+	/; if (ln == first`.line || lnok == true)
+		ln = _astv_post_id(fin, cur`.sub.get(cur`.sub.count - 1), first, lnok)
 	;; else
 		return true
 	;/
@@ -362,7 +383,7 @@ struct Node {
 	bool run = ln == first`.line
 
 	# Methods and members
-	/; loop (bool run = true; run == true && _advance_check(fin, first, ".\0") == true)
+	/; loop (; run == true && _advance_check(fin, first, ".\0") == true)
 		/; if (first`._type !== TTYPE_USRWD)
 			_ast_print_err(fin, first, "Expected method/member name after '.'\0")
 			return false
@@ -378,10 +399,10 @@ struct Node {
 		int ln = first`.line
 		first` = produce_next_token(fin, first`)
 
-		/; if (first`.line !== ln)
+		/; if (first`.line !== ln && lnok == false)
 			run = false
 		;; else
-			_astv_post_id(fin, ~val, first)
+			ln = _astv_post_id(fin, ~val, first, lnok)
 		;/
 
 		dot.add_child(~val)
@@ -414,14 +435,14 @@ struct Node {
 ;/
 
 # Needs to be re-done to respect left and right associativity rules
-/; _ast_value (~utils.File fin, ~Node mod, ~Token first) [bool]
+/; _ast_value (~utils.File fin, ~Node mod, ~Token first, bool lnok) [bool]
 	
 	Node val
 	val.init(NTYPE_VALUE, utils.strcpy("\0"))
 
 	~Node cur = ~val
 
-	bool run = _ast_value_bare(fin, cur, first)
+	bool run = _ast_value_bare(fin, cur, first, lnok)
 	bool valid = run
 	
 	/; loop (run == true && first`._type !== TTYPE_ERR)
@@ -460,7 +481,7 @@ struct Node {
 			/; if (utils.strcmp(bin.data, "is\0"))
 				_ast_type(fin, cur, first)
 			;; else
-				run = _ast_value_bare(fin, cur, first)
+				run = _ast_value_bare(fin, cur, first, lnok)
 				valid = run
 			;/
 
@@ -482,7 +503,7 @@ struct Node {
 		first` = produce_next_token(fin, first`)
 		
 		/; if (first`.line == ln && _is_closing(first) == false && first`._type !== TTYPE_ERR)
-			_ast_value(fin, ~ret, first)
+			_ast_value(fin, ~ret, first, false)
 		;/
 		mod`.add_child(~ret)
 
@@ -642,7 +663,7 @@ struct Node {
 	first` = produce_next_token(fin, first`)
 
 	/; loop (first`._type !== TTYPE_ERR && first`.data` !== end)
-		_ast_value(fin, ~list, first)
+		_ast_value(fin, ~list, first, true)
 
 		/; if (_advance_check(fin, first, ",\0") == false && (first`._type !== TTYPE_DELIM || first`.data` !== end))
 			_ast_print_err(fin, first, "Expected ',' to continue the value list or a closing delimiter\0")
@@ -810,7 +831,7 @@ struct Node {
 			first` = produce_next_token(fin, first`)
 
 			/; if (_advance_check(fin, first, "=\0"))
-				_ast_value(fin, ~enum_id, first)
+				_ast_value(fin, ~enum_id, first, true)
 			;/
 
 			list.add_child(~enum_id)
@@ -884,7 +905,7 @@ struct Node {
 
 /; _ast_list_stmt (~utils.File fin, ~Node mod, ~Token first)
 	Node list
-	list.init(NTYPE_TLIST, first`.data)
+	list.init(NTYPE_SLIST, first`.data)
 
 	uint8 end = _get_closing_delim(first`.data`)
 	first` = produce_next_token(fin, first`)
@@ -896,10 +917,10 @@ struct Node {
 			_ast_asm(fin, ~list, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~list, first)
-		;; else if (first`._type == TTYPE_LITRL)
-			_ast_value(fin, ~list, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
-			_maybe_helper_fun(fin, ~list, first)
+			_maybe_helper_fun(fin, ~list, first, true)
+		;; else if (first`._type == TTYPE_LITRL || _op_prefix(first))
+			_ast_value(fin, ~list, first, true)
 		;; else if (first`._type == TTYPE_KEYWD)
 			_ast_keyword_expr(fin, ~list, first)
 		;; else if (first`.eq(";\0") == true)
@@ -924,7 +945,7 @@ struct Node {
 	ln = first`.line
 	
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== end)
-		_ast_print_err(fin, first, "Expected closing at end of statement list")
+		_ast_print_err(fin, first, "Expected closing at end of statement list\0")
 	;; else
 		Token tmp = produce_next_token(fin, first`)
 		first`.end()
@@ -1020,9 +1041,6 @@ struct Node {
 
 	Node out
 	out.init(block_type, utils.strcpy("\0"))
-	Token tok = produce_next_token(fin, first`)
-	first`.end()
-	first` = tok
 
 	/; if (block_type != NTYPE_ELSE_BLOCK && first`.eq("(\0") == true)
 		_ast_list_stmt(fin, ~out, first)
@@ -1032,7 +1050,7 @@ struct Node {
 		_ast_list_stmt(fin, ~out, first)
 	;/
 
-	/; loop (bool run = true; run && first`._type !== TTYPE_ERR)
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
 		/; if (first`._type == TTYPE_DELIM && first`.data` == ';')
 			run = false
 		;; else if (_advance_check(fin, first, "asm\0") == true)
@@ -1041,10 +1059,10 @@ struct Node {
 			_ast_fun_block(fin, ~out, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~out, first)
-		;; else if (first`._type == TTYPE_LITRL)
-			_ast_value(fin, ~out, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
-			_maybe_helper_fun(fin, ~out, first)
+			_maybe_helper_fun(fin, ~out, first, false)
+		;; else if (first`._type == TTYPE_LITRL || _op_prefix(first))
+			_ast_value(fin, ~out, first, false)
 		;; else if (first`._type == TTYPE_KEYWD)
 			_ast_keyword_expr(fin, ~out, first)
 		;; else
@@ -1134,6 +1152,10 @@ struct Node {
 # deterrant for the common programmar looking to refactor.
 
 # The only saving grace of this is I guess that it's O(n)
+# (Each loop iterates over tokens until it reaches an end state
+# and the tokens never back track.  Plus I'm pretty sure the
+# transformer is O(n) in terms of the number of nodes in the
+# subtree.)
 
 # If you want to skip the most hellish spaghetti code I have ever
 # had the displesure of writing, just search for "maybe_helper_fun"
@@ -1152,13 +1174,13 @@ struct Node {
 		/; if (first`._type == TTYPE_USRWD || first`._type == TTYPE_KEYTP)
 			# Try to keep parsing as a type, if we error out we
 			# will return whatever post returns
-			~Node cur = _mhf_post(fin, ~_typ, first)
-			/; if (cur == ~_typ && first`.eq(",\0"))
+			~Node cur = _mhf_post(fin, ~_typ, first, true)
+			/; if (cur == ~_typ && first`.eq(",\0") == true)
 				# Keep going
 				Token tmp = produce_next_token(fin, first`)
 				first`.end()
 				first` = tmp
-			;; else if (cur == ~_typ && first`.eq(")\0"))
+			;; else if (cur == ~_typ && first`.eq(")\0") == true)
 				# Stop here, reached end of list
 				run = false
 			;; else
@@ -1168,12 +1190,12 @@ struct Node {
 				# mhf_finish_value can find the last valid parse
 				# before the error occured by getting the last
 				# subnode from the list
-				out.add_child(~_typ)
 				/; if (cur == NULL || cur == ~_typ)
-					cur = mod`.add_child(~out)
+					cur = out.add_child(~_typ)
 				;; else
-					mod`.add_child(~out)
+					out.add_child(~_typ)
 				;/
+				mod`.add_child(~out)
 				return cur
 			;/
 		;; else
@@ -1190,7 +1212,7 @@ struct Node {
 	return mod
 ;/
 
-/; _mhf_post (~utils.File fin, ~Node mod, ~Token first) [~Node]
+/; _mhf_post (~utils.File fin, ~Node mod, ~Token first, bool lnok) [~Node]
 	
 	/; if (first`._type == TTYPE_KEYTP)
 		Node id
@@ -1200,7 +1222,7 @@ struct Node {
 
 		/; if (id.eq("void\0") == true)
 			_type_helper_func(fin, mod, first)
-		;; else if (first`.eq("`\0"))
+		;; else if (first`.eq("`\0") == true)
 			Node post
 			post.init(NTYPE_POST_OP, first`.data)
 			mod`.add_child(~post)
@@ -1224,7 +1246,7 @@ struct Node {
 			return mod
 		;/
 
-		/; if (first`.line !== ln)
+		/; if (first`.line !== ln && lnok == false)
 			return mod
 		;; else if (first`.eq(".\0") == true)
 			Token tmp = produce_next_token(fin, first`)
@@ -1245,8 +1267,8 @@ struct Node {
 		# we want to return NULL, otherwise return the weird
 		# pointer
 		int ln = first`.line
-		/; if (weird == mod && _advance_check(fin, first, ")") == true)
-			/; if (first`._type == TTYPE_USRWD && first`.line == ln)
+		/; if (weird == mod && _advance_check(fin, first, ")\0") == true)
+			/; if (first`._type == TTYPE_USRWD && (first`.line == ln || lnok == true))
 				return NULL
 			;/
 		;/
@@ -1284,19 +1306,34 @@ struct Node {
 		/; if (idx < _type`.sub.count - 1)
 			sub = _type`.sub.get(idx + 1)
 			/; if (sub`._type == NTYPE_ID)
+				sub = _type`.sub.get(idx)
 				Node op, n
 				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
 				n.init(NTYPE_ID, utils.strcpy(sub`.data))
-				op.add_child(~n)
-				cur = cur`.add_child(~op)
+				/; if (cur`.sub.count == 0)
+					op.add_child(~n)
+				;; else
+					sub = cur`.sub.get(cur`.sub.count - 1)
+					sub`.add_child(~n)
+					op.add_child(sub)
+					cur`.sub.pop()
+				;/
+				cur`.add_child(~op)
 			;; else
+				sub = _type`.sub.get(idx)
 				Node n
 				n.init(NTYPE_ID, utils.strcpy(sub`.data))
+				/; if (cur`.sub.count !== 0)
+					cur = cur`.sub.get(cur`.sub.count - 1)
+				;/
 				cur = cur`.add_child(~n)
 			;/
 		;; else
 			Node n
 			n.init(NTYPE_ID, utils.strcpy(sub`.data))
+			/; if (cur`.sub.count !== 0)
+				cur = cur`.sub.get(cur`.sub.count - 1)
+			;/
 			cur = cur`.add_child(~n)
 		;/
 
@@ -1307,6 +1344,7 @@ struct Node {
 		;/
 	;/
 	
+	~int pt1 = at
 	/; if (idx < _type`.sub.count && sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
 		Node lst
 		lst.init(NTYPE_VLIST, utils.strcpy("(\0"))
@@ -1314,14 +1352,18 @@ struct Node {
 		/; loop (int i = 0; i < sub`.sub.count) [i++]
 			~Node lsub = sub`.sub.get(i)
 			at = _mhf_transform(lsub, at)
-			lst.add_child(lsub)
+			~int pt2 = lsub
+			/; if (at == lsub)
+				at = lst.add_child(lsub)
+			;; else
+				lst.add_child(lsub)
+			;/
 		;/
 		
 		/; loop (sub`.sub.count > 0)
 			sub`.sub.pop()
 		;/
 
-		~int pt1 = at
 		~int pt2 = sub
 		/; if (pt1 == pt2)
 			at = cur`.add_child(~lst)
@@ -1337,12 +1379,24 @@ struct Node {
 
 /; _mhf_escape (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
 	int deep = 0
-	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+	~int p1 = cur
+	~int p2 = mod
+	/; loop (bool run = true; run == true && p1 !== p2 && first`._type !== TTYPE_ERR)
 		/; if (first`.eq(")\0") == true)
 			/; if (deep > 0)
 				deep = deep - 1
-			;; else if (cur`.eq("(\0") == false)
+			;; else if (cur`.eq("(\0") == true)
 				cur = cur`.parent
+				p1 = cur
+			;; else
+				/; loop (cur`.parent !== NULL && cur`.eq("(\0") == false)
+					cur = cur`.parent
+				;/
+				/; if (cur`.parent == NULL)
+					return
+				;/
+				cur = cur`.parent
+				p1 = cur
 			;/
 
 			/; if (cur`.eq("(\0") == false)
@@ -1358,18 +1412,285 @@ struct Node {
 	;/
 ;/
 
-/; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur)
-	return
-	# Q1: What are all the possible states we could have been called from
-	# A: Inside a tlist when we discovered an invalid token for a type
-	#    After an identifier when we discovered an invalid type
-	#    After a valid type where we saw a non-identifier
-	#    After a line break, likely meaning the whole thing was likely already transformed
+/; _mhf_up_to_value (~Node cur) [~Node]
+	~int p1 = cur
+	/; loop (p1 !== NULL)
+		/; if (cur`._type == NTYPE_VALUE)
+			return cur
+		;/
+		cur = cur`.parent
+		p1 = cur
+	;/
+	return NULL
+;/
+
+/; _mhf_lower (~Node cur) [~Node]
+	/; loop (bool run = true; run == true)
+		/; if (cur`.sub.count > 0)
+			cur = cur`.sub.get(cur`.sub.count - 1)
+		;; else
+			return cur
+		;/
+
+		/; if (cur`.eq(".\0") || cur`._type == NTYPE_ID)
+			return cur
+		;/
+	;/
+	# should never happen
+	return NULL
+;/
+
+/; _mhf_inner_value(~utils.File fin, ~Node cur, ~Token first) [~Node]
+	cur = _mhf_lower(cur)
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (_advance_check(fin, first, ".\0") == true)
+			/; if (first`._type == TTYPE_USRWD)
+				Node op, id
+
+				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
+				id.init(NTYPE_ID, first`.data)
+				
+				cur = cur`.parent
+				~Node sub = cur`.sub.get(cur`.sub.count - 1)
+				
+				op.add_child(sub)
+				op.add_child(~id)
+				
+				cur`.sub.pop()
+				cur = cur`.add_child(~op)
+				
+				first` = produce_next_token(fin, first`)
+			;; else
+				_ast_print_err(fin, first, "Expected identifier after '.'\0")
+				return NULL
+			;/
+		;; else if (_op_postfix(first) == true)
+			Node op
+			op.init(NTYPE_POST_OP, first`.data)
+			/; if (cur`.eq(".\0") == true)
+				cur = cur`.sub.get(cur`.sub.count - 1)
+				cur`.add_child(~op)
+				cur = cur`.parent
+			;; else if (cur`._type == NTYPE_ID)
+				cur`.add_child(~op)
+			;; else
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('`'). [CMPERR]")
+				op.end()
+				return NULL
+			;/
+			first` = produce_next_token(fin, first`)
+		;; else if (first`.eq("(\0") == true)
+			/; if (cur`.eq(".\0") == true)
+				cur = cur`.sub.get(cur`.sub.count - 1)
+				_ast_list_value(fin, first, cur)
+				cur = cur`.parent
+			;; else if (cur`._type == NTYPE_ID)
+				_ast_list_value(fin, first, cur)
+			;; else
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('('). [CMPERR]")
+				return NULL
+			;/
+			first` = produce_next_token(fin, first`)
+		;; else if (first`.eq("{\0") == true)
+			Node ind
+			ind.init(NTYPE_POST_OP, first`.data)
+			first` = produce_next_token(fin, first`)
+			/; if (_ast_value(fin, ~ind, first, true) == false)
+				_ast_print_err(fin, first, "Expected value for index operation after '{'\0")
+			;/
+
+			/; if (cur`.eq(".\0") == true)
+				cur = cur`.sub.get(cur`.sub.count - 1)
+				cur`.add_child(~ind)
+				cur = cur`.parent
+			;; else if (cur`._type == NTYPE_ID)
+				cur`.add_child(~ind)
+			;; else
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('{'). [CMPERR]")
+				ind.end()
+				return NULL
+			;/
+
+			/; if (_advance_check(fin, first, "}\0") == false)
+				_ast_print_err(fin, first, "Expected '}' to show the end of an index operation after the value\0")
+				return NULL
+			;/
+		;; else
+			run = false
+		;/
+	;/
+
+	cur = _mhf_up_to_value(cur)
+
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`.eq(")\0") || first`.eq(",\0"))
+			run = false
+		;; else if (first`.eq(".\0") == true)
+			_ast_print_err(fin, first, "Unexpected token within function call.  Expected binary operator then value, ',', or ')'.\0")
+			return NULL
+		;; else if (first`._type == TTYPE_AUG && _op_bin(first) == true)
+			Node bin
+			bin.init(NTYPE_BIN_OP, first`.data)
+			
+			int i = _op_order(first`.data)
+			bool gt = false
+			/; if (cur`._type == NTYPE_BIN_OP)
+				gt = _assoc(cur`.data, i)
+			;/
+
+			# Start from the top and work our way down
+			/; loop (gt == true)
+				cur = cur`.parent
+
+				/; if (cur`._type == NTYPE_BIN_OP)
+					gt = _assoc(cur`.data, i)
+				;; else
+					gt = false
+				;/
+			;/
+			
+			~Node lhs = cur`.sub.get(cur`.sub.count - 1)
+			bin.add_child(lhs)
+			cur`.sub.pop()
+			cur = cur`.add_child(~bin)
+
+			first` = produce_next_token(fin, first`)
+			/; if (utils.strcmp(bin.data, "is\0"))
+				_ast_type(fin, cur, first)
+			;; else
+				run = _ast_value_bare(fin, cur, first, true)
+			;/
+
+		;; else
+			_ast_print_err(fin, first, "Unexpected token within function call.  Expected binary operator then value, ',', or ')'.\0")
+			return NULL
+		;/
+	;/
+
+	cur = cur`.parent
+	/; if (_advance_check(fin, first, ")\0"))
+		/; if (cur`.eq("(\0") == true)
+			cur = _mhf_up_to_value(cur)
+		;/
+	;; else if (_advance_check(fin, first, ",\0") == false)
+		_ast_print_err(fin, first, "Expected ')' or ',' to complete function call.\0")
+		return NULL
+	;/
+	return cur
+;/
+
+/; _mhf_outer_list(~utils.File fin, ~Node cur, ~Token first) [~Node]
+	/; loop (first`._type !== TTYPE_ERR && first`.eq(")\0") == false)
+		_ast_value(fin, cur, first, true)
+
+		/; if (_advance_check(fin, first, ",\0") == false && first`.eq(")\0") == false)
+			_ast_print_err(fin, first, "Expected ',' to continue the value list or a closing delimiter\0")
+			return NULL
+		;/
+	;/
+
+	Token next = produce_next_token(fin, first`)
+	first`.end()
+	first` = next
+	
+	cur = _mhf_up_to_value(cur)
+	return cur
+;/
+
+/; _mhf_finish_value (~utils.File fin, ~Node mod, ~Token first, ~Node cur, bool lnok)
+	# First, if we are in a sub-list, we need to keep parsing as normal as if we were in _list_value
+	~int p1 = cur
+	~int p2 = mod
+	int ln = first`.line
+	bool firstRun = true
+	
+	# While we are in subtree
+	/; loop (bool run = true; run == true && p1 !== p2 && first`._type !== TTYPE_ERR)
+		# First loop for while we are in value
+		/; if (cur`._type == NTYPE_VALUE)
+			cur = _mhf_inner_value(fin, cur, first)
+		;/
+
+		# Second loop for while we are in val-list
+		/; if (cur !== NULL && cur`._type == NTYPE_VLIST)
+			cur = _mhf_outer_list(fin, cur, first)
+		;/
+
+		/; if (cur !== NULL && cur`._type !== NTYPE_VALUE && cur`._type !== NTYPE_VLIST)
+			_ast_print_err(fin, first, "[CMPERR] Unsure where we are in the tree\n\0")
+			print_ast(cur)
+			return
+		;/
+
+		/; if (cur == NULL)
+			# TODO: SOME ERR
+			_ast_print_err(fin, first, "[CMPERR] Should escape but can't\n\0")
+			# _mhf_escape(fin, mod, first, cur)
+			return
+		;/
+		p1 = cur
+	;/
+
+	cur = _mhf_lower(cur)
+	/; if (cur`.eq(".\0") == true)
+		cur = cur`.sub.get(cur`.sub.count - 1)
+		_astv_post_id(fin, cur, first, lnok)
+		cur = cur`.parent
+	;; else if (cur`._type == NTYPE_ID)
+		_astv_post_id(fin, cur, first, lnok)
+	;; else
+		_ast_print_err(fin, first, "Unsure where we are at in the tree ('postid'). [CMPERR]")
+		return
+	;/
+	cur = _mhf_up_to_value(cur)
+	
+	# After, we need to work similarly for the top value, however,
+	# we need to keep track of line numbers so that we properly stop.
+	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
+		/; if (first`._type == TTYPE_SEP || _is_closing(first) == true)
+			run = false
+		;; else if (first`.eq(".\0") == true)
+			run = false
+		;; else if (first`._type == TTYPE_AUG && _op_bin(first) == true)
+			Node bin
+			bin.init(NTYPE_BIN_OP, first`.data)
+			
+			int i = _op_order(first`.data)
+			bool gt = false
+			/; if (cur`._type == NTYPE_BIN_OP)
+				gt = _assoc(cur`.data, i)
+			;/
+
+			# Start from the top and work our way down
+			/; loop (gt == true)
+				cur = cur`.parent
+
+				/; if (cur`._type == NTYPE_BIN_OP)
+					gt = _assoc(cur`.data, i)
+				;; else
+					gt = false
+				;/
+			;/
+			
+			~Node lhs = cur`.sub.get(cur`.sub.count - 1)
+			bin.add_child(lhs)
+			cur`.sub.pop()
+			cur = cur`.add_child(~bin)
+
+			first` = produce_next_token(fin, first`)
+			/; if (utils.strcmp(bin.data, "is\0"))
+				_ast_type(fin, cur, first)
+			;; else
+				run = _ast_value_bare(fin, cur, first, lnok)
+			;/
+
+		;; else
+			run = false
+		;/
 	;/
 ;/
 
-/; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first)
+/; _mhf_finish_decl (~utils.File fin, ~Node mod, ~Token first, bool lnok)
 	Node out
 	out.init(NTYPE_DECL, utils.strcpy("\0"))
 	out.add_child(mod)
@@ -1381,12 +1702,12 @@ struct Node {
 			int ln = first`.line
 
 			first` = produce_next_token(fin, first`)
-			/; if (first`.eq("=\0") && first`.line == ln)
+			/; if (first`.eq("=\0") && (first`.line == ln || lnok == true))
 				Token tmp = produce_next_token(fin, first`)
 				first`.end()
 				first` = tmp
-				_ast_value(fin, ~var, first)
-			;; else if (first`.line !== ln)
+				_ast_value(fin, ~var, first, false)
+			;; else if (first`.line !== ln && lnok == false)
 				run = false
 			;/
 
@@ -1408,7 +1729,7 @@ struct Node {
 	mod` = out
 ;/
 
-/; _maybe_helper_fun (~utils.File fin, ~Node mod, ~Token first)
+/; _maybe_helper_fun (~utils.File fin, ~Node mod, ~Token first, bool lnok)
 	# Try parsing as a type first, and if we encounter something weird we will transform
 	# the output into a value before proceeding
 	Node out
@@ -1418,7 +1739,7 @@ struct Node {
 
 	/; if (first`.eq("(\0"))
 		_mhf_transform(~out)
-		_mhf_finish_value(fin, ~out, first, ~out)
+		_mhf_finish_value(fin, ~out, first, ~out, lnok)
 
 	;; else if (first`._type !== TTYPE_USRWD && first`._type !== TTYPE_KEYTP)
 		_ast_print_err(fin, first, "Unexpected token. Expected the completion of a declaration or value (identifier or '(')\0")
@@ -1427,13 +1748,13 @@ struct Node {
 		# Post is a bit of a weird function.  It returns a pointer the node where
 		# _mhf_finish_value should begin merging in values, or zero in the case
 		# that this looks like a proper declaration
-		~Node cur = _mhf_post(fin, ~out, first)
+		~Node cur = _mhf_post(fin, ~out, first, lnok)
 		/; if (cur == NULL)
-			_mhf_finish_decl(fin, ~out, first)
+			_mhf_finish_decl(fin, ~out, first, lnok)
 
 		;; else
 			cur = _mhf_transform(~out, cur)
-			_mhf_finish_value(fin, ~out, first, cur)
+			_mhf_finish_value(fin, ~out, first, cur, lnok)
 		;/
 	;/
 	
@@ -1465,10 +1786,10 @@ struct Node {
 			_ast_fun_block(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_KEYTP || first`.eq("{\0") == true)
 			_ast_decl(fin, ~fn, first)
-		;; else if (first`._type == TTYPE_LITRL)
-			_ast_value(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_USRWD || first`.eq("~\0") == true)
-			_maybe_helper_fun(fin, ~fn, first)
+			_maybe_helper_fun(fin, ~fn, first, false)
+		;; else if (first`._type == TTYPE_LITRL || _op_prefix(first))
+			_ast_value(fin, ~fn, first, false)
 		;; else if (first`._type == TTYPE_KEYWD)
 			_ast_keyword_expr(fin, ~fn, first)
 		;; else if (first`._type == TTYPE_DELIM && first`.data` == ';')
@@ -1638,7 +1959,7 @@ struct Node {
 				Token tmp = produce_next_token(fin, first`)
 				first`.end()
 				first` = tmp
-				_ast_value(fin, ~var, first)
+				_ast_value(fin, ~var, first, false)
 			;/
 
 			decl.add_child(~var)
@@ -1818,10 +2139,12 @@ struct Node {
 		_printf("DLIST\0")
 	;; else if (n`._type == NTYPE_ELIST)
 		_printf("ELIST\0")
+	;; else if (n`._type == NTYPE_SLIST)
+		_printf("SLIST\0")
 	;; else if (n`._type == NTYPE_LITERAL)
 		_printf("LITERAL\0")
-	;; else if (n`._type == NTYPE_KEY_TYPE)
-		_printf("KEY_TYPE\0")
+#	;; else if (n`._type == NTYPE_KEY_TYPE)
+#		_printf("KEY_TYPE\0")
 	;; else if (n`._type == NTYPE_ENUM)
 		_printf("ENUM\0")
 	;; else if (n`._type == NTYPE_DECL)

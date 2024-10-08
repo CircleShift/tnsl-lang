@@ -1,7 +1,10 @@
 
 int i = 1 + 2 * 4 - 3 + 4
 
-~uint8 a = b{}
+~uint8 a = b{0}
 
 /; main ({}{}uint8 args) [int]
+
+	~uint8 as = 12
+	as = 3 + 4
 ;/
