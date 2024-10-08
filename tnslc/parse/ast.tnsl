@@ -1943,31 +1943,18 @@ int errors_shown = 0
 	# Check for enum type
 	/; if (first`.data` == '[')
 		_ast_list_type(fin, ~sct, first)
-
-		Token tmp = produce_next_token(fin, first`)
-		first`.end()
-		first` = tmp
 	;/
 
 	# Check for def list
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== '{')
-		_ast_print_err(fin, first, "Expected new identifier for typedef after 'struct'\0")
+		_ast_print_err(fin, first, "Expected '{' after enum definition\0")
 		mod`.add_child(~sct)
-
-		Token tmp = produce_next_token(fin, first`)
-		first`.end()
-		first` = tmp
-		
 		return
 	;/
 
 	# Parse deflist and push root node into module
 	_ast_list_enum(fin, ~sct, first)
 	mod`.add_child(~sct)
-	
-	Token tmp = produce_next_token(fin, first`)
-	first`.end()
-	first` = tmp
 ;/
 
 /; _ast_decl (~utils.File fin, ~Node mod, ~Token first)
