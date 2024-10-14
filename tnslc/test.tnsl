@@ -6,5 +6,6 @@ int i = 1 + 2 * 4 - 3 + 4
 /; main ({}{}uint8 args) [int]
 
 	~uint8 as = 12
-	as = 3 + 4
+	as` = 3 + 4
 ;/
+

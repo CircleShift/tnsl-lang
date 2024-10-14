@@ -1,0 +1,197 @@
+struct Variable {
+	~uint8 name,
+	~Type _type
+}
+
+/; method Variable
+	/; init (~uint8 name)
+		self.name = name
+	;/
+
+	/; end
+		_delete(self.name)
+	;/
+;/
+
+struct Type {
+	~uint8 name,
+	uint size,
+	utils.Vector vars,
+	~Module methods,
+}
+
+/; method Type
+	/; init(~uint8 name)
+		self.name = name
+		Variable tmp
+		self.vars.init(len tmp)
+	;/
+
+	/; add_var (~Variable v)
+		self.vars.push(v)
+	;/
+
+	/; end
+		_delete(self.name)
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			~Variable v = self.vars.get(i)
+			v`.end()
+		;/
+		self.vars.end()
+	;/
+;/
+
+struct Function {
+	~uint8
+		name,
+	~parse.Node
+		body,
+	utils.Vector
+		inputs,
+		outputs
+}
+
+/; method Function
+	/; init (~uint8 name)
+		self.name = name
+		Variable vtmp
+		self.inputs.init(len vtmp)
+		self.outputs.init(len vtmp)
+	;/
+
+	/; add_input (~Variable v)
+		self.inputs.push(v)
+	;/
+
+	/; add_output (~Variable v)
+		self.outputs.push(v)
+	;/
+
+	/; end
+		_delete(self.name)
+	;/
+;/
+
+struct Enum {
+	~uint8 name,
+	~Type _type,
+	utils.Vector vals
+}
+
+/; method Enum
+	/; init (~uint8 name)
+		self.name = name
+		Variable vtmp
+		self.vals.init(len vtmp)
+	;/
+
+	/; end
+		_delete(self.name)
+		/; loop (int i = 0; i < self.vals.count) [i++]
+			~Variable v = self.vals.get(i)
+			v`.end()
+		;/
+		self.vals.end()
+	;/
+;/
+
+struct Module {
+	~uint8 name,
+	~Module parent,
+	utils.Vector
+		sub,
+		vars,
+		types,
+		funcs,
+		enums
+
+}
+
+/; method Module
+	/; init (~uint8 name)
+		self.name = name
+		Module mtmp
+		Variable vtmp
+		Type ttmp
+		Function ftmp
+		Enum etmp
+		self.sub.init(len mtmp)
+		self.vars.init(len vtmp)
+		self.types.init(len ttmp)
+		self.funcs.init(len ftmp)
+		self.enums.init(len etmp)
+	;/
+
+	/; update_children ()
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			~Module s = self.sub.get(i)
+			s`.parent = ~self
+		;/
+	;/
+
+	/; add_sub(~Module m)
+		self.sub.push(m)
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			~Module s = self.sub.get(i)
+			s`.update_children()
+		;/
+	;/
+
+	/; add_var (~Variable v)
+		self.vars.push(v)
+	;/
+
+	/; add_type (~Type t)
+		self.types.push(t)
+	;/
+
+	/; add_funcs (~Function f)
+		self.funcs.push(f)
+	;/
+
+	/; add_enum (~Enum e)
+		self.enums.push(e)
+	;/
+
+	/; end
+		_delete(self.name)
+
+		/; loop (int i = 0; i < self.sub.count) [i++]
+			~Module m = self.sub.get(i)
+			m`.end()
+		;/
+		self.sub.end()
+
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			~Variable v = self.vars.get(i)
+			v`.end()
+		;/
+		self.vars.end()
+
+		/; loop (int i = 0; i < self.types.count) [i++]
+			~Type t = self.types.get(i)
+			t`.end()
+		;/
+		self.types.end()
+
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			~Function f = self.funcs.get(i)
+			f`.end()
+		;/
+		self.funcs.end()
+
+		/; loop (int i = 0; i < self.enums.count) [i++]
+			~Enum e = self.enums.get(i)
+			e`.end()
+		;/
+		self.enums.end()
+	;/
+;/
+
+{}~uint8 GEN_VAR_NAMES = { "int\0", "int8\0", "int16\0", "int32\0", "int64\0", "uint\0", "uint8\0", "uint16\0", "uint32\0", "uint64\0", "float\0", "float32\0", "float64\0", "vect\0", "bool\0", "void\0" }
+
+{}uint GEN_VAR_SIZES = { 8, 1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 0, 1, 8}
+
+
+/; restructure (~parse.Node) [Module]
+;/
