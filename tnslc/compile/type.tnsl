@@ -1,15 +1,40 @@
 struct Variable {
 	~uint8 name,
-	~Type _type
+	~Type _type,
+	utils.Vector ptr
 }
 
 /; method Variable
 	/; init (~uint8 name)
 		self.name = name
+		self.ptr.init(8)
+	;/
+
+	/; add_ptr(uint ptp)
+		self.ptr.push(~ptp)
+	;/
+
+	/; get_ptr [uint]
+		/; if (self.ptr.count == 0)
+			return 0
+		;/
+		~uint p = self.ptr.get(self.ptr.count - 1)
+		return p`
+	;/
+
+	/; pop_ptr [uint]
+		/; if (self.ptr.count == 0)
+			return 0
+		;/
+		~uint p = self.ptr.get(self.ptr.count - 1)
+		uint out = p`
+		self.ptr.pop()
+		return out
 	;/
 
 	/; end
 		_delete(self.name)
+		self.ptr.end()
 	;/
 ;/
 
@@ -55,16 +80,17 @@ struct Function {
 	/; init (~uint8 name)
 		self.name = name
 		Variable vtmp
+		~uint i
 		self.inputs.init(len vtmp)
-		self.outputs.init(len vtmp)
+		self.outputs.init(len i)
 	;/
 
 	/; add_input (~Variable v)
 		self.inputs.push(v)
 	;/
 
-	/; add_output (~Variable v)
-		self.outputs.push(v)
+	/; add_output (~Type t)
+		self.outputs.push(~t)
 	;/
 
 	/; end
@@ -76,10 +102,6 @@ struct Function {
 		;/
 		self.inputs.end()
 
-		/; loop (int i = 0; i < self.outputs.count) [i++]
-			~Variable v = self.outputs.get(i)
-			v`.end()
-		;/
 		self.outputs.end()
 	;/
 ;/
@@ -110,6 +132,7 @@ struct Enum {
 struct Module {
 	~uint8 name,
 	~Module parent,
+	bool exp,
 	utils.Vector
 		sub,
 		vars,
@@ -140,19 +163,20 @@ uint8 MOD_FIND_ENM = 4
 		self.enums.init(len etmp)
 	;/
 
-	/; update_children ()
+	/; update_children
 		/; loop (int i = 0; i < self.sub.count) [i++]
 			~Module s = self.sub.get(i)
 			s`.parent = ~self
 		;/
 	;/
 
-	/; add_sub(~Module m)
+	/; add_sub(~Module m) [~Module]
 		self.sub.push(m)
 		/; loop (int i = 0; i < self.sub.count) [i++]
 			~Module s = self.sub.get(i)
 			s`.update_children()
 		;/
+		return self.sub.get(self.sub.count - 1)
 	;/
 
 	/; add_var (~Variable v)
@@ -270,3 +294,67 @@ uint8 MOD_FIND_ENM = 4
 
 {}uint GEN_VAR_SIZES = { 8, 1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 0, 1, 8}
 
+/; find_type(utils.Artifact a, ~parse.Node n) [~parse.Node]
+	return NULL
+;/
+
+/; transform_struct(~parse.Node n, ~Module parent)
+;/
+
+/; _tfn_mod_loop (~parse.Node n, ~Module m)
+	/; loop (int i = 0; i < n`.sub.count) [i++]
+		~parse.Node s = n`.sub.get(i)
+		/; if (s`._type == parse.NTYPE_MODULE || s`._type == parse.NTYPE_EXPORT)
+			transform_module(s, m)
+		;; else if (s`._type == parse.NTYPE_STRUCT)
+			transform_struct(s, m)
+		;/
+	;/
+;/
+
+/; transform_module (~parse.Node n, ~Module parent)
+	~Module s = NULL
+
+	/; loop (int i = 0; i < parent`.sub.count) [i++]
+		~Module tmp = parent`.sub.get(i)
+		/; if (utils.strcmp(n`.data, tmp`.name) == true)
+			s = tmp
+		;/
+	;/
+	
+	~int cmp = s
+	/; if (cmp == NULL)
+		Module out
+		out.init(utils.strcpy(n`.data))
+
+		/; if (n`._type == parse.NTYPE_EXPORT)
+			out.exp = true
+		;; else
+			out.exp = false
+		;/
+
+		s = parent`.add_sub(~out)
+	;/
+
+	_tfn_mod_loop(n, s)
+;/
+
+/; _tfn_gen_default_types (~Module m)
+	/; loop (int i = 0; i < len GEN_VAR_NAMES) [i++]
+		Type t
+		t.init(utils.strcpy(GEN_VAR_NAMES{i}))
+		t.size = GEN_VAR_SIZES{i}
+		m`.add_type(~t)
+	;/
+;/
+
+/; transform_tree (~parse.Node n) [Module]
+	Module out
+	out.init(utils.strcpy(n`.data))
+	out.exp = true
+
+	_tfn_gen_default_types(~out)
+	_tfn_mod_loop(n, ~out)
+
+	return out
+;/
