@@ -69,6 +69,18 @@ struct Function {
 
 	/; end
 		_delete(self.name)
+
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			~Variable v = self.inputs.get(i)
+			v`.end()
+		;/
+		self.inputs.end()
+
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			~Variable v = self.outputs.get(i)
+			v`.end()
+		;/
+		self.outputs.end()
 	;/
 ;/
 
@@ -106,6 +118,12 @@ struct Module {
 		enums
 
 }
+
+uint8 MOD_FIND_SUB = 0
+uint8 MOD_FIND_VAR = 1
+uint8 MOD_FIND_TYP = 2
+uint8 MOD_FIND_FUN = 3
+uint8 MOD_FIND_ENM = 4
 
 /; method Module
 	/; init (~uint8 name)
@@ -153,6 +171,66 @@ struct Module {
 		self.enums.push(e)
 	;/
 
+	/; _find_rec (utils.Artifact pth, uint8 typ, int sub) [~void]
+		/; if (sub !< pth.count)
+			return NULL
+		;; else if ((sub + 1) < pth.count)
+			/; loop (int i = 0; i < self.sub.count) [i++]
+				~Module m = self.sub.get(i)
+				/; if (utils.strcmp(pth.get(sub), m`.name) == true)
+					return _find_rec(pth, typ, sub + 1)
+				;/
+			;/
+		;; else
+			/; if (typ == MOD_FIND_SUB)
+				/; loop (int i = 0; i < self.sub.count) [i++]
+					~Module m = self.sub.get(i)
+					/; if (utils.strcmp(pth.get(sub), m`.name) == true)
+						return self.sub.get(i)
+					;/
+				;/
+			;; else if (typ == MOD_FIND_VAR)
+				/; loop (int i = 0; i < self.vars.count) [i++]
+					~Variable v = self.vars.get(i)
+					/; if (utils.strcmp(pth.get(sub), v`.name) == true)
+						return self.vars.get(i)
+					;/
+				;/
+			;; else if (typ == MOD_FIND_TYP)
+				/; loop (int i = 0; i < self.types.count) [i++]
+					~Type t = self.types.get(i)
+					/; if (utils.strcmp(pth.get(sub), t`.name) == true)
+						return self.types.get(i)
+					;/
+				;/
+			;; else if (typ == MOD_FIND_FUN)
+				/; loop (int i = 0; i < self.funcs.count) [i++]
+					~Function f = self.funcs.get(i)
+					/; if (utils.strcmp(pth.get(sub), f`.name) == true)
+						return self.funcs.get(i)
+					;/
+				;/
+			;; else if (typ == MOD_FIND_ENM)
+				/; loop (int i = 0; i < self.enums.count) [i++]
+					~Enum e = self.enums.get(i)
+					/; if (utils.strcmp(pth.get(sub), e`.name) == true)
+						return self.enums.get(i)
+					;/
+				;/
+			;/
+		;/
+		
+		/; if (self.parent == NULL || sub !== 0)
+			return NULL
+		;/
+
+		return self.parent._find_rec(pth, typ, 0)
+	;/
+
+	/; find (utils.Artifact pth, uint8 typ) [~void]
+		return _find_rec(pth, typ, 0)
+	;/
+
 	/; end
 		_delete(self.name)
 
@@ -192,6 +270,3 @@ struct Module {
 
 {}uint GEN_VAR_SIZES = { 8, 1, 2, 4, 8, 8, 1, 2, 4, 8, 8, 4, 8, 0, 1, 8}
 
-
-/; restructure (~parse.Node) [Module]
-;/
