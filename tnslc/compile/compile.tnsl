@@ -1,4 +1,5 @@
 /; module compile
 	:import "type.tnsl"
+	:import "outbuf.tnsl"
 	:import "generate.tnsl"
 ;/

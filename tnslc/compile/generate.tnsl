@@ -1,6 +1,22 @@
+/; generate_module (~OutBuf buf, ~Module mod)
+;/
+
 /; generate (~utils.File fin, fout)
 	parse.Node n = parse.generate_ast(fin)
 	n.update_children()
 	parse.print_ast(~n)
+
+	OutBuf buf
+	buf.init()
+
+	Module mod = transform_tree(~n, ~buf)
+	mod.print(0)
+
+
+	generate_module(~buf, ~mod)
+	buf.write_to_file(fout)
+
+	mod.end()
+	buf.end()
 	n.end()
 ;/

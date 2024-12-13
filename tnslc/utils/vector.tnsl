@@ -67,6 +67,22 @@ uint VECTOR_MAX_GROW = 256
 	;/
 
 	/; pop
+		self.remove(self.count - 1)
+	;/
+
+	/; remove (int index)
+		/; if (index < 0 || index !< self.count)
+			return
+		;/
+
+		/; if (self.count > 1)
+			/; loop (int i = index * self._elsz; i < (self.count - 1) * self._elsz) [i++]
+				~uint8 to = self.data + i
+				~uint8 from = self.data + i + self._elsz
+				to` = from`
+			;/
+		;/
+
 		self.count--
 
 		/; if (self.count < self.size / 2)
@@ -95,6 +111,25 @@ uint VECTOR_MAX_GROW = 256
 		self.size = 0
 		self._elsz = 0
 		_delete(self.data)
+	;/
+
+	/; copy [Vector]
+		Vector out
+		
+		out.init(self._elsz)
+		/; loop (int i = 0; i < self.count) [i++]
+			~int tmp = self.get(i)
+			out.push(tmp)
+		;/
+
+		return out
+	;/
+
+	/; back [~void]
+		/; if (self.count > 0)
+			return self.get(self.count - 1)
+		;/
+		return NULL
 	;/
 ;/
 

@@ -200,6 +200,13 @@
 	return out.as_cstr()
 ;/
 
+/; stradd(~uint8 a, ~uint8 b) [~uint8]
+	Vector out
+	out.from_cstr(a)
+	out.push_cstr(b)
+	return out.as_cstr()
+;/
+
 /; unquote_cha(~uint8 cha) [uint8]
 	/; if (cha` !== '\\')
 		return cha`
