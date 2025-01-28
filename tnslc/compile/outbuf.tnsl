@@ -13,7 +13,7 @@ struct OutBuf {
 	;/
 
 	/; write_to_file (~utils.File fout)
-		fout`.open()
+		fout`.create()
 		fout`.write_cstr("bits 64\n\0")
 		fout`.write_cstr(self.hsec.as_cstr())
 		fout`.write_cstr("\nsection .data\n\0")

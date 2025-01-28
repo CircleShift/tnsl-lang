@@ -208,6 +208,7 @@ uint8 MOD_FIND_ENM = 4
 /; method Module
 	/; init (~uint8 name)
 		self.name = name
+		self.parent = NULL
 		Module mtmp
 		Variable vtmp
 		Type ttmp
@@ -218,6 +219,21 @@ uint8 MOD_FIND_ENM = 4
 		self.types.init(len ttmp)
 		self.funcs.init(len ftmp)
 		self.enums.init(len etmp)
+	;/
+
+	/; _label_rec (~utils.Vector vec)
+		/; if (self.parent !== NULL)
+			self.parent`._label_rec(vec)
+			vec.push_cstr(".\0")
+		;/
+		vec.push_cstr(self.name)
+	;/
+
+	/; label_prefix [~uint8]
+		utils.Vector vec
+		vec.init(1)
+		_label_rec(~vec)
+		return vec.as_cstr()
 	;/
 
 	/; update_children

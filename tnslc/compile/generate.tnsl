@@ -1,3 +1,10 @@
+
+struct Scope {
+	~Scope parent,
+	~uint8 name,
+
+}
+
 /; generate_module (~OutBuf buf, ~Module mod)
 ;/
 
