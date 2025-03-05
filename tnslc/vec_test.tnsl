@@ -1,0 +1,47 @@
+:import "utils/utils.tnsl"
+
+/; print_vec(~utils.Vector v)
+	_printf("vec: [ \0")
+	/; if (v`.count > 0)
+		~int n = v`.get(0)
+		_print_num("%d\0", n`)
+		/; loop (int i = 1; i < v`.count) [i++]
+			~int n = v`.get(i)
+			_print_num(", %d\0", n`)
+		;/
+	;/
+	_printf(" ]\n\0")
+;/
+
+/; main [int]
+	utils.Vector vec
+	vec.init(8)
+	int a = 1295
+	vec.push(~a)
+	a = 1984
+	vec.push(~a)
+	a = 3498
+	vec.push(~a)
+	a = 8972
+	vec.push(~a)
+
+	print_vec(~vec)
+	_printf("pop_front\n\0")
+	vec.remove(0)
+	print_vec(~vec)
+	_printf("pop_mid\n\0")
+	vec.remove(1)
+	print_vec(~vec)
+	_printf("pop_end\n\0")
+	vec.pop()
+	print_vec(~vec)
+	_printf("pop_final\n\0")
+	vec.pop()
+	print_vec(~vec)
+
+	vec.end()
+
+	return 0
+;/
+
+

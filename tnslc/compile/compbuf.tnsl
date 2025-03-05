@@ -1,0 +1,45 @@
+
+struct CompBuf {
+  utils.Vector
+    sec_head,
+    sec_data,
+    sec_code
+}
+
+/; method CompBuf
+  /; init
+    self.sec_head.init(1)
+    self.sec_data.init(1)
+    self.sec_code.init(1)
+  ;/
+
+  /; add_h(~uint8 text)
+    self.sec_head.push_cstr(text)
+  ;/
+
+  /; add_d(~uint8 text)
+    self.sec_data.push_cstr(text)
+  ;/
+  
+  /; add_c(~uint8 text)
+    self.sec_code.push_cstr(text)
+  ;/
+
+  /; write_to(~utils.File fout)
+    fout`.write_cstr("BITS 64\0\n")
+    fout`.write_cstr(self.sec_head.as_cstr())
+
+    fout`.write_cstr("\nsection .data\0\n\n")
+    fout`.write_cstr(self.sec_data.as_cstr())
+
+    fout`.write_cstr("\nsection .text\0\n\n")
+    fout`.write_cstr(self.sec_code.as_cstr())
+  ;/
+
+  /; end
+    self.sec_head.end()
+    self.sec_data.end()
+    self.sec_code.end()
+  ;/
+;/
+

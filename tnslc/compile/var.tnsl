@@ -1,0 +1,33 @@
+
+struct Var {
+  ~uint8 name,
+  ~Struct _type,
+  utils.Vector ptrc,
+  int loc
+}
+
+/; method Var
+  /; init (~uint8 name)
+    self.name = name
+    self.ptrc.init(4)
+  ;/
+
+  /; ptr [int32]
+    ~int32 i
+    i = self.ptrc.get(self.ptrc.count - 1)
+    return i`
+  ;/
+
+  /; ptr_push (int32 p)
+    self.ptrc.push(~p)
+  ;/
+
+  /; ptr_pop
+    self.ptrc.pop()
+  ;/
+
+  /; end
+    _delete(self.name)
+    self.ptrc.end()
+  ;/
+;/

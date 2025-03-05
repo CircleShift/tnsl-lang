@@ -1,0 +1,68 @@
+
+struct Module {
+  # Text name of module
+  ~uint8 name,
+
+  # Various contained elements
+  utils.Vector
+    vars,
+    structs,
+    funcs,
+    subs,
+
+  # Whether we export or not
+  bool e
+}
+
+/; method Module
+  
+  /; init (~uint8 name, bool exp)
+    Var v
+    Struct s
+    Function f
+    Module m
+
+    self.vars.init(len v)
+    self.structs.init(len s)
+    self.funcs.init(len f)
+    self.subs.init(len m)
+
+    self.name = name
+    self.e = exp
+  ;/
+
+  /; end
+    _delete(self.name)
+
+    ~Var v
+    /; loop (int i = 0; i < self.vars.count) [i++]
+      v = self.vars.get(i)
+      v`.end()
+    ;/
+    self.vars.end()
+
+    ~Struct s
+    /; loop (int i = 0; i < self.structs.count) [i++]
+      s = self.structs.get(i)
+      s`.end()
+    ;/
+    self.structs.end()
+
+    ~Function f
+    /; loop (int i = 0; i < self.funcs.count) [i++]
+      f = self.funcs.get(i)
+      f`.end()
+    ;/
+    self.funcs.end()
+
+    ~Module m
+    /; loop (int i = 0; i < self.subs.count) [i++]
+      m = self.subs.get(i)
+      m`.end()
+    ;/
+    self.subs.end()
+
+  ;/
+
+;/
+

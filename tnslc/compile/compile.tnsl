@@ -1,5 +1,9 @@
 /; module compile
-	:import "type.tnsl"
-	:import "outbuf.tnsl"
-	:import "generate.tnsl"
+  :import "compbuf.tnsl"
+  :import "struct.tnsl"
+  :import "var.tnsl"
+  :import "function.tnsl"
+  :import "module.tnsl"
+  :import "codegen.tnsl"
 ;/
+

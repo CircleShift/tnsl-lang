@@ -1,0 +1,46 @@
+
+struct Struct {
+  ~uint8 name,
+  ~Module methods,
+  utils.Vector members,
+  int size
+}
+
+/; method Struct
+  
+  /; init (~uint8 name)
+    self.name = name
+    Var v
+    self.members.init(len v)
+  ;/
+
+  /; add_member(~Var v)
+    self.members.push(v)
+  ;/
+
+  /; get_member(~uint8 name) [~Var]
+    ~Var out = NULL
+
+    ~Var v
+    /; loop (int i = 0; i < self.members.count) [i++]
+      v = self.members.get(i)
+      /; if (utils.strcmp(v`.name, name) == true)
+        return v
+      ;/
+    ;/
+
+    return out
+  ;/
+
+  /; end
+    _delete(self.name)
+    ~Var v
+    /; loop (int i = 0; i < self.members.count) [i++]
+      v = self.members.get(i)
+      v`.end()
+    ;/
+    self.members.end()
+  ;/
+
+;/
+

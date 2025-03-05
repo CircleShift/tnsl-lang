@@ -1,0 +1,14 @@
+
+struct Scope {
+  ~uint8 name,
+  utils.Vector
+    reg_vars,
+    stack_vars,
+  int
+    c_const,
+    c_sub
+}
+
+/; method Scope
+;/
+
