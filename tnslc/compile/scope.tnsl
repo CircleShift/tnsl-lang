@@ -1,14 +1,123 @@
-
 struct Scope {
-  ~uint8 name,
-  utils.Vector
-    reg_vars,
-    stack_vars,
-  int
-    c_const,
-    c_sub
+	~uint8 name,
+
+	utils.Vector
+		stack_vars,
+		reg_vars,
+	
+	~Scope parent,
+	
+	int
+		next_const,
+		next_bool
 }
 
 /; method Scope
+	/; init (~uint8 name)
+		self.name = name
+
+		Variable v
+		self.stack_vars.init(len v)
+		self.reg_vars.init(len v)
+
+		self.next_const = 0
+		self.next_bool = 0
+	;/
+
+	/; end
+		_delete(self.name)
+
+		~Variable v
+		/; loop (int i = 0; i < self.stack_vars.count) [i++]
+			v = self.stack_vars.get(i)
+			v`.end()
+		;/
+
+		/; loop (int i = 0; i < self.reg_vars.count) [i++]
+			v = self.reg_vars.get(i)
+			v`.end()
+		;/
+	;/
+
+	/; _name_rec (~utils.Vector out)
+		/; if (self.parent !== NULL)
+			self.parent`._name_rec(out)
+			out`.push_cstr("#")
+		;/
+
+		out`.push_cstr(self.name)
+	;/
+
+	/; _base_label [utils.Vector]
+		utils.Vector out
+		out.init(1)
+		
+		~uint8 mod_str = self.current.label_prefix()
+		out.push_cstr(mod_str)
+		_delete(mod_str)
+
+		self._name_rec(~out)
+
+		return out
+	;/
+
+	/; label_start [~uint8]
+		utils.Vector base = self._base_label()
+		base.push_cstr("#start\0")
+		return base.as_cstr()
+	;/
+
+	/; label_rep [~uint8]
+		utils.Vector base = self._base_label()
+		base.push_cstr("#rep\0")
+		return base.as_cstr()
+	;/
+
+	/; label_end [~uint8]
+		utils.Vector base = self._base_label()
+		base.push_cstr("#end\0")
+		return base.as_cstr()
+	;/
+	
+	/; label_next_const [~uint8]
+		utils.Vector base = self._base_label()
+		base.push_cstr("#const\0")
+		
+		~uint8 str = utils.int_to_str(self.next_const)
+		base.push_cstr(str)
+		self.next_const++
+		_delete(str)
+
+		return base.as_cstr()
+	;/
+
+	/; label_bool [~uint8]
+		utils.Vector base = self._base_label()
+		base.push_cstr("#bool\0")
+		
+		~uint8 str = utils.int_to_str(self.next_bool)
+		base.push_cstr(str)
+		self.next_bool++
+		_delete(str)
+
+		return base.as_cstr()
+	;/
+
+	/; label_bool_adv
+		self.next_bool++
+	;/
+
+	/; subscope (~uint8 name) [Scope]
+        Scope out
+        
+		utils.Vector str
+		str.from_cstr(name)
+		_delete(name)
+
+    out.init(str.as_cstr(), self.current)
+    out.parent = ~self
+
+    return out
+	;/
 ;/
 
