@@ -1,4 +1,8 @@
 
 /; generate (~utils.File fin, fout)
+  parse.Node ast = parse.generate_ast(fin)
+  ast.update_children()
+  parse.print_ast(~ast)
+  ast.end()
 ;/
 

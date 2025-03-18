@@ -1,9 +1,12 @@
 
 int i = 1 + 2 * 4 - 3 + 4
+int j = -3
 
 ~uint8 a = b{0}
 
 /; main ({}{}uint8 args) [int]
+  
+  tnsl.print("Hello, World!")
 
 	~uint8 as = 12
 	as` = 3 + 4

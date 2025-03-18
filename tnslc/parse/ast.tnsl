@@ -2187,7 +2187,7 @@ int errors_shown = 0
 ;/
 
 /; print_node_head (~Node n)
-	_printf("{ NODE_TYPE: \0")
+	_printf("{ \0")
 	print_node_type(n)
 	_printf(", DATA: \0")
 	_printf(n`.data)

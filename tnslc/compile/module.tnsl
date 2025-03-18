@@ -31,6 +31,9 @@ struct Module {
     self.e = exp
   ;/
 
+  /; from_tree (~parse.Node root)
+  ;/
+
   /; end
     _delete(self.name)
 
