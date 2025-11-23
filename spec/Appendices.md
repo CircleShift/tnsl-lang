@@ -23,8 +23,6 @@
 
 	; - beginning of statement, end of previous statement
 
-	: - beginning of pre-processor statement, end of previous
-
 	# - line comment, ends at newline
 
 
@@ -297,8 +295,41 @@ NOTE:  Static structs *can* allow generics so long as they do not store said gen
 
 Variable width structs (dynamic structs) can accomodate generics and variable width members.  Dynamic structs may extend static structs or other dynamic structs.  By extending a dynamic struct, even if one makes no use of the dynamic members, their struct is automatically a dynamic struct.  These structs offer the least control over memory, and slightly slower call times, but offer the most flexability to the programmer.
 
+## Appendix D - When can I use...?
 
-## Appendix D - UN7+1
+### Core Language
+
+The core language encompases what you would expect from any C-like language:
+- Modules
+- Variables
+- Enums
+- Types
+- Functions
+- Methods
+- Interfaces
+- Scalar Operators
+- Control Flow
+- Anonymous Functions
+- Inline Assembly
+- Interop with C ABI
+
+### Advanced Language Features
+These may depend on support from `libtnsl`, though they are still considered "standard" and any complete implementation of TNSL must include them.
+The table below shows what parts of the standard library must be present for the features to work as designed:
+
+| Feature         | libtnsl - `reflect` | libtnsl - `thread` | libtnsl - `stream` |
+| --------------- | ------------------- | ------------------ | ------------------ |
+| Runtime type reflection | Yes | - | - |
+| Threads | - | Yes | - |
+| Mutex | - | Yes | - |
+| Coroutines | - | Yes | - |
+| Generators | - | Yes | - |
+| Loop over Generator | - | Yes | - |
+| Stream | - | - | Yes |
+| Stream Operators | - | - | Yes |
+| Loop over Streams | - | Yes | Yes |
+
+## Appendix Z - UN7+1
 
 Unicode Non-standard 7+1 bit (UN7+1) encoding is a non-standard way to represent any unicode character using a series of 8-bit values.  The first bit in the 8-bit sequence represents if the next 8-bit sequence is included in the character code, the other seven bits are part of the character code.
 

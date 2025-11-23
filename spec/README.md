@@ -1,47 +1,54 @@
-Version 0.0.1
-# The TNSL Language Specification
+# The TNSL Specification
+Version 0.0.2
 
 ## Forward
 
-I forgot what TNSL stands for.  I now worry that it's one of those "ATM Machine" situations.
+This is mostly meant to be a collection of valid TNSL syntax that interested parties can use to learn the language by example.  Explanations are provided alongside.  In-depth explanations may be provided for features which use a bit of "compiler magic".  One goal of the language is to keep "compiler magic" to a minimum while still providing quality of life constructs for programmers to use, so these should be few.
+
+Also, I forgot what TNSL stands for.  I now worry that it's one of those "ATM Machine" situations.
 
 -CircleShift
 
 ## Chapter Index
 
-1. [The Language](./1.md)
-
+1. [The Core Language](./1.md)
 	- Files
 	- Blocks
-	- Statements
 	- Types
+	- Basic Statements
 	- Operators
-	- `raw` and `asm`
+	- `asm`
+    - Cross Calling to C
 
-2. [Related features](./2.md)
+2. [Advanced Features](./2.md)
+    - Relation to `libtnsl`
+    - Generators and Coroutines
+    - Streams
+    - Anonymous Functions
+    - Interfaces and Runtime Type Reflection
 
+3. [Tweaking Features](./3.md)
+	- Bare Metal
+	- `libtnsl` as it relates to Types
+
+4. [The TNSL Calling ABI](./4.md)
+	- Differences from C
+	- Exporting and importing C-like Functions
+	- Types and Arrays in Memory
+
+5. [Related Reading](./5.md)
 	- Style guide
 	- Compiler Options
 	- The Pre-Processor
 	- libtnsl
-	- TNSL-lang export trees (T-LETs)
-
-3. [The TNSL Calling ABI](./3.md)
-
-	- Differences from C
-	- Exporting C-like Functions
-	- Types and Arrays in Memory
-
-4. [Features in Position](./4.md)
-
-	- Bare Metal
-	- `libtnsl` as it relates to Types
-	- Cross Calling to C
+	- TNSL export trees (TETs)
 
 - [Appendix](./Appendices.md)
 	- A: Reserved Characters
 	- B: Reserved Words
-	- C: Speed vs the Type System
+	- C: Speed of Advanced Features
+    - D: When can I use [Feature]?
+    - Z: UN7+1 (A unicode nonstandard format)
 
 ## License
 
