@@ -26,13 +26,13 @@ struct CompBuf {
   ;/
 
   /; write_to(~utils.File fout)
-    fout`.write_cstr("BITS 64\0\n")
+    fout`.write_cstr("BITS 64\n\0")
     fout`.write_cstr(self.sec_head.as_cstr())
 
-    fout`.write_cstr("\nsection .data\0\n\n")
+    fout`.write_cstr("\nsection .data\n\n\0")
     fout`.write_cstr(self.sec_data.as_cstr())
 
-    fout`.write_cstr("\nsection .text\0\n\n")
+    fout`.write_cstr("\nsection .text\n\n\0")
     fout`.write_cstr(self.sec_code.as_cstr())
   ;/
 

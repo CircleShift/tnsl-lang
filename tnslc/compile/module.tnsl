@@ -1,71 +1,239 @@
 
+int SEARCH_VAR = 0
+int SEARCH_STRUCT = 1
+int SEARCH_FUNC = 2
+int SEARCH_SUB = 3
+
 struct Module {
-  # Text name of module
-  ~uint8 name,
+	# Text name of module
+	~uint8 name,
 
-  # Various contained elements
-  utils.Vector
-    vars,
-    structs,
-    funcs,
-    subs,
+	# Various contained elements
+	utils.Vector
+		vars,
+		structs,
+		funcs,
+		subs,
 
-  # Whether we export or not
-  bool e
+	# Whether we export or not
+	bool e,
+
+	# Parent module
+	~Module parent
 }
 
 /; method Module
-  
-  /; init (~uint8 name, bool exp)
-    Var v
-    Struct s
-    Function f
-    Module m
 
-    self.vars.init(len v)
-    self.structs.init(len s)
-    self.funcs.init(len f)
-    self.subs.init(len m)
+	/; init (~parse.Node mod)
+		Var v
+		Struct s
+		Function f
+		Module m
 
-    self.name = name
-    self.e = exp
-  ;/
+		self.vars.init(len v)
+		self.structs.init(len s)
+		self.funcs.init(len f)
+		self.subs.init(len m)
 
-  /; from_tree (~parse.Node root)
-  ;/
+		self.name = utils.strcpy(mod`.data)
+		self.e = mod`._type == parse.NTYPE_EXPORT
 
-  /; end
-    _delete(self.name)
+		self._from_tree(mod)
+		
+		~Module sub
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			sub = self.subs.get(i)
+			sub`.update_children()
+		;/
+	;/
 
-    ~Var v
-    /; loop (int i = 0; i < self.vars.count) [i++]
-      v = self.vars.get(i)
-      v`.end()
-    ;/
-    self.vars.end()
+	/; update_children
+		~Module sub
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			sub = self.subs.get(i)
+			sub`.parent = ~self
+		;/
+	;/
 
-    ~Struct s
-    /; loop (int i = 0; i < self.structs.count) [i++]
-      s = self.structs.get(i)
-      s`.end()
-    ;/
-    self.structs.end()
+	/; _from_tree (~parse.Node mod)
+		~parse.Node sub
+		/; loop (int i = 0; i < mod`.sub.count) [i++]
+			sub = mod`.sub.get(i)
+			
+			# TODO: Vars, Enums, Method blocks
 
-    ~Function f
-    /; loop (int i = 0; i < self.funcs.count) [i++]
-      f = self.funcs.get(i)
-      f`.end()
-    ;/
-    self.funcs.end()
+			/; if (sub`._type == parse.NTYPE_MOD || sub`._type == parse.NTYPE_EXPORT)
+				Module m
+				m.init(sub)
+				self.subs.push(~m)
+			;; else if (sub`._type == parse.NTYPE_STRUCT)
+				Struct s
+				s.init(sub)
+				self.structs.push(~s)
+			;; else if (sub`._type == parse.NTYPE_FUNCTION)
+				Function f
+				f.init(sub)
+				self.funcs.push(~f)
+			;/
+		;/
+	;/
 
-    ~Module m
-    /; loop (int i = 0; i < self.subs.count) [i++]
-      m = self.subs.get(i)
-      m`.end()
-    ;/
-    self.subs.end()
+	/; compile (~CompBuf cb)
+		# First, since all the types are in place, we need to size all of them.
+		self._size_structs()
+		
+		# Finally, write all functions to the code section
+		self._compile(cb)
+	;/
 
-  ;/
+	/; _size_structs
+		~Struct s
+		/; loop (int i = 0; i < self.structs.count) [i++]
+			s = self.structs.get(i)
+			/; if (s`.size == 0)
+				s`._compute_size(~self)
+			;/
+		;/
+
+		~Module m
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			m = self.subs.get(i)
+			m`._size_structs()
+		;/
+	;/
+
+	/; _compile (~CompBuf cb)
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			f`._compile(~self, cb)
+		;/
+
+		~Module m
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			m = self.subs.get(i)
+			m`._compile(cb)
+		;/
+	;/
+	
+	#
+	# Functions to search sub-modules
+	#
+
+	/; find (int stype, ~utils.Vector key) [~void]
+		return self._find(stype, key, 0)
+	;/
+
+	/; _find (int stype, ~utils.Vector key, int lvl) [~void]
+		
+		/; if ((lvl + 1) < key`.count)
+			~Module m
+			~uint8 str = key`.get(lvl)
+			/; loop (int i = 0; i < self.subs.count) [i++]
+				m = self.subs.get(i)
+				/; if (utils.strcmp(str, m`.name) == true)
+					~void v = m._find(stype, key, lvl + 1)
+					/; if (v != NULL)
+						return v
+					;/
+					return NULL
+				;/
+			;/
+		;; else
+			~uint8 str = key`.get(key`.count - 1)
+			/; if (stype == SEARCH_VAR)
+				return _find_var(str)
+			;; else if (stype == SEARCH_STRUCT)
+				return _find_struct(str)
+			;; else if (stype == SEARCH_FUNC)
+				return _find_func(str)
+			;; else if (stype == SEARCH_SUB)
+				return _find_sub(str)
+			;/
+		;/
+
+		/; if (lvl == 0 && self.parent !== NULL)
+			return self.parent._find(stype, key, 0)
+		;/
+
+		return NULL
+	;/
+
+	/; _find_var (~uint8 name) [~void]
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			/; if (utils.strcmp(name, v`.name) == true)
+				return v
+			;/
+		;/
+		return NULL
+	;/
+
+	/; _find_struct (~uint8 name) [~void]
+		~Struct s
+		/; loop (int i = 0; i < self.structs.count) [i++]
+			s = self.structs.get(i)
+			/; if (utils.strcmp(name, s`.name) == true)
+				return s
+			;/
+		;/
+		return NULL
+	;/
+	
+	/; _find_func (~uint8 name) [~void]
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			/; if (utils.strcmp(name, f`.name) == true)
+				return f
+			;/
+		;/
+		return NULL
+	;/
+	
+	/; _find_sub (~uint8 name) [~void]
+		~Module m
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			m = self.subs.get(i)
+			/; if (utils.strcmp(name, m`.name) == true)
+				return m
+			;/
+		;/
+		return NULL
+	;/
+
+	/; end
+		_delete(self.name)
+
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`.end()
+		;/
+		self.vars.end()
+
+		~Struct s
+		/; loop (int i = 0; i < self.structs.count) [i++]
+			s = self.structs.get(i)
+			s`.end()
+		;/
+		self.structs.end()
+
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			f`.end()
+		;/
+		self.funcs.end()
+
+		~Module m
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			m = self.subs.get(i)
+			m`.end()
+		;/
+		self.subs.end()
+	;/
 
 ;/
 

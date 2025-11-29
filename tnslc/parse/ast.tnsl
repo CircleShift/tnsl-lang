@@ -2115,7 +2115,7 @@ int errors_shown = 0
 	utils.Vector v
 	v.init(1)
 
-	out.init(NTYPE_MODULE, v.as_cstr())
+	out.init(NTYPE_EXPORT, v.as_cstr())
 
 	_ast_file(fin, ~out)
 

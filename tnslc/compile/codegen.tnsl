@@ -1,8 +1,30 @@
 
 /; generate (~utils.File fin, fout)
-  parse.Node ast = parse.generate_ast(fin)
-  ast.update_children()
-  parse.print_ast(~ast)
-  ast.end()
+	# Parse files into AST
+	parse.Node ast = parse.generate_ast(fin)
+	ast.update_children()
+	parse.print_ast(~ast)
+
+	# Create output buffer
+	CompBuf buffer
+	buffer.init()
+
+	# Transform into a module tree
+	# Module mod
+	# mod.init(~ast)
+	# mod.update_children()
+
+	# Compile code
+	# mod.compile(~buffer)
+
+	# Write assembly to output file
+	# fout.create()
+	# buffer.write_to(fout)
+	# fout.close()
+	
+	# Free all structs
+	# mod.end()
+	buffer.end()
+	ast.end()
 ;/
 

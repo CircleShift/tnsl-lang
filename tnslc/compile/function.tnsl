@@ -15,6 +15,9 @@ struct Function {
     self.outputs.init(len v)
   ;/
 
+  /; _compile (~Module parent, ~CompBuf cb)
+  ;/
+
   /; end
     _delete(self.name)
     self.body`.end()

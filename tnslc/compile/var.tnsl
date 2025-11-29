@@ -23,232 +23,232 @@ int PRIM_FLT = 3
 # 9-16 are r8, r9, r10, r11, r12, r13, r14, r15
 # 17-32 are xmm0, xmm1, xmm2, ..., xmm15
 /; reg_string (int r, int size) [~uint8]
-  utils.Vector out
-  out.init(1)
-  uint8 add
-  
-  /; if (r < 9)
-    /; if (size == 4)
-      add = 'e'
-      out.push(~add)
-    ;; else if (size == 8)
-      add = 'r'
-      out.push(~add)
-    ;/
+	utils.Vector out
+	out.init(1)
+	uint8 add
 
-    add = 'a'       
-    /; if (r < 5)
-      add = add + r - 1
-    ;; else if (r == 5 || r == 7)
-      add = 's'
-    ;; else if (r == 6)
-      add = 'd'
-    ;; else if (r == 8)
-      add = 'b'
-    ;/
-    out.push(~add)
-    
-    /; if (r == 5 || r == 6)
-      add = 'i'
-      out.push(~add)
-    ;; else if (r == 7 || r == 8)
-      add = 'p'
-      out.push(~add)
-    ;; else if (size !== 1)
-      add = 'x'
-      out.push(~add)
-    ;/
+	/; if (r < 9)
+		/; if (size == 4)
+			add = 'e'
+			out.push(~add)
+		;; else if (size == 8)
+			add = 'r'
+			out.push(~add)
+		;/
 
-    /; if (size == 1)
-      add = 'l'
-      out.push(~add)
-    ;/
-  ;; else if (r < 17)
-    add = 'r'
-    out.push(~add)
-    
-    ~uint8 num = utils.int_to_str(r - 1)
-    out.push_cstr(num)
-    _delete(num)
-    /; if (size == 1)
-      add = 'b'
-      out.push(~add)
-    ;; else if (size == 2)
-      add = 'w'
-      out.push(~add)
-    ;; else if (size  == 4)
-      add = 'd'
-      out.push(~add)
-    ;/
-  ;; else if (r < 33)
-    out.push_cstr("xmm\0")
-    ~uint8 num = utils.int_to_str(r - 17)
-    out.push_cstr(num)
-    _delete(num)
-  ;/
-  
-  return out.as_cstr()
+		add = 'a'       
+		/; if (r < 5)
+			add = add + r - 1
+		;; else if (r == 5 || r == 7)
+			add = 's'
+		;; else if (r == 6)
+			add = 'd'
+		;; else if (r == 8)
+			add = 'b'
+		;/
+		out.push(~add)
+
+		/; if (r == 5 || r == 6)
+			add = 'i'
+			out.push(~add)
+		;; else if (r == 7 || r == 8)
+			add = 'p'
+			out.push(~add)
+		;; else if (size !== 1)
+			add = 'x'
+			out.push(~add)
+		;/
+
+		/; if (size == 1)
+			add = 'l'
+			out.push(~add)
+		;/
+	;; else if (r < 17)
+		add = 'r'
+		out.push(~add)
+
+		~uint8 num = utils.int_to_str(r - 1)
+		out.push_cstr(num)
+		_delete(num)
+		/; if (size == 1)
+			add = 'b'
+			out.push(~add)
+		;; else if (size == 2)
+			add = 'w'
+			out.push(~add)
+		;; else if (size  == 4)
+			add = 'd'
+			out.push(~add)
+		;/
+	;; else if (r < 33)
+		out.push_cstr("xmm\0")
+		~uint8 num = utils.int_to_str(r - 17)
+		out.push_cstr(num)
+		_delete(num)
+	;/
+
+	return out.as_cstr()
 ;/
 
 struct Var {
-  ~uint8 name,
-  ~Struct _type,
-  utils.Vector ptrc,
-  int loc
+	~uint8 name,
+	~Struct _type,
+	utils.Vector ptrc,
+	int loc
 }
 
 /; method Var
-  /; init (~uint8 name)
-    self.name = name
-    self.ptrc.init(4)
-  ;/
+	/; init (~uint8 name)
+		self.name = name
+		self.ptrc.init(4)
+	;/
 
-  /; ptr [int32]
-    ~int32 i
-    i = self.ptrc.get(self.ptrc.count - 1)
-    return i`
-  ;/
+	/; ptr [int32]
+		~int32 i
+		i = self.ptrc.get(self.ptrc.count - 1)
+		return i`
+	;/
 
-  /; ptr_push (int32 p)
-    self.ptrc.push(~p)
-  ;/
+	/; ptr_push (int32 p)
+		self.ptrc.push(~p)
+	;/
 
-  /; ptr_pop
-    self.ptrc.pop()
-  ;/
+	/; ptr_pop
+		self.ptrc.pop()
+	;/
 
-  /; is_primitive [int]
-    ~uint8 tn = self`._type`.name
+	/; is_primitive [int]
+		~uint8 tn = self`._type`.name
 
-    /; if (parse._in_csv(PRIM_CSV_BOO, tn) == true)
-      return PRIM_BOO
-    ;; else if (parse._in_csv(PRIM_CSV_INT, tn) == true)
-      return PRIM_INT
-    ;; else if (parse._in_csv(PRIM_CSV_FLT, tn) == true)
-      return PRIM_FLT
-    ;/
+		/; if (parse._in_csv(PRIM_CSV_BOO, tn) == true)
+			return PRIM_BOO
+		;; else if (parse._in_csv(PRIM_CSV_INT, tn) == true)
+			return PRIM_INT
+		;; else if (parse._in_csv(PRIM_CSV_FLT, tn) == true)
+			return PRIM_FLT
+		;/
 
-    return PRIM_NON
-  ;/
+		return PRIM_NON
+	;/
 
-  /; end
-    _delete(self.name)
-    self.ptrc.end()
-  ;/
+	/; end
+		_delete(self.name)
+		self.ptrc.end()
+	;/
 
-  ###################################
-  # Variable manipulation functions #
-  ###################################
+	###################################
+	# Variable manipulation functions #
+	###################################
 
-  # Generate a string which represents where the variable is in memory,
-  # this string may be used to set the value of the variable with operations like "mov"
-  # if "maybe_mem" is true, this might be an address like "[rsi]"
-  /; gen_to (bool maybe_mem) [~uint8]
-    utils.Vector out
-    out.init(1)
-    return out.as_cstr()
-  ;/
+	# Generate a string which represents where the variable is in memory,
+	# this string may be used to set the value of the variable with operations like "mov"
+	# if "maybe_mem" is true, this might be an address like "[rsi]"
+	/; gen_to (bool maybe_mem) [~uint8]
+		utils.Vector out
+		out.init(1)
+		return out.as_cstr()
+	;/
 
-  # Generate a string which represents where the variable is in memory,
-  # this string may be used to read the value of the variable with operations like "mov"
-  # if "maybe_mem" is true, this might be an address like "[rsi]"
-  /; gen_from (bool maybe_mem) [~uint8]
-    utils.Vector out
-    out.init(1)
-    return out.as_cstr()
-  ;/
+	# Generate a string which represents where the variable is in memory,
+	# this string may be used to read the value of the variable with operations like "mov"
+	# if "maybe_mem" is true, this might be an address like "[rsi]"
+	/; gen_from (bool maybe_mem) [~uint8]
+		utils.Vector out
+		out.init(1)
+		return out.as_cstr()
+	;/
 
-  # Returns true if the variable is stored in memory
-  /; in_mem [bool]
-    /; if (self.loc !> 0)
-      return true
-    ;/
-    return false
-  ;/
+	# Returns true if the variable is stored in memory
+	/; in_mem [bool]
+		/; if (self.loc !> 0)
+			return true
+		;/
+		return false
+	;/
 
-  # Set this variable to the value of a literal
-  /; set_literal (~CompBuf buf, ~Var other)
-  ;/
+	# Set this variable to the value of a literal
+	/; set_literal (~CompBuf buf, ~Var other)
+	;/
 
-  # Set this Variable to the value of other
-  /; set (~CompBuf buf, ~Var other)
-  ;/
+	# Set this Variable to the value of other
+	/; set (~CompBuf buf, ~Var other)
+	;/
 
-  /; standard_op (~CompBuf buf, ~Var other, ~uint8 op_str)
-    ~uint8 from_str
-    ~uint8 to_str = self.gen_to(true)
+	/; standard_op (~CompBuf buf, ~Var other, ~uint8 op_str)
+		~uint8 from_str
+		~uint8 to_str = self.gen_to(true)
 
-    /; if (self.in_mem())
-      from_str = other`.gen_from(false)
-    ;; else
-      from_str = other`.gen_from(true)
-    ;/
+		/; if (self.in_mem())
+			from_str = other`.gen_from(false)
+		;; else
+			from_str = other`.gen_from(true)
+		;/
 
-    buf`.add_c(op_str)
-    buf`.add_c(" \0")
-    buf`.add_c(to_str)
-    buf`.add_c(", \0")
-    buf`.add_c(from_str)
-    buf`.add_c("\n\0")
+		buf`.add_c(op_str)
+		buf`.add_c(" \0")
+		buf`.add_c(to_str)
+		buf`.add_c(", \0")
+		buf`.add_c(from_str)
+		buf`.add_c("\n\0")
 
-    _delete(from_str)
-    _delete(to_str)
-  ;/
+		_delete(from_str)
+		_delete(to_str)
+	;/
 
-  /; product_op (~CompBuf buf, ~Var other, ~uint8 op_str, int read_reg)
-    
-  ;/
+	/; product_op (~CompBuf buf, ~Var other, ~uint8 op_str, int read_reg)
 
-  /; add (~CompBuf buf, ~Var other)
-    /; if (self.loc = VLOC_LITL)
-    ;/
-    self.standard_op("add")
-  ;/
+	;/
 
-  /; sub (~CompBuf buf, ~Var other)
-    self.standard_op("sub")
-  ;/
+	/; add (~CompBuf buf, ~Var other)
+		/; if (self.loc = VLOC_LITL)
+		;/
+		self.standard_op(buf, other, "add")
+	;/
 
-  /; mul (~CompBuf buf, ~Var other)
-    self.product_op(buf, other, "imul", 1)
-  ;/
+	/; sub (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "sub")
+	;/
 
-  /; div (~CompBuf buf, ~Var other)
-    /; if ("signed")
-      self.product_op(buf, other, "idiv", 1)
-    ;; else
-      self.product_op(buf, other, "div", 1)
-    ;/
-  ;/
+	/; mul (~CompBuf buf, ~Var other)
+		self.product_op(buf, other, "imul", 1)
+	;/
 
-  /; mod (~CompBuf buf, ~Var other)
-    /; if ("signed")
-      self.product_op(buf, other, "idiv", 4)
-    ;; else
-      self.product_op(buf, other, "div", 4)
-    ;/
-  ;/
+	/; div (~CompBuf buf, ~Var other)
+		/; if ("signed")
+			self.product_op(buf, other, "idiv", 1)
+		;; else
+			self.product_op(buf, other, "div", 1)
+		;/
+	;/
 
-  /; and (~CompBuf buf, ~Var other)
-    self.standard_op("and")
-  ;/
+	/; mod (~CompBuf buf, ~Var other)
+		/; if ("signed")
+			self.product_op(buf, other, "idiv", 4)
+		;; else
+			self.product_op(buf, other, "div", 4)
+		;/
+	;/
 
-  /; or (~CompBuf buf, ~Var other)
-    self.standard_op("or")
-  ;/
+	/; and (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "and")
+	;/
 
-  /; xor (~CompBuf buf, ~Var other)
-    self.standard_op("xor")
-  ;/
+	/; or (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "or")
+	;/
 
-  /; not (~CompBuf buf, ~Var other)
-    self.standard_op("xor")
-  ;/
+	/; xor (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "xor")
+	;/
 
-  /; member (~CompBuf buf, ~uint8 name) [Var]
-    Var out
-    return out
-  ;/
+	/; not (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "xor")
+	;/
+
+	/; member (~CompBuf buf, ~uint8 name) [Var]
+		Var out
+		return out
+	;/
 ;/
 
 
