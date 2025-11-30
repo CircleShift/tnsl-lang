@@ -4,15 +4,19 @@ struct Function {
   utils.Vector
     inputs,
     outputs,
-  ~parse.Node body
+  ~parse.Node _up,
 }
 
 /; method Function
-  /; init (~uint8 name)
-    self.name = name
+  /; init (~parse.Node n)
+    self.name = utils.strcpy(n`.data)
+	self._up = n
     Var v
     self.inputs.init(len v)
     self.outputs.init(len v)
+  ;/
+
+  /; _resolve_type (~Module parent)
   ;/
 
   /; _compile (~Module parent, ~CompBuf cb)
@@ -20,7 +24,6 @@ struct Function {
 
   /; end
     _delete(self.name)
-    self.body`.end()
 
     ~Var v
     /; loop (int i = 0; i < self.inputs.count) [i++]

@@ -94,13 +94,23 @@ struct Var {
 	~uint8 name,
 	~Struct _type,
 	utils.Vector ptrc,
-	int loc
+	int loc,
+	
+	~parse.Node _up
 }
 
 /; method Var
-	/; init (~uint8 name)
-		self.name = name
+	/; init (~parse.Node n)
+		self.name = utils.strcpy(n`.data)
 		self.ptrc.init(4)
+		self._up = n
+	;/
+
+	/; _resolve_type (~Module parent)
+	;/
+
+	/; _static_compile (~Module parent, ~CompBuf buf)
+		# TODO: 
 	;/
 
 	/; ptr [int32]

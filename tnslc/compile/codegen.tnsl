@@ -10,21 +10,76 @@
 	buffer.init()
 
 	# Transform into a module tree
-	# Module mod
-	# mod.init(~ast)
-	# mod.update_children()
+	Module mod
+	mod.init(~ast, ~buffer)
+	mod.update_children()
 
 	# Compile code
-	# mod.compile(~buffer)
+	_gen_prims(~mod)
+	mod.compile(~buffer)
 
 	# Write assembly to output file
-	# fout.create()
-	# buffer.write_to(fout)
-	# fout.close()
+	fout.create()
+	buffer.write_to(fout)
+	fout.close()
 	
 	# Free all structs
-	# mod.end()
+	mod.end()
 	buffer.end()
 	ast.end()
+;/
+
+/; _gen_prims (~Module m)
+	Var t
+
+	Struct s
+	s.members.init(len t)
+	s.methods = NULL
+	s._up = NULL
+
+	~uint8 str
+
+	# One byte prims
+	s.size = 1
+	s.name = utils.strcpy("bool\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("uint8\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("int8\0")
+	m`.structs.push(~s)
+
+	# Two byte prims
+	s.size = 2
+	s.name = utils.strcpy("uint16\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("int16\0")
+	m`.structs.push(~s)
+
+	# Four byte prims
+	s.size = 4
+	s.name = utils.strcpy("uint32\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("int32\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("float32\0")
+	m`.structs.push(~s)
+
+	# Eight byte prims
+	s.size = 8
+	s.name = utils.strcpy("uint64\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("int64\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("float64\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("uint\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("int\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("float\0")
+	m`.structs.push(~s)
+	s.name = utils.strcpy("void\0")
+	m`.structs.push(~s)
+
 ;/
 

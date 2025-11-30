@@ -24,7 +24,7 @@ struct Module {
 
 /; method Module
 
-	/; init (~parse.Node mod)
+	/; init (~parse.Node mod, ~CompBuf buf)
 		Var v
 		Struct s
 		Function f
@@ -38,7 +38,7 @@ struct Module {
 		self.name = utils.strcpy(mod`.data)
 		self.e = mod`._type == parse.NTYPE_EXPORT
 
-		self._from_tree(mod)
+		self._from_tree(mod, buf)
 		
 		~Module sub
 		/; loop (int i = 0; i < self.subs.count) [i++]
@@ -55,16 +55,20 @@ struct Module {
 		;/
 	;/
 
-	/; _from_tree (~parse.Node mod)
+	/; _from_tree (~parse.Node mod, ~CompBuf buf)
 		~parse.Node sub
 		/; loop (int i = 0; i < mod`.sub.count) [i++]
 			sub = mod`.sub.get(i)
 			
 			# TODO: Vars, Enums, Method blocks
 
-			/; if (sub`._type == parse.NTYPE_MOD || sub`._type == parse.NTYPE_EXPORT)
+			/; if (sub`._type == parse.NTYPE_MODULE)
 				Module m
-				m.init(sub)
+				m.init(sub, buf)
+				self.subs.push(~m)
+			;; else if (sub`._type == parse.NTYPE_EXPORT)
+				Module m
+				m.init(sub, buf)
 				self.subs.push(~m)
 			;; else if (sub`._type == parse.NTYPE_STRUCT)
 				Struct s
@@ -74,6 +78,9 @@ struct Module {
 				Function f
 				f.init(sub)
 				self.funcs.push(~f)
+			;; else if (sub`._type == parse.NTYPE_ASM)
+				buf`.add_h(sub`.data)
+				buf`.add_h("\n\0")
 			;/
 		;/
 	;/
@@ -95,6 +102,18 @@ struct Module {
 			;/
 		;/
 
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`._resolve_type(~self)
+		;/
+
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			f`._resolve_type(~self)
+		;/
+
 		~Module m
 		/; loop (int i = 0; i < self.subs.count) [i++]
 			m = self.subs.get(i)
@@ -103,6 +122,12 @@ struct Module {
 	;/
 
 	/; _compile (~CompBuf cb)
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`._static_compile(~self, cb)
+		;/
+
 		~Function f
 		/; loop (int i = 0; i < self.funcs.count) [i++]
 			f = self.funcs.get(i)

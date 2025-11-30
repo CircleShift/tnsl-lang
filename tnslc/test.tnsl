@@ -1,5 +1,8 @@
 
 struct Box {
-	{}~{}A(B`)` a
+	int a
 }
+
+/; main [int]
+;/
 
