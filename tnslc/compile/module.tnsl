@@ -78,9 +78,34 @@ struct Module {
 				Function f
 				f.init(sub)
 				self.funcs.push(~f)
+			;; else if (sub`._type == parse.NTYPE_DECL)
+				self._decl(sub)
 			;; else if (sub`._type == parse.NTYPE_ASM)
 				buf`.add_h(sub`.data)
 				buf`.add_h("\n\0")
+			;/
+		;/
+	;/
+
+	/; _decl (~parse.Node decl)
+		/; if (decl`.sub.count < 1)
+			return
+		;/
+
+		~parse.Node tn = decl`.sub.get(0)
+		/; if (tn`._type !== parse.NTYPE_TYPE)
+			# Type must be first
+			return
+		;/
+		
+		~parse.Node id
+		/; loop (int i = 1; i < decl`.sub.count) [i++]
+			id = decl`.sub.get(i)
+			/; if (tn`._type == parse.NTYPE_ID)
+				# Add a new variable to the list
+				Var v
+				v.init(tn, id)
+				self.vars.push(~v)
 			;/
 		;/
 	;/
@@ -146,6 +171,8 @@ struct Module {
 	#
 
 	/; find (int stype, ~utils.Vector key) [~void]
+		_printf("==== STARTING FIND WITH KEY ====\n\0")
+		_print_num("key parts %d\n\0", key`.count)
 		return self._find(stype, key, 0)
 	;/
 
@@ -154,6 +181,7 @@ struct Module {
 		/; if ((lvl + 1) < key`.count)
 			~Module m
 			~uint8 str = key`.get(lvl)
+
 			/; loop (int i = 0; i < self.subs.count) [i++]
 				m = self.subs.get(i)
 				/; if (utils.strcmp(str, m`.name) == true)
@@ -167,13 +195,13 @@ struct Module {
 		;; else
 			~uint8 str = key`.get(key`.count - 1)
 			/; if (stype == SEARCH_VAR)
-				return _find_var(str)
+				return self._find_var(str)
 			;; else if (stype == SEARCH_STRUCT)
-				return _find_struct(str)
+				return self._find_struct(str)
 			;; else if (stype == SEARCH_FUNC)
-				return _find_func(str)
+				return self._find_func(str)
 			;; else if (stype == SEARCH_SUB)
-				return _find_sub(str)
+				return self._find_sub(str)
 			;/
 		;/
 
@@ -226,6 +254,45 @@ struct Module {
 			;/
 		;/
 		return NULL
+	;/
+
+	/; print
+		self._print(0)
+	;/
+
+	/; _print (int indent)
+
+		_indent(indent)
+		_printf("{ Module : \0")
+		_printf(self.name)
+		_printf("\n\0")
+
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`._print(indent + 1)
+		;/
+
+		~Struct s
+		/; loop (int i = 0; i < self.structs.count) [i++]
+			s = self.structs.get(i)
+			s`._print(indent + 1)
+		;/
+
+		~Function f
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			f = self.funcs.get(i)
+			f`._print(indent + 1)
+		;/
+
+		~Module m
+		/; loop (int i = 0; i < self.subs.count) [i++]
+			m = self.subs.get(i)
+			m`._print(indent + 1)
+		;/
+
+		_indent(indent)
+		_printf("}\n\0")
 	;/
 
 	/; end

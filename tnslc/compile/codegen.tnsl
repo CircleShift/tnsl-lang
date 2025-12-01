@@ -1,9 +1,15 @@
+/; _indent (int idt)
+	/; loop (int i = 0; i < idt) [i++]
+		_printf("  \0")
+	;/
+;/
 
 /; generate (~utils.File fin, fout)
 	# Parse files into AST
 	parse.Node ast = parse.generate_ast(fin)
 	ast.update_children()
-	parse.print_ast(~ast)
+
+	# parse.print_ast(~ast)
 
 	# Create output buffer
 	CompBuf buffer
@@ -18,6 +24,8 @@
 	_gen_prims(~mod)
 	mod.compile(~buffer)
 
+	mod.print()
+
 	# Write assembly to output file
 	fout.create()
 	buffer.write_to(fout)
@@ -29,57 +37,57 @@
 	ast.end()
 ;/
 
-/; _gen_prims (~Module m)
+/; _gen_prim(int size, ~uint8 id) [Struct]
 	Var t
+	Struct s
+	s.size = size
+	s.methods = NULL
+	s.members.init(len t)
+	s.name = utils.strcpy(id)
+	s._up = NULL
+	return s
+;/
+
+/; _gen_prims (~Module m)
 
 	Struct s
-	s.members.init(len t)
-	s.methods = NULL
-	s._up = NULL
-
-	~uint8 str
 
 	# One byte prims
-	s.size = 1
-	s.name = utils.strcpy("bool\0")
+	s = _gen_prim(1, "bool\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("uint8\0")
+	s = _gen_prim(1, "uint8\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("int8\0")
+	s = _gen_prim(1, "int8\0")
 	m`.structs.push(~s)
 
 	# Two byte prims
-	s.size = 2
-	s.name = utils.strcpy("uint16\0")
+	s = _gen_prim(2, "uint16\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("int16\0")
+	s = _gen_prim(2, "int16\0")
 	m`.structs.push(~s)
 
 	# Four byte prims
-	s.size = 4
-	s.name = utils.strcpy("uint32\0")
+	s = _gen_prim(4, "uint32\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("int32\0")
+	s = _gen_prim(4, "int32\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("float32\0")
+	s = _gen_prim(4, "float32\0")
 	m`.structs.push(~s)
 
 	# Eight byte prims
-	s.size = 8
-	s.name = utils.strcpy("uint64\0")
+	s = _gen_prim(8, "uint64\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("int64\0")
+	s = _gen_prim(8, "int64\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("float64\0")
+	s = _gen_prim(8, "float64\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("uint\0")
+	s = _gen_prim(8, "uint\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("int\0")
+	s = _gen_prim(8, "int\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("float\0")
+	s = _gen_prim(8, "float\0")
 	m`.structs.push(~s)
-	s.name = utils.strcpy("void\0")
+	s = _gen_prim(8, "void\0")
 	m`.structs.push(~s)
-
 ;/
 

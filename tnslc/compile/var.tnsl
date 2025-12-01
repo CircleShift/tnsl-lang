@@ -4,10 +4,13 @@ int VLOC_STCK = 2
 int VLOC_LITL = 1
 int VLOC_DATA = 0
 
-int PTYPE_NONE = 2
-int PTYPE_PTR = 1
-int PTYPE_REF = 0
-int PTYPE_ARR = 1
+# Should be -2
+int32 PTYPE_NONE = 2
+# Should be -1
+int32 PTYPE_PTR = 1
+int32 PTYPE_REF = 0
+# 1 Arr is ptr to arr, larger #s are static size arrs
+int32 PTYPE_ARR = 1
 
 int PRIM_NON = 0
 int PRIM_BOO = 1
@@ -96,17 +99,123 @@ struct Var {
 	utils.Vector ptrc,
 	int loc,
 	
-	~parse.Node _up
+	~parse.Node _tn, _id
 }
 
 /; method Var
-	/; init (~parse.Node n)
-		self.name = utils.strcpy(n`.data)
+	# Initial init function, requires type node and
+	# identifier node
+	/; init (~parse.Node tn, id)
+		self.name = utils.strcpy(id`.data)
 		self.ptrc.init(4)
-		self._up = n
+		self._tn = tn
+		self._id = id
 	;/
 
+	/; _print (int idt)
+		_indent(idt)
+		_print("{ Var : \0")
+		_print(self.name)
+		_print("\n\0")
+		
+		~int32 ptr
+		_indent(idt)
+		_print(" pointer chain: \0")
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			ptr = self.ptrc.get(i)
+			_print_num("%d \0", ptr`)
+		;/
+		_print("\n\0")
+
+		_indent(idt)
+		_print(" computed type name: \0")
+		/; if (self._type == NULL)
+			_print("NULL\0")
+		;; else
+			_print(self._type`.name)
+		;/
+		_print("\n\0")
+
+		_indent(idt)
+		_print("}\n\0")
+	;/
+
+	/; _arr_ptr(~parse.Node a)
+		int32 ptr = 1
+		/; if (a`.sub.count > 0)
+			~parse.Node l = a`.sub.get(0)
+			ptr = utils.cstr_to_int(l`.data)
+			/; if (ptr < 2)
+				return
+			;/
+		;/
+		self.ptrc.push(~ptr)
+	;/
+
+	# Sets up both the ptrc and the _type members, requires
+	# parent module for resolution of types
 	/; _resolve_type (~Module parent)
+		int idx = 0
+		bool running = true
+		~parse.Node t, _tn
+		_tn = self._tn
+
+		# Pre-op pointer
+		/; loop (running == true) [idx++]
+			/; if (idx !< _tn`.sub.count)
+				running = false
+			;; else
+				t = _tn`.sub.get(idx)
+				/; if (t`._type == parse.NTYPE_PRE_OP)
+					/; if (utils.strcmp(t`.data, "~\0") == true)
+						int32 ptr = 0
+						ptr = ptr - PTYPE_PTR
+						self.ptrc.push(~ptr)
+					;; else
+						self._arr_ptr(t)
+					;/
+				;; else
+					running = false
+				;/
+			;/
+		;/
+
+		# After pre-ops comes id
+		utils.Vector strv
+		strv.init(8)
+		running = true
+		/; loop (running == true) [idx++]
+			/; if (idx !< _tn`.sub.count)
+				running = false
+			;; else
+				t = _tn`.sub.get(idx)
+				/; if (t`._type == parse.NTYPE_ID)
+					~void str = t`.data
+					strv.push(~str)
+				;; else
+					running = false
+				;/
+			;/
+		;/
+
+		# Main type resolution
+		# TODO: FUNCTION POINTER
+		self._type = parent`.find(SEARCH_STRUCT, ~strv)
+		strv.end()
+
+		# Post-op pointer
+		running = true
+		/; loop (running == true) [idx++]
+			/; if (idx !< _tn`.sub.count)
+				running = false
+			;; else
+				t = _tn`.sub.get(idx)
+				/; if (t`._type == parse.NTYPE_POST_OP)
+					int32 ptr = 0
+					self.ptrc.push(~ptr)
+				;/
+			;/
+		;/
 	;/
 
 	/; _static_compile (~Module parent, ~CompBuf buf)

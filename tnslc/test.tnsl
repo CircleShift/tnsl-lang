@@ -3,6 +3,3 @@ struct Box {
 	int a
 }
 
-/; main [int]
-;/
-

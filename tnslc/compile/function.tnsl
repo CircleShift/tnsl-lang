@@ -1,42 +1,52 @@
 
 struct Function {
-  ~uint8 name,
-  utils.Vector
-    inputs,
-    outputs,
-  ~parse.Node _up,
+	~uint8 name,
+	utils.Vector
+		inputs,
+		outputs,
+	~parse.Node _up,
 }
 
 /; method Function
-  /; init (~parse.Node n)
-    self.name = utils.strcpy(n`.data)
-	self._up = n
-    Var v
-    self.inputs.init(len v)
-    self.outputs.init(len v)
-  ;/
+	/; init (~parse.Node n)
+		self.name = utils.strcpy(n`.data)
+		self._up = n
+		Var v
+		self.inputs.init(len v)
+		self.outputs.init(len v)
+	;/
 
-  /; _resolve_type (~Module parent)
-  ;/
+	/; _resolve_type (~Module parent)
+	;/
 
-  /; _compile (~Module parent, ~CompBuf cb)
-  ;/
+	/; _compile (~Module parent, ~CompBuf cb)
+	;/
 
-  /; end
-    _delete(self.name)
+	/; _print (int idt)
+  		_indent(idt)
+		_printf("{ Function : \0")
+		_printf(self.name)
+		_printf("\n\0")
 
-    ~Var v
-    /; loop (int i = 0; i < self.inputs.count) [i++]
-      v = self.inputs.get(i)
-      v`.end()
-    ;/
-    self.inputs.end()
+		_indent(idt)
+		_printf("}\n\0")
+	;/
 
-    /; loop (int i = 0; i < self.outputs.count) [i++]
-      v = self.outputs.get(i)
-      v`.end()
-    ;/
-    self.outputs.end()
-  ;/
+	/; end
+		_delete(self.name)
+
+		~Var v
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			v = self.inputs.get(i)
+			v`.end()
+		;/
+		self.inputs.end()
+
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			v = self.outputs.get(i)
+			v`.end()
+		;/
+		self.outputs.end()
+	;/
 ;/
 

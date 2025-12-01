@@ -62,6 +62,30 @@ struct Struct {
 		self.members.init(len v)
 	;/
 
+	/; _print (int idt)
+		_indent(idt)
+		_printf("{ Struct : \0")
+		_printf(self.name)
+		_printf("\n\0")
+		
+		_indent(idt)
+		_printf(" size:\0")
+		_print_num("%d\0", self.size)
+		_printf("\n\0")
+
+		_indent(idt)
+		_printf(" members:\n\0")
+
+		~Var v
+		/; loop (int i = 0; i < self.members.count) [i++]
+			v = self.members.get(i)
+			v._print(idt + 1)
+		;/
+
+		_indent(idt)
+		_printf("}\n\0")
+	;/
+
 	/; add_member(~Var v)
 		self.members.push(v)
 	;/
@@ -145,7 +169,7 @@ struct Struct {
 		utils.Vector sv
 		sv.init(8)
 
-		~void str
+		~uint8 str
 		~parse.Node n
 		bool seen_id = false
 
@@ -153,7 +177,7 @@ struct Struct {
 			n = tn`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_ID)
 				str = n`.data
-				sv.push(~str)
+				sv.push(str)
 				seen_id = true
 			;; else if (seen_id == true)
 				i = tn`.sub.count
@@ -161,11 +185,11 @@ struct Struct {
 		;/
 
 		# Find struct and compute its size
-		~Struct out = parent.find(SEARCH_STRUCT, ~sv)
+		~Struct out = parent`.find(SEARCH_STRUCT, ~sv)
 		sv.pop()
 		~Module outp = parent
 		/; if (sv.count !== 0)
-			outp = parent.find(SEARCH_SUB, ~sv)
+			outp = parent`.find(SEARCH_SUB, ~sv)
 		;/
 		sv.end()
 		return out
