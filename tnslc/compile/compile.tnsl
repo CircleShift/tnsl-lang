@@ -5,5 +5,6 @@
   :import "function.tnsl"
   :import "module.tnsl"
   :import "codegen.tnsl"
+  :import "scope.tnsl"
 ;/
 

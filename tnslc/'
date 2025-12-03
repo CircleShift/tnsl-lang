@@ -80,10 +80,8 @@ struct Function {
 		~uint8 fqn = self._fqn(parent)
 		Scope out
 		out.init(parent, cb, fqn)
-		out.parent = NULL
 		_delete(fqn)
-		
-		# TODO: Write label to cb
+
 		# TODO: Push all saved vars and deal with parameters
 		# TODO: Add all params to the scope
 
@@ -91,11 +89,6 @@ struct Function {
 	;/
 
 	/; _end_scope(~Scope scope, ~CompBuf cb)
-		# TODO: place jmp label
-		# TODO: pop all saved vars
-		# TODO: ret
-		
-		scope`.end()
 	;/
 
 	/; _compile (~Module parent, ~CompBuf cb)
@@ -123,7 +116,7 @@ struct Function {
 
 		# Create scope and start compiling statements from here.
 		Scope fscope = self._build_scope(parent, cb)
-		fscope._compile_statements(_up, i)
+		fscope._compile_statements(cb, _up, i)
 		self._end_scope(~fscope, cb)
 	;/
 
