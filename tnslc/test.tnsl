@@ -1,5 +1,5 @@
 
-struct Box {
-	int a
-}
+/; main (int argc, ~~uint8 argv) [int]
+	return 0
+;/
 

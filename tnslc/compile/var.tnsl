@@ -114,30 +114,26 @@ struct Var {
 
 	/; _print (int idt)
 		_indent(idt)
-		_print("{ Var : \0")
-		_print(self.name)
-		_print("\n\0")
+		_printf("{ Var : \0")
+		_printf(self.name)
+		_printf("\n\0")
 		
-		~int32 ptr
 		_indent(idt)
-		_print(" pointer chain: \0")
+		_printf(" type: \0")
+		_printf(self._type`.name)
+		_printf("\n\0")
+
+		_indent(idt)
+		_printf(" ptrc: \0")
+		~int32 istr
 		/; loop (int i = 0; i < self.ptrc.count) [i++]
-			ptr = self.ptrc.get(i)
-			_print_num("%d \0", ptr`)
+			istr = self.ptrc.get(i)
+			_print_num("%d \0", istr`)
 		;/
-		_print("\n\0")
+		_printf("\n\0")
 
 		_indent(idt)
-		_print(" computed type name: \0")
-		/; if (self._type == NULL)
-			_print("NULL\0")
-		;; else
-			_print(self._type`.name)
-		;/
-		_print("\n\0")
-
-		_indent(idt)
-		_print("}\n\0")
+		_printf("}\n\0")
 	;/
 
 	/; _arr_ptr(~parse.Node a)
@@ -161,7 +157,7 @@ struct Var {
 		_tn = self._tn
 
 		# Pre-op pointer
-		/; loop (running == true) [idx++]
+		/; loop (running == true)
 			/; if (idx !< _tn`.sub.count)
 				running = false
 			;; else
@@ -178,23 +174,31 @@ struct Var {
 					running = false
 				;/
 			;/
+
+			/; if (running == true)
+				idx++
+			;/
 		;/
 
 		# After pre-ops comes id
 		utils.Vector strv
 		strv.init(8)
 		running = true
-		/; loop (running == true) [idx++]
+		/; loop (running == true)
 			/; if (idx !< _tn`.sub.count)
 				running = false
 			;; else
 				t = _tn`.sub.get(idx)
 				/; if (t`._type == parse.NTYPE_ID)
 					~void str = t`.data
-					strv.push(~str)
+					strv.push(str)
 				;; else
 					running = false
 				;/
+			;/
+
+			/; if (running == true)
+				idx++
 			;/
 		;/
 
@@ -205,7 +209,7 @@ struct Var {
 
 		# Post-op pointer
 		running = true
-		/; loop (running == true) [idx++]
+		/; loop (running == true)
 			/; if (idx !< _tn`.sub.count)
 				running = false
 			;; else
@@ -214,6 +218,10 @@ struct Var {
 					int32 ptr = 0
 					self.ptrc.push(~ptr)
 				;/
+			;/
+
+			/; if (running == true)
+				idx++
 			;/
 		;/
 	;/

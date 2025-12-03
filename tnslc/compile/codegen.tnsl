@@ -9,7 +9,7 @@
 	parse.Node ast = parse.generate_ast(fin)
 	ast.update_children()
 
-	# parse.print_ast(~ast)
+	parse.print_ast(~ast)
 
 	# Create output buffer
 	CompBuf buffer

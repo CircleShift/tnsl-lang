@@ -16,7 +16,58 @@ struct Function {
 		self.outputs.init(len v)
 	;/
 
+	/; _resolve_dlist (~Module parent, ~parse.Node dl)
+		~parse.Node tn = NULL
+		~parse.Node n
+		/; loop (int i = 0; i < dl`.sub.count) [i++]
+			n = dl`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_TYPE)
+				tn = n
+			;; else if (n`._type == parse.NTYPE_ID)
+				/; if (tn == NULL)
+					_printf("Identifier declared in parameter list before any type was found!\n\0")
+					return
+				;/
+				Var p
+				p.init(tn, n)
+				p._resolve_type(parent)
+				self.inputs.push(~p)
+			;/
+		;/
+	;/
+
+	/; _resolve_tlist (~Module parent, ~parse.Node tl)
+		~parse.Node n
+		parse.Node dummy
+		dummy.data = "### OUTPUT ###\0"
+		/; loop (int i = 0; i < tl`.sub.count) [i++]
+			n = tl`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_TYPE)
+				Var r
+				r.init(n, ~dummy)
+				r._resolve_type(parent)
+				self.outputs.push(~r)
+			;/
+		;/
+	;/
+
 	/; _resolve_type (~Module parent)
+		~parse.Node _up = self._up
+		/; if (_up`.sub.count < 1)
+			return
+		;/
+		
+		~parse.Node lst = _up`.sub.get(0)
+		/; if (lst`._type == parse.NTYPE_DLIST)
+			self._resolve_dlist(parent, lst)
+			/; if (_up`.sub.count > 1)
+				lst = _up`.sub.get(1)
+			;/
+		;/
+
+		/; if (lst`._type == parse.NTYPE_TLIST)
+			self._resolve_tlist(parent, lst)
+		;/
 	;/
 
 	/; _compile (~Module parent, ~CompBuf cb)
@@ -27,6 +78,21 @@ struct Function {
 		_printf("{ Function : \0")
 		_printf(self.name)
 		_printf("\n\0")
+
+		_indent(idt)
+		_printf(" inputs:\n\0")
+		~Var prtv
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			prtv = self.inputs.get(i)
+			prtv`._print(idt + 1)
+		;/
+
+		_indent(idt)
+		_printf(" outputs:\n\0")
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			prtv = self.outputs.get(i)
+			prtv`._print(idt + 1)
+		;/
 
 		_indent(idt)
 		_printf("}\n\0")

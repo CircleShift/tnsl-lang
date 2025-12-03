@@ -69,9 +69,7 @@ struct Struct {
 		_printf("\n\0")
 		
 		_indent(idt)
-		_printf(" size:\0")
-		_print_num("%d\0", self.size)
-		_printf("\n\0")
+		_print_num(" size: %d\n\0", self.size)
 
 		_indent(idt)
 		_printf(" members:\n\0")
@@ -79,15 +77,18 @@ struct Struct {
 		~Var v
 		/; loop (int i = 0; i < self.members.count) [i++]
 			v = self.members.get(i)
-			v._print(idt + 1)
+			v`._print(idt + 1)
 		;/
 
 		_indent(idt)
 		_printf("}\n\0")
 	;/
 
-	/; add_member(~Var v)
-		self.members.push(v)
+	/; add_member(~Module parent, ~parse.Node tn, ~parse.Node id)
+		Var v
+		v.init(tn, id)
+		v._resolve_type(parent)
+		self.members.push(~v)
 	;/
 
 	/; get_member(~uint8 name) [~Var]
@@ -125,12 +126,16 @@ struct Struct {
 
 		int total = 0
 		~parse.Node up = self._dlist()
-		~parse.Node n
+		~parse.Node tn = NULL
+		~parse.Node n = NULL
 		int add_size = 0
 		/; loop (int i = 0; i < up`.sub.count) [i++]
 			n = up`.sub.get(i)
 			
 			/; if (n`._type == parse.NTYPE_TYPE)
+				# Store for generating new variables
+				tn = n
+
 				# Find type, compute size, set add_size to type size
 				~Struct ft = self._find_type(parent, n)
 				
@@ -156,6 +161,13 @@ struct Struct {
 
 				add_size = ft`.size
 			;; else if (n`._type == parse.NTYPE_ID)
+				/; if (tn == NULL)
+					_printf("ERROR: Unable to find type when trying to create member for struct '\0")
+					_printf(self.name)
+					_printf("\n\0")
+					return
+				;/
+				self.add_member(parent, tn, n)
 				total = total + add_size
 			;/
 		;/

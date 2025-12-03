@@ -171,8 +171,9 @@ struct Module {
 	#
 
 	/; find (int stype, ~utils.Vector key) [~void]
-		_printf("==== STARTING FIND WITH KEY ====\n\0")
-		_print_num("key parts %d\n\0", key`.count)
+		/; if (key`.count < 1)
+			return NULL
+		;/
 		return self._find(stype, key, 0)
 	;/
 
@@ -194,19 +195,24 @@ struct Module {
 			;/
 		;; else
 			~uint8 str = key`.get(key`.count - 1)
+			~void out = NULL
 			/; if (stype == SEARCH_VAR)
-				return self._find_var(str)
+				out = self._find_var(str)
 			;; else if (stype == SEARCH_STRUCT)
-				return self._find_struct(str)
+				out = self._find_struct(str)
 			;; else if (stype == SEARCH_FUNC)
-				return self._find_func(str)
+				out = self._find_func(str)
 			;; else if (stype == SEARCH_SUB)
-				return self._find_sub(str)
+				out = self._find_sub(str)
+			;/
+
+			/; if (out !== NULL)
+				return out
 			;/
 		;/
-
+		
 		/; if (lvl == 0 && self.parent !== NULL)
-			return self.parent._find(stype, key, 0)
+			return self.parent`._find(stype, key, 0)
 		;/
 
 		return NULL
