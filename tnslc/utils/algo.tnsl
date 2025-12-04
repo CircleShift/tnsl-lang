@@ -150,7 +150,7 @@
 	/; loop (i > 0) [i = i / 16]
 		int n = i % 16
 		/; if (n > 9)
-			out.push_char('a' + n - 10)
+			out.push_char('A' + n - 10)
 		;; else
 			out.push_char('0' + n)
 		;/

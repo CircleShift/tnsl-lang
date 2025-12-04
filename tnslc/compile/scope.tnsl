@@ -6,14 +6,38 @@ struct Scope {
 	~Scope parent,
 
 	utils.Vector
-		vars
+		vars,
+
+	int unique
 }
+
+/; _recursive_mod_name(~Module mod, ~utils.Vector vec)
+	/; if (mod`.parent !== NULL)
+		_recursive_mod_name(mod`.parent, vec)
+		vec`.push_char('.')
+	;/
+	vec`.push_cstr(mod`.name)
+;/
+
+/; _recursive_scope_name(~Scope s, ~utils.Vector vec)
+	/; if (s`.parent == NULL)
+		/; if (s`.mod !== NULL)
+			_recursive_mod_name(s`.mod, vec)
+			vec`.push_char('.')
+		;/
+	;; else
+		_recursive_scope_name(s`.parent, vec)
+	;/
+	vec`.push_cstr(s`.name)
+;/
 
 /; method Scope
 	/; init (~Module mod, ~CompBuf cb, ~uint8 name)
 		self.name = utils.strcpy(name)
 		self.mod = mod
 		self.cb = cb
+		self.parent = NULL
+		self.unique = 0
 
 		Var v
 		self.vars.init(len v)
@@ -30,6 +54,100 @@ struct Scope {
 			v = self.vars.get(i)
 			v`.end()
 		;/
+	;/
+
+	#
+	# Sub scope
+	#
+
+	/; mk_sub (~uint8 name) [Scope]
+		Scope out
+		out.init(self.mod, self.cb, name)
+		out.parent = ~self
+		return out
+	;/
+
+	# Generate a garantueed unique name for the sub scope, using
+	# the provided name as a base
+	/; gen_sub(~uint8 name) [Scope]
+		utils.Vector true_name
+		true_name.init(1)
+
+		# Append a 'unique' number
+		~uint8 u = utils.int_to_str(self.unique)
+		true_name.push_char('#')
+		true_name.push_cstr(u)
+		true_name.push_char('#')
+		true_name.push_cstr(name)
+		_delete(u)
+		
+		Scope out = self.mk_sub(true_name.as_cstr())
+		true_name.end()
+
+		# Inc for subsequent names
+		self.unique++
+
+		return out
+	;/
+
+	#
+	# Label generation
+	#
+
+	
+	/; base_label [utils.Vector]
+		utils.Vector out
+		out.init(1)
+		
+		_recursive_mod_name(~self, ~out)
+
+		return out
+	;/
+
+	/; place_base_label
+		utils.Vector bl = self.base_label()
+		self.cb`.add_c(bl.as_cstr())
+		self.cb`.add_c(":\n\0")
+		bl.end()
+	;/
+
+	/; start_label [~uint8]
+		utils.Vector v = self.base_label()
+		v.push_cstr("#start\0")
+		return v.as_cstr()
+	;/
+
+	/; place_start_label
+		~uint8 sl = self.start_label()
+		self.cb`.add_c(sl)
+		self.cb`.add_c(":\n\0")
+		_delete(sl)
+	;/
+
+	/; rep_label [~uint8]
+		utils.Vector v = self.base_label()
+		v.push_cstr("#rep\0")
+		return v.as_cstr()
+	;/
+
+	/; place_rep_label
+		~uint8 rl = self.rep_label()
+		self.cb`.add_c(rl)
+		self.cb`.add_c(":\n\0")
+		_delete(rl)
+	;/
+
+	/; end_label [~uint8]
+		utils.Vector v = self.base_label()
+		v.push_cstr("#end\0")
+		return v.as_cstr()
+	;/
+
+	/; place_end_label
+		~uint8 el = self.end_label()
+		self.cb`.add_c(el)
+		self.cb`.add_c(":\n\0")
+		_delete(el)
 	;/
 ;/
 
