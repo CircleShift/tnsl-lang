@@ -30,6 +30,8 @@ struct Module {
 		Function f
 		Module m
 
+		self.parent = NULL
+
 		self.vars.init(len v)
 		self.structs.init(len s)
 		self.funcs.init(len f)

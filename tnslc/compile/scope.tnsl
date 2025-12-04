@@ -12,21 +12,28 @@ struct Scope {
 }
 
 /; _recursive_mod_name(~Module mod, ~utils.Vector vec)
-	/; if (mod`.parent !== NULL)
-		_recursive_mod_name(mod`.parent, vec)
-		vec`.push_char('.')
+	~Module p = mod`.parent
+	/; if (p !== NULL)
+		_recursive_mod_name(p, vec)
+		/; if (vec`.count !== 0)
+			vec`.push_char('.')
+		;/
 	;/
 	vec`.push_cstr(mod`.name)
 ;/
 
 /; _recursive_scope_name(~Scope s, ~utils.Vector vec)
-	/; if (s`.parent == NULL)
-		/; if (s`.mod !== NULL)
-			_recursive_mod_name(s`.mod, vec)
-			vec`.push_char('.')
+	~void p = s`.parent
+	/; if (p == NULL)
+		~void m = s`.mod
+		/; if (m !== NULL)
+			_recursive_mod_name(m, vec)
+			/; if (vec`.count > 0)
+				vec`.push_char('.')
+			;/
 		;/
 	;; else
-		_recursive_scope_name(s`.parent, vec)
+		_recursive_scope_name(p, vec)
 	;/
 	vec`.push_cstr(s`.name)
 ;/
@@ -43,9 +50,6 @@ struct Scope {
 		self.vars.init(len v)
 	;/
 	
-	/; _compile_statements (~parse.Node up, int o)
-	;/
-
 	/; end
 		_delete(self.name)
 
@@ -54,6 +58,7 @@ struct Scope {
 			v = self.vars.get(i)
 			v`.end()
 		;/
+		self.vars.end()
 	;/
 
 	#
@@ -95,24 +100,29 @@ struct Scope {
 	#
 
 	
-	/; base_label [utils.Vector]
+	/; _base_label [utils.Vector]
 		utils.Vector out
 		out.init(1)
 		
-		_recursive_mod_name(~self, ~out)
+		_recursive_scope_name(~self, ~out)
 
 		return out
 	;/
 
+	/; base_label [~uint8]
+		utils.Vector v = self._base_label()
+		return v.as_cstr()
+	;/
+
 	/; place_base_label
-		utils.Vector bl = self.base_label()
-		self.cb`.add_c(bl.as_cstr())
+		~uint8 bl = self.base_label()
+		self.cb`.add_c(bl)
 		self.cb`.add_c(":\n\0")
-		bl.end()
+		_delete(bl)
 	;/
 
 	/; start_label [~uint8]
-		utils.Vector v = self.base_label()
+		utils.Vector v = self._base_label()
 		v.push_cstr("#start\0")
 		return v.as_cstr()
 	;/
@@ -125,7 +135,7 @@ struct Scope {
 	;/
 
 	/; rep_label [~uint8]
-		utils.Vector v = self.base_label()
+		utils.Vector v = self._base_label()
 		v.push_cstr("#rep\0")
 		return v.as_cstr()
 	;/
@@ -138,7 +148,7 @@ struct Scope {
 	;/
 
 	/; end_label [~uint8]
-		utils.Vector v = self.base_label()
+		utils.Vector v = self._base_label()
 		v.push_cstr("#end\0")
 		return v.as_cstr()
 	;/

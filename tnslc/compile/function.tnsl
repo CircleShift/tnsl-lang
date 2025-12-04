@@ -70,30 +70,49 @@ struct Function {
 		;/
 	;/
 
-	/; _fqn (~Module parent) [~uint8]
-		utils.Vector out
-
-		return out.as_cstr()
-	;/
-
-	/; _build_scope(~Module parent, ~CompBuf cb) [Scope]
-		~uint8 fqn = self._fqn(parent)
+	/; _build_func(~Module parent, ~CompBuf cb) [Scope]
 		Scope out
-		out.init(parent, cb, fqn)
+		out.init(parent, cb, self.name)
 		out.parent = NULL
-		_delete(fqn)
 		
-		# TODO: Write label to cb
-		# TODO: Push all saved vars and deal with parameters
+		/; if (parent`.e == true)
+			# Add to the global exports if the parent is exported
+			~uint8 bl = out.base_label()
+			cb`.add_h("global \0")
+			cb`.add_h(bl)
+			cb`.add_h("\n\0")
+			_delete(bl)
+		;/
+
+		# Write label and opening
+		out.place_base_label()
+		cb`.add_c("    push rbp\n\0")
+		cb`.add_c("    lea rbp, [rsp + 8]\n\0")
+		cb`.add_c("    push r10\n\0")
+		cb`.add_c("    push r11\n\0")
+		cb`.add_c("    push r12\n\0")
+		cb`.add_c("    push r13\n\0")
+		cb`.add_c("    push r14\n\0")
+		cb`.add_c("    push r15 ; scope init\n\n\0")
+
 		# TODO: Add all params to the scope
 
 		return out
 	;/
 
-	/; _end_scope(~Scope scope, ~CompBuf cb)
+	/; _end_func(~Scope scope, ~CompBuf cb)
 		# TODO: place jmp label
 		# TODO: pop all saved vars
 		# TODO: ret
+		cb`.add_c("    lea rsp, [rbp - 56]\n\0")
+		cb`.add_c("    pop r15\n\0")
+		cb`.add_c("    pop r14\n\0")
+		cb`.add_c("    pop r13\n\0")
+		cb`.add_c("    pop r12\n\0")
+		cb`.add_c("    pop r11\n\0")
+		cb`.add_c("    pop r10\n\0")
+		cb`.add_c("    pop rbp\n\0")
+		cb`.add_c("    ret ; scope end\n\n\n\0")
 		
 		scope`.end()
 	;/
@@ -102,8 +121,8 @@ struct Function {
 		# Sanity check
 		~parse.Node _up = self._up
 		/; if (_up`.sub.count < 1)
-			~Scope s = self._build_scope(parent, cb)
-			self._end_scope(s, cb)
+			~Scope s = self._build_func(parent, cb)
+			self._end_func(s, cb)
 			return
 		;/
 		
@@ -120,11 +139,17 @@ struct Function {
 		/; if (n`._type == parse.NTYPE_TLIST)
 			i++
 		;/
+		
+		# Create scope
+		Scope fscope = self._build_func(parent, cb)
 
-		# Create scope and start compiling statements from here.
-		Scope fscope = self._build_scope(parent, cb)
-		fscope._compile_statements(_up, i)
-		self._end_scope(~fscope, cb)
+		
+		# Compile and then end scope
+		self._compile_statements(~fscope, i)
+		self._end_func(~fscope, cb)
+	;/
+
+	/; _compile_statements(~Scope s, int off)
 	;/
 
 	/; _print (int idt)
