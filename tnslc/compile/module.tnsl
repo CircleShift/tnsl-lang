@@ -188,7 +188,7 @@ struct Module {
 			_printf(str`)
 			_printf("' in module '\0")
 			_printf(self.name)
-			_printf("'\n\0")
+			_print_num("' at level %d\n\0", lvl)
 
 
 			/; loop (int i = 0; i < self.subs.count) [i++]
