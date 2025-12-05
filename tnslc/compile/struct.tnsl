@@ -189,7 +189,7 @@ struct Struct {
 			n = tn`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_ID)
 				str = n`.data
-				sv.push(str)
+				sv.push(~str)
 				seen_id = true
 			;; else if (seen_id == true)
 				i = tn`.sub.count

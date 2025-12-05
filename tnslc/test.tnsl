@@ -1,5 +1,27 @@
 
+/; module Container
+	/; module m1
+		struct Box {
+			~uint8 data
+		}
+	;/
+
+	/; module m2
+		struct Crate {
+			{}m1.Box boxes
+		}
+	;/
+
+;/
+
+struct Option {
+	bool has_crate,
+	Container.m2.Crate crate
+}
+
+
 /; main (int argc, ~~uint8 argv) [int]
+	
 	return 0
 ;/
 

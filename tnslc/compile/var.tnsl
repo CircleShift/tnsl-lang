@@ -190,8 +190,8 @@ struct Var {
 			;; else
 				t = _tn`.sub.get(idx)
 				/; if (t`._type == parse.NTYPE_ID)
-					~void str = t`.data
-					strv.push(str)
+					~uint8 str = t`.data
+					strv.push(~str)
 				;; else
 					running = false
 				;/
