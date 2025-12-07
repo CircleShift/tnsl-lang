@@ -184,12 +184,6 @@ struct Module {
 		/; if ((lvl + 1) < key`.count)
 			~Module m
 			~~uint8 str = key`.get(lvl)
-			_printf("Trying to find sub '\0")
-			_printf(str`)
-			_printf("' in module '\0")
-			_printf(self.name)
-			_print_num("' at level %d\n\0", lvl)
-
 
 			/; loop (int i = 0; i < self.subs.count) [i++]
 				m = self.subs.get(i)

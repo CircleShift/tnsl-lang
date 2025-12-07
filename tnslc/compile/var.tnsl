@@ -108,6 +108,8 @@ struct Var {
 	/; init (~parse.Node tn, id)
 		self.name = utils.strcpy(id`.data)
 		self.ptrc.init(4)
+		self.loc = 0
+
 		self._tn = tn
 		self._id = id
 	;/
@@ -146,6 +148,23 @@ struct Var {
 			;/
 		;/
 		self.ptrc.push(~ptr)
+	;/
+
+	/; is_reg_passed [bool]
+		/; if (self.ptrc.count > 0)
+			return true
+		;/
+		return false
+	;/
+
+	/; actual_size [uint]
+		/; if (self.ptrc.count > 0)
+			return 8
+		;; else if (self._type == NULL)
+			return 0
+		;/
+
+		return self._type`.size
 	;/
 
 	# Sets up both the ptrc and the _type members, requires

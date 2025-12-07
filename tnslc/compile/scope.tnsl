@@ -5,8 +5,7 @@ struct Scope {
 	
 	~Scope parent,
 
-	utils.Vector
-		vars,
+	utils.Vector vars,
 
 	int unique
 }
@@ -59,6 +58,66 @@ struct Scope {
 			v`.end()
 		;/
 		self.vars.end()
+	;/
+
+	#
+	# Make variables
+	#
+
+	/; _next_reg_slot [uint]
+		uint out = 9
+		/; if (self.parent !== NULL)
+			out = self.parent`._next_reg_slot()
+		;/
+		
+		/; if (out == 0)
+			return out
+		;/
+
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			/; if (v`.loc > 0)
+				out++
+				/; if (out > 16)
+					return 0
+				;/
+			;/
+		;/
+
+		return out
+	;/
+
+	/; _next_stack_slot [uint]
+		uint out = 0
+		/; if (self.parent !== NULL)
+			out = self.parent`._next_stack_slot()
+		;/
+
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			/; if (v`.loc < 0)
+				out = out - v`.actual_size()
+			;/
+		;/
+
+		return out
+	;/
+
+	/; mk_set_var (~Var src)
+		Var out
+		
+		/; if (src`.is_reg_passed() == true)
+			out.loc = self._next_reg_slot()
+			/; if (out.loc == 0)
+				out.loc = self._next_stack_slot()
+			;/
+		;; else
+			out.loc = self._next_stack_slot()
+		;/
+
+		self.vars.push(~out)
 	;/
 
 	#
