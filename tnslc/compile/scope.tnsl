@@ -95,6 +95,14 @@ struct Scope {
 		return out
 	;/
 
+
+	#
+	# Add variables to the scope
+	#
+
+	/; mk_set_var(~Var v)
+	;/
+
 	#
 	# Label generation
 	#

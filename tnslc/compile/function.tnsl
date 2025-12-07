@@ -19,6 +19,7 @@ struct Function {
 	/; _resolve_dlist (~Module parent, ~parse.Node dl)
 		~parse.Node tn = NULL
 		~parse.Node n
+		int reg = 1
 		/; loop (int i = 0; i < dl`.sub.count) [i++]
 			n = dl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -31,6 +32,11 @@ struct Function {
 				Var p
 				p.init(tn, n)
 				p._resolve_type(parent)
+				/; if (reg < 7 && p.is_reg_passed())
+					p.loc = reg
+				;; else
+					p.loc = 0
+				;/
 				self.inputs.push(~p)
 			;/
 		;/
@@ -95,15 +101,17 @@ struct Function {
 		cb`.add_c("    push r14\n\0")
 		cb`.add_c("    push r15 ; scope init\n\n\0")
 
-		# TODO: Add all params to the scope
+		# Add all params to the scope
+		~Var inp
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			inp = self.inputs.get(i)
+			out.mk_set_var(inp)
+		;/
 
 		return out
 	;/
 
 	/; _end_func(~Scope scope, ~CompBuf cb)
-		# TODO: place jmp label
-		# TODO: pop all saved vars
-		# TODO: ret
 		cb`.add_c("    lea rsp, [rbp - 56]\n\0")
 		cb`.add_c("    pop r15\n\0")
 		cb`.add_c("    pop r14\n\0")
