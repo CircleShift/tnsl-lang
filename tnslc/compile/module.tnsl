@@ -183,29 +183,28 @@ struct Module {
 		
 		/; if ((lvl + 1) < key`.count)
 			~Module m
-			~uint8 str = key`.get(lvl)
+			~~uint8 str = key`.get(lvl)
 
 			/; loop (int i = 0; i < self.subs.count) [i++]
 				m = self.subs.get(i)
-				/; if (utils.strcmp(str, m`.name) == true)
+				/; if (utils.strcmp(str`, m`.name) == true)
 					~void v = m._find(stype, key, lvl + 1)
 					/; if (v != NULL)
 						return v
 					;/
-					return NULL
 				;/
 			;/
 		;; else
-			~uint8 str = key`.get(key`.count - 1)
+			~~uint8 str = key`.get(key`.count - 1)
 			~void out = NULL
 			/; if (stype == SEARCH_VAR)
-				out = self._find_var(str)
+				out = self._find_var(str`)
 			;; else if (stype == SEARCH_STRUCT)
-				out = self._find_struct(str)
+				out = self._find_struct(str`)
 			;; else if (stype == SEARCH_FUNC)
-				out = self._find_func(str)
+				out = self._find_func(str`)
 			;; else if (stype == SEARCH_SUB)
-				out = self._find_sub(str)
+				out = self._find_sub(str`)
 			;/
 
 			/; if (out !== NULL)

@@ -149,13 +149,13 @@ struct Struct {
 					return
 				;/
 
-				/; if (ft`.size == 0)
-					# Recurse
-					ft`._compute_size(parent)
-				;/
-
 				/; if (ft`.size < 0)
 					# Cyclical dependency
+					_printf("ERROR: Cyclic struct definition: '\0")
+					_printf(ft`.name)
+					_printf("' imported from '\0")
+					_printf(self.name)
+					_printf("'\n\0")
 					return
 				;/
 
@@ -189,7 +189,7 @@ struct Struct {
 			n = tn`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_ID)
 				str = n`.data
-				sv.push(str)
+				sv.push(~str)
 				seen_id = true
 			;; else if (seen_id == true)
 				i = tn`.sub.count
@@ -198,10 +198,13 @@ struct Struct {
 
 		# Find struct and compute its size
 		~Struct out = parent`.find(SEARCH_STRUCT, ~sv)
-		sv.pop()
-		~Module outp = parent
-		/; if (sv.count !== 0)
-			outp = parent`.find(SEARCH_SUB, ~sv)
+		/; if (out !== NULL && out`.size == 0)
+			sv.pop()
+			~Module outp = parent
+			/; if (sv.count !== 0)
+				outp = parent`.find(SEARCH_SUB, ~sv)
+			;/
+			out`._compute_size(outp)
 		;/
 		sv.end()
 		return out

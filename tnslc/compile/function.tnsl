@@ -20,6 +20,7 @@ struct Function {
 		~parse.Node tn = NULL
 		~parse.Node n
 		int reg = 1
+		int stack_down = 0
 		/; loop (int i = 0; i < dl`.sub.count) [i++]
 			n = dl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -32,10 +33,13 @@ struct Function {
 				Var p
 				p.init(tn, n)
 				p._resolve_type(parent)
-				/; if (reg < 7 && p.is_reg_passed())
+				/; if (p.is_reg_passed() == true && reg < 7)
 					p.loc = reg
+					reg++
 				;; else
 					p.loc = 0
+					p.loc = p.loc - stack_down
+					stack_down = stack_down - p.actual_size()
 				;/
 				self.inputs.push(~p)
 			;/
@@ -102,10 +106,10 @@ struct Function {
 		cb`.add_c("    push r15 ; scope init\n\n\0")
 
 		# Add all params to the scope
-		~Var inp
+		~Var in
 		/; loop (int i = 0; i < self.inputs.count) [i++]
 			inp = self.inputs.get(i)
-			out.mk_set_var(inp)
+			out.mk_set_var(in)
 		;/
 
 		return out
