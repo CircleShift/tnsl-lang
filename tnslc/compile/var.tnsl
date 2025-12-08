@@ -114,11 +114,6 @@ struct Var {
 		self._id = id
 	;/
 
-	/; _is_reg_passed [bool]
-		/; if ()
-		;/
-	;/
-
 	/; _print (int idt)
 		_indent(idt)
 		_printf("{ Var : \0")

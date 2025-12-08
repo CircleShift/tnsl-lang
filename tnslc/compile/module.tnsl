@@ -23,8 +23,8 @@ struct Module {
 }
 
 /; method Module
-
-	/; init (~parse.Node mod, ~CompBuf buf)
+	
+	/; _init
 		Var v
 		Struct s
 		Function f
@@ -36,7 +36,10 @@ struct Module {
 		self.structs.init(len s)
 		self.funcs.init(len f)
 		self.subs.init(len m)
+	;/
 
+	/; init (~parse.Node mod, ~CompBuf buf)
+		self._init()
 		self.name = utils.strcpy(mod`.data)
 		self.e = mod`._type == parse.NTYPE_EXPORT
 
@@ -57,6 +60,22 @@ struct Module {
 		;/
 	;/
 
+	/; _create_methods (~uint8 name) [~Module]
+		utils.Vector n
+		n.from_cstr("_#\0")
+		n.push_cstr(name)
+
+		Module m
+		m._init()
+		m.name = n.as_cstr()
+		m.e = self.e
+		self.subs.push(~m)
+
+		int i = self.subs.count - 1
+		~Module out = self.subs.get(i)
+		return out
+	;/
+
 	/; _from_tree (~parse.Node mod, ~CompBuf buf)
 		~parse.Node sub
 		/; loop (int i = 0; i < mod`.sub.count) [i++]
@@ -73,8 +92,10 @@ struct Module {
 				m.init(sub, buf)
 				self.subs.push(~m)
 			;; else if (sub`._type == parse.NTYPE_STRUCT)
+				~Module m = self._create_methods(sub)
 				Struct s
 				s.init(sub)
+				s.methods = m
 				self.structs.push(~s)
 			;; else if (sub`._type == parse.NTYPE_FUNCTION)
 				Function f

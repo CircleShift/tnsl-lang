@@ -84,10 +84,10 @@ struct Struct {
 		_printf("}\n\0")
 	;/
 
-	/; add_member(~Module parent, ~parse.Node tn, ~parse.Node id)
+	/; add_member(~parse.Node tn, ~parse.Node id)
 		Var v
 		v.init(tn, id)
-		v._resolve_type(parent)
+		v._resolve_type(self.methods)
 		self.members.push(~v)
 	;/
 
@@ -117,7 +117,7 @@ struct Struct {
 		return NULL
 	;/
 
-	/; _compute_size (~Module parent)
+	/; _compute_size
 		/; if (self.size !== 0)
 			return
 		;/
@@ -137,7 +137,7 @@ struct Struct {
 				tn = n
 
 				# Find type, compute size, set add_size to type size
-				~Struct ft = self._find_type(parent, n)
+				~Struct ft = self._find_type(self.methods, n)
 				
 				/; if (ft == NULL)
 					# Type not found
@@ -167,7 +167,7 @@ struct Struct {
 					_printf("\n\0")
 					return
 				;/
-				self.add_member(parent, tn, n)
+				self.add_member(tn, n)
 				total = total + add_size
 			;/
 		;/
@@ -175,7 +175,7 @@ struct Struct {
 		self.size = total
 	;/
 
-	/; _find_type (~Module parent, ~parse.Node tn) [~Struct]
+	/; _find_type (~parse.Node tn) [~Struct]
 		
 		# Init vector of strings
 		utils.Vector sv
@@ -197,14 +197,9 @@ struct Struct {
 		;/
 
 		# Find struct and compute its size
-		~Struct out = parent`.find(SEARCH_STRUCT, ~sv)
+		~Struct out = self.methods`.find(SEARCH_STRUCT, ~sv)
 		/; if (out !== NULL && out`.size == 0)
-			sv.pop()
-			~Module outp = parent
-			/; if (sv.count !== 0)
-				outp = parent`.find(SEARCH_SUB, ~sv)
-			;/
-			out`._compute_size(outp)
+			out`._compute_size()
 		;/
 		sv.end()
 		return out

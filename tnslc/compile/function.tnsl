@@ -108,7 +108,7 @@ struct Function {
 		# Add all params to the scope
 		~Var in
 		/; loop (int i = 0; i < self.inputs.count) [i++]
-			inp = self.inputs.get(i)
+			in = self.inputs.get(i)
 			out.mk_set_var(in)
 		;/
 
