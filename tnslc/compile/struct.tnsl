@@ -137,7 +137,7 @@ struct Struct {
 				tn = n
 
 				# Find type, compute size, set add_size to type size
-				~Struct ft = self._find_type(self.methods, n)
+				~Struct ft = self._find_type(n)
 				
 				/; if (ft == NULL)
 					# Type not found

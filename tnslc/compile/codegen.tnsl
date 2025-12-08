@@ -37,57 +37,45 @@
 	ast.end()
 ;/
 
-/; _gen_prim(int size, ~uint8 id) [Struct]
+/; _gen_prim(~Module m, int size, ~uint8 id)
+	~Module mds = m`._create_methods(id)
+	mds`.parent = m
+	
 	Var t
+
 	Struct s
 	s.size = size
-	s.methods = NULL
+	s.methods = mds
 	s.members.init(len t)
 	s.name = utils.strcpy(id)
 	s._up = NULL
-	return s
+	
+	m`.structs.push(~s)
 ;/
 
 /; _gen_prims (~Module m)
 
-	Struct s
-
 	# One byte prims
-	s = _gen_prim(1, "bool\0")
-	m`.structs.push(~s)
-	s = _gen_prim(1, "uint8\0")
-	m`.structs.push(~s)
-	s = _gen_prim(1, "int8\0")
-	m`.structs.push(~s)
+	_gen_prim(m, 1, "bool\0")
+	_gen_prim(m, 1, "uint8\0")
+	_gen_prim(m, 1, "int8\0")
 
 	# Two byte prims
-	s = _gen_prim(2, "uint16\0")
-	m`.structs.push(~s)
-	s = _gen_prim(2, "int16\0")
-	m`.structs.push(~s)
+	_gen_prim(m, 2, "uint16\0")
+	_gen_prim(m, 2, "int16\0")
 
 	# Four byte prims
-	s = _gen_prim(4, "uint32\0")
-	m`.structs.push(~s)
-	s = _gen_prim(4, "int32\0")
-	m`.structs.push(~s)
-	s = _gen_prim(4, "float32\0")
-	m`.structs.push(~s)
+	_gen_prim(m, 4, "uint32\0")
+	_gen_prim(m, 4, "int32\0")
+	_gen_prim(m, 4, "float32\0")
 
 	# Eight byte prims
-	s = _gen_prim(8, "uint64\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "int64\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "float64\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "uint\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "int\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "float\0")
-	m`.structs.push(~s)
-	s = _gen_prim(8, "void\0")
-	m`.structs.push(~s)
+	_gen_prim(m, 8, "uint64\0")
+	_gen_prim(m, 8, "int64\0")
+	_gen_prim(m, 8, "float64\0")
+	_gen_prim(m, 8, "uint\0")
+	_gen_prim(m, 8, "int\0")
+	_gen_prim(m, 8, "float\0")
+	_gen_prim(m, 8, "void\0")
 ;/
 

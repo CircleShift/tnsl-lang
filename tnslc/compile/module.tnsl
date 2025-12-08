@@ -92,7 +92,7 @@ struct Module {
 				m.init(sub, buf)
 				self.subs.push(~m)
 			;; else if (sub`._type == parse.NTYPE_STRUCT)
-				~Module m = self._create_methods(sub)
+				~Module m = self._create_methods(sub`.data)
 				Struct s
 				s.init(sub)
 				s.methods = m
@@ -146,7 +146,7 @@ struct Module {
 		/; loop (int i = 0; i < self.structs.count) [i++]
 			s = self.structs.get(i)
 			/; if (s`.size == 0)
-				s`._compute_size(~self)
+				s`._compute_size()
 			;/
 		;/
 
@@ -179,7 +179,7 @@ struct Module {
 		~Function f
 		/; loop (int i = 0; i < self.funcs.count) [i++]
 			f = self.funcs.get(i)
-			f`._compile(~self, cb)
+			# f`._compile(~self, cb)
 		;/
 
 		~Module m
