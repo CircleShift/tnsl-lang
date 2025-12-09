@@ -161,7 +161,35 @@ struct Function {
 		self._end_func(~fscope, cb)
 	;/
 
-	/; _compile_statements(~Scope s, int off)
+	#
+	# Compiling individual statements
+	#
+
+	/; _compile_statements (~Scope s, int off)
+		~parse.Node _up = self._up
+		~parse.Node n = NULL
+		/; loop (off < _up`.sub.count) [off++]
+			n = _up`.sub.get(off)
+			/; if (n`._type == parse.NTYPE_FLOW_CONTROL)
+				self._compile_flow_control(s, n)
+			;; else if (n`._type == parse.NTYPE_ASM)
+				s`.cb`.add_c("    \0")
+				s`.cb`.add_c(n`.data)
+				s`.cb`.add_c(" ; User defined asm\n\0")
+			;/
+		;/
+	;/
+
+	# Should handle break, continue, and return
+	/; _compile_flow_control (~Scope s, ~parse.Node n)
+		/; if (utils.strcmp(n`.data, "return\0") == true)
+			# Compute value and return
+			self._compile_value(s, n)
+		;/
+	;/
+
+	# Should handle computing a value, delegate to other funcs when needed
+	/; _compile_value (~Scope s, ~parse.Node n)
 	;/
 
 	/; _print (int idt)

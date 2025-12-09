@@ -187,7 +187,7 @@ struct Module {
 		~Function f
 		/; loop (int i = 0; i < self.funcs.count) [i++]
 			f = self.funcs.get(i)
-			# f`._compile(~self, cb)
+			f`._compile(~self, cb)
 		;/
 
 		~Module m

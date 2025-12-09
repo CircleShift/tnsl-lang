@@ -113,6 +113,29 @@ struct Var {
 		self._tn = tn
 		self._id = id
 	;/
+	
+	/; copy [Var]
+		Var out
+		out.init(self._tn, self._id)
+		out._type = self._type
+		out.loc = self.loc
+
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			~int32 p = self.ptrc.get(i)
+			out.ptrc.push(p)
+		;/
+
+		return out
+	;/
+
+	/; top_ptrc [~int32]
+		# Sanity
+		/; if (self.ptrc.count < 1)
+			return NULL
+		;/
+		~int32 out = self.ptrc.get(self.ptrc.count - 1)
+		return out
+	;/
 
 	/; _print (int idt)
 		_indent(idt)
@@ -171,6 +194,18 @@ struct Var {
 		return self._type`.size
 	;/
 
+	/; _reverse_ptrc
+		int max = self.ptrc.count / 2
+		~int32 l, r
+		/; loop (int i = 0; i < max) [i++]
+			l = self.ptrc.get(i)
+			r = self.ptrc.get(self.ptrc.count - (i + 1))
+			int32 tmp = l`
+			l` = r`
+			r` = tmp
+		;/
+	;/
+
 	# Sets up both the ptrc and the _type members, requires
 	# parent module for resolution of types
 	/; _resolve_type (~Module parent)
@@ -202,6 +237,8 @@ struct Var {
 				idx++
 			;/
 		;/
+
+		self._reverse_ptrc()
 
 		# After pre-ops comes id
 		utils.Vector strv
@@ -290,29 +327,54 @@ struct Var {
 	# Variable manipulation functions #
 	###################################
 
-	# Generate a string which represents where the variable is in memory,
-	# this string may be used to set the value of the variable with operations like "mov"
-	# if "maybe_mem" is true, this might be an address like "[rsi]"
-	/; gen_to (bool maybe_mem) [~uint8]
+	/; gen_loc [~uint8]
 		utils.Vector out
 		out.init(1)
+
+		/; if (self.in_mem() == true)
+			out.push_char('[')
+		;/
+
+		~uint8 str
+		/; if (self.loc < 1)
+			str = reg_string(7, 8)
+		;; else
+			str = reg_string(self.loc, self.actual_size())
+		;/
+		out.push_cstr(str)
+		_delete(str)
+
+
+		/; if (self.in_mem() == true)
+			/; if (self.loc < 0)
+				int stk = 0
+				stk = stk - self.loc
+				out.push_cstr(" + \0")
+				str = utils.int_to_str(stk)
+				out.push_cstr(str)
+				_delete(str)
+			;/
+			out.push_char(']')
+		;/
+
 		return out.as_cstr()
 	;/
 
-	# Generate a string which represents where the variable is in memory,
-	# this string may be used to read the value of the variable with operations like "mov"
-	# if "maybe_mem" is true, this might be an address like "[rsi]"
-	/; gen_from (bool maybe_mem) [~uint8]
-		utils.Vector out
-		out.init(1)
-		return out.as_cstr()
-	;/
-
-	# Returns true if the variable is stored in memory
+	# Returns true if the variable is known to be stored in memory
 	/; in_mem [bool]
-		/; if (self.loc !> 0)
+		/; if (self.loc < 1)
 			return true
 		;/
+
+		~int32 ptr = self.top_ptrc()
+		/; if (ptr !== NULL)
+			/; if (ptr` == 0)
+				return true
+			;; else if (ptr` > 1)
+				return true
+			;/
+		;/
+
 		return false
 	;/
 
@@ -320,20 +382,24 @@ struct Var {
 	/; set_literal (~CompBuf buf, ~Var other)
 	;/
 
+	/; _set_mem(~CompBuf buf, ~Var other)
+		
+	;/
+
 	# Set this Variable to the value of other
 	/; set (~CompBuf buf, ~Var other)
+		self.standard_op(buf, other, "mov\0")
+	;/
+
+	# Set the address which this reference points to
+	/; set_ref(~CompBuf buf, ~Var other)
 	;/
 
 	/; standard_op (~CompBuf buf, ~Var other, ~uint8 op_str)
-		~uint8 from_str
-		~uint8 to_str = self.gen_to(true)
+		~uint8 from_str = other`.gen_loc()
+		~uint8 to_str = self.gen_loc()
 
-		/; if (self.in_mem())
-			from_str = other`.gen_from(false)
-		;; else
-			from_str = other`.gen_from(true)
-		;/
-
+		buf`.add_c("    \0")
 		buf`.add_c(op_str)
 		buf`.add_c(" \0")
 		buf`.add_c(to_str)
@@ -388,10 +454,6 @@ struct Var {
 	;/
 
 	/; xor (~CompBuf buf, ~Var other)
-		self.standard_op(buf, other, "xor")
-	;/
-
-	/; not (~CompBuf buf, ~Var other)
 		self.standard_op(buf, other, "xor")
 	;/
 

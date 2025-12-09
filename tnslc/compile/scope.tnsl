@@ -106,8 +106,8 @@ struct Scope {
 	;/
 
 	/; mk_set_var (~Var src)
-		Var out
-		
+		Var out = src`.copy()
+
 		/; if (src`.is_reg_passed() == true)
 			out.loc = self._next_reg_slot()
 			/; if (out.loc == 0)
@@ -115,6 +115,15 @@ struct Scope {
 			;/
 		;; else
 			out.loc = self._next_stack_slot()
+		;/
+
+		~int32 p = out.top_ptrc()
+		/; if (p == NULL)
+			out.set(self.cb, src)
+		;; else if (p` == 0)
+			out.set_ref(self.cb, src)
+		;; else
+			out.set(self.cb, src)
 		;/
 
 		self.vars.push(~out)
