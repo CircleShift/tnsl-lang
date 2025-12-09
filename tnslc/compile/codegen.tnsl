@@ -18,10 +18,10 @@
 	# Transform into a module tree
 	Module mod
 	mod.init(~ast, ~buffer)
+	_gen_prims(~mod)
 	mod.update_children()
 
 	# Compile code
-	_gen_prims(~mod)
 	mod.compile(~buffer)
 
 	mod.print()
@@ -39,13 +39,12 @@
 
 /; _gen_prim(~Module m, int size, ~uint8 id)
 	~Module mds = m`._create_methods(id)
-	mds`.parent = m
 	
 	Var t
 
 	Struct s
 	s.size = size
-	s.methods = mds
+	s.methods = NULL
 	s.members.init(len t)
 	s.name = utils.strcpy(id)
 	s._up = NULL

@@ -122,7 +122,11 @@ struct Var {
 		
 		_indent(idt)
 		_printf(" type: \0")
-		_printf(self._type`.name)
+		/; if (self._type !== NULL)
+			_printf(self._type`.name)
+		;; else
+			_printf("(nil)\0")
+		;/
 		_printf("\n\0")
 
 		_indent(idt)

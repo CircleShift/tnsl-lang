@@ -44,19 +44,28 @@ struct Module {
 		self.e = mod`._type == parse.NTYPE_EXPORT
 
 		self._from_tree(mod, buf)
-		
-		~Module sub
-		/; loop (int i = 0; i < self.subs.count) [i++]
-			sub = self.subs.get(i)
-			sub`.update_children()
-		;/
 	;/
 
 	/; update_children
 		~Module sub
 		/; loop (int i = 0; i < self.subs.count) [i++]
 			sub = self.subs.get(i)
+			sub`.update_children()
 			sub`.parent = ~self
+		;/
+
+		~Struct str
+		utils.Vector n
+		/; loop (int i = 0; i < self.structs.count) [i++]
+			str = self.structs.get(i)
+
+			n.from_cstr("_#\0")
+			n.push_cstr(str`.name)
+
+			sub = self._find_sub(n.as_cstr())
+			str`.methods = sub
+
+			n.end()
 		;/
 	;/
 
@@ -95,7 +104,6 @@ struct Module {
 				~Module m = self._create_methods(sub`.data)
 				Struct s
 				s.init(sub)
-				s.methods = m
 				self.structs.push(~s)
 			;; else if (sub`._type == parse.NTYPE_FUNCTION)
 				Function f
