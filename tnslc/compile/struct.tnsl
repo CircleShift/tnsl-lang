@@ -36,19 +36,41 @@ struct Struct {
 
 /; _print_type(~parse.Node tn)
 	~parse.Node n
+	bool seen_id = false
 	/; loop (int i = 0; i < tn`.sub.count) [i++]
-		/; if (i > 0)
-			_printf(".\0")
-		;/
 
 		n = tn`.sub.get(i)
 		
 		/; if (n`._type == parse.NTYPE_ID)
+			/; if (seen_id == true)
+				_printf(".\0")
+			;/
 			_printf(n`.data)
+			seen_id = true
 		;; else
 			return
 		;/
 	;/
+;/
+
+# Might be wrong
+/; _type_is_ptr (~parse.Node n) [bool]
+	# Sanity
+	/; if (n`.sub.count < 1)
+		return false
+	;/
+
+	~parse.Node op = n`.sub.get(0)
+	/; if (op`._type == parse.NTYPE_PRE_OP)
+		return true
+	;/
+
+	op = n`.sub.get(n`.sub.count - 1)
+	/; if (op`._type == parse.NTYPE_POST_OP)
+		return true
+	;/
+
+	return false
 ;/
 
 /; method Struct
@@ -135,31 +157,10 @@ struct Struct {
 			/; if (n`._type == parse.NTYPE_TYPE)
 				# Store for generating new variables
 				tn = n
-
-				# Find type, compute size, set add_size to type size
-				~Struct ft = self._find_type(n)
-				
-				/; if (ft == NULL)
-					# Type not found
-					_printf("ERROR: Unable to find type '\0")
-					_print_type(n)
-					_printf("' for use in struct '\0")
-					_printf(self.name)
-					_printf("'\n\0")
+				add_size = self._compute_type_size(n)
+				/; if (add_size == 0)
 					return
 				;/
-
-				/; if (ft`.size < 0)
-					# Cyclical dependency
-					_printf("ERROR: Cyclic struct definition: '\0")
-					_printf(ft`.name)
-					_printf("' imported from '\0")
-					_printf(self.name)
-					_printf("'\n\0")
-					return
-				;/
-
-				add_size = ft`.size
 			;; else if (n`._type == parse.NTYPE_ID)
 				/; if (tn == NULL)
 					_printf("ERROR: Unable to find type when trying to create member for struct '\0")
@@ -173,6 +174,40 @@ struct Struct {
 		;/
 
 		self.size = total
+	;/
+
+	/; _compute_type_size(~parse.Node tn) [int]
+		~Struct ft = self._find_type(tn)
+		
+		/; if (ft == NULL)
+			# Type not found
+			_printf("ERROR: Unable to find type '\0")
+			_print_type(tn)
+			_printf("' for use in struct '\0")
+			_printf(self.name)
+			_printf("'\n\0")
+			return 0
+		;/
+
+		/; if (_type_is_ptr(tn) == true)
+			return 8
+		;/
+
+		/; if (ft !== NULL && ft`.size == 0)
+			ft`._compute_size()
+		;/
+
+		/; if (ft`.size < 0)
+			# Cyclical dependency
+			_printf("ERROR: Cyclic struct definition: '\0")
+			_printf(ft`.name)
+			_printf("' imported from '\0")
+			_printf(self.name)
+			_printf("'\n\0")
+			return 0
+		;/
+
+		return ft`.size
 	;/
 
 	/; _find_type (~parse.Node tn) [~Struct]
@@ -198,9 +233,6 @@ struct Struct {
 
 		# Find struct and compute its size
 		~Struct out = self.methods`.find(SEARCH_STRUCT, ~sv)
-		/; if (out !== NULL && out`.size == 0)
-			out`._compute_size()
-		;/
 		sv.end()
 		return out
 	;/
