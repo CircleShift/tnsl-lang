@@ -120,16 +120,16 @@ struct Struct {
 		_printf(self.name)
 		_printf("\n\0")
 		
-		_indent(idt)
-		_print_num(" size: %d\n\0", self.size)
+		_indent(idt + 1)
+		_print_num("size: %d\n\0", self.size)
 
-		_indent(idt)
-		_printf(" members:\n\0")
+		_indent(idt + 1)
+		_printf("members:\n\0")
 
 		~Var v
 		/; loop (int i = 0; i < self.members.count) [i++]
 			v = self.members.get(i)
-			v`._print(idt + 1)
+			v`._print(idt + 2)
 		;/
 
 		_indent(idt)

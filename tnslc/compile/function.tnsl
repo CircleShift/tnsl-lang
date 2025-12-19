@@ -198,19 +198,19 @@ struct Function {
 		_printf(self.name)
 		_printf("\n\0")
 
-		_indent(idt)
-		_printf(" inputs:\n\0")
+		_indent(idt + 1)
+		_printf("inputs:\n\0")
 		~Var prtv
 		/; loop (int i = 0; i < self.inputs.count) [i++]
 			prtv = self.inputs.get(i)
-			prtv`._print(idt + 1)
+			prtv`._print(idt + 2)
 		;/
 
-		_indent(idt)
-		_printf(" outputs:\n\0")
+		_indent(idt + 1)
+		_printf("outputs:\n\0")
 		/; loop (int i = 0; i < self.outputs.count) [i++]
 			prtv = self.outputs.get(i)
-			prtv`._print(idt + 1)
+			prtv`._print(idt + 2)
 		;/
 
 		_indent(idt)

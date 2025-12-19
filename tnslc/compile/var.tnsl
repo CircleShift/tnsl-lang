@@ -12,11 +12,6 @@ int32 PTYPE_REF = 0
 # 1 Arr is ptr to arr, larger #s are static size arrs
 int32 PTYPE_ARR = 1
 
-int PRIM_NON = 0
-int PRIM_BOO = 1
-int PRIM_INT = 2
-int PRIM_FLT = 3
-
 ~uint8 PRIM_CSV_BOO = "bool\0"
 ~uint8 PRIM_CSV_INT = "int,int8,int16,int32,int64,uint,uint8,uint16,uint32,uint64\0"
 ~uint8 PRIM_CSV_FLT = "float,float32,float64\0"
@@ -97,7 +92,7 @@ struct Var {
 	~uint8 name,
 	~Struct _type,
 	utils.Vector ptrc,
-	int loc,
+	int loc, offset,
 	
 	~parse.Node _tn, _id
 }
@@ -143,8 +138,8 @@ struct Var {
 		_printf(self.name)
 		_printf("\n\0")
 		
-		_indent(idt)
-		_printf(" type: \0")
+		_indent(idt + 1)
+		_printf("type: \0")
 		/; if (self._type !== NULL)
 			_printf(self._type`.name)
 		;; else
@@ -152,8 +147,8 @@ struct Var {
 		;/
 		_printf("\n\0")
 
-		_indent(idt)
-		_printf(" ptrc: \0")
+		_indent(idt + 1)
+		_printf("ptrc: \0")
 		~int32 istr
 		/; loop (int i = 0; i < self.ptrc.count) [i++]
 			istr = self.ptrc.get(i)
@@ -302,20 +297,6 @@ struct Var {
 
 	/; ptr_pop
 		self.ptrc.pop()
-	;/
-
-	/; is_primitive [int]
-		~uint8 tn = self`._type`.name
-
-		/; if (parse._in_csv(PRIM_CSV_BOO, tn) == true)
-			return PRIM_BOO
-		;; else if (parse._in_csv(PRIM_CSV_INT, tn) == true)
-			return PRIM_INT
-		;; else if (parse._in_csv(PRIM_CSV_FLT, tn) == true)
-			return PRIM_FLT
-		;/
-
-		return PRIM_NON
 	;/
 
 	/; end
