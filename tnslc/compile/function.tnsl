@@ -37,8 +37,8 @@ struct Function {
 					p.loc = reg
 					reg++
 				;; else
-					p.loc = 0
-					p.loc = p.loc - stack_down
+					p.loc = 0 - 1
+					p.offset = 0 - stack_down
 					stack_down = stack_down - p.actual_size()
 				;/
 				self.inputs.push(~p)

@@ -1,8 +1,8 @@
 
 # Location enum
-int VLOC_STCK = 2
-int VLOC_LITL = 1
-int VLOC_DATA = 0
+int VLOC_DATA = 2
+int VLOC_STCK = 1
+int VLOC_LITL = 0
 
 # Should be -2
 int32 PTYPE_NONE = 2
@@ -104,6 +104,7 @@ struct Var {
 		self.name = utils.strcpy(id`.data)
 		self.ptrc.init(4)
 		self.loc = 0
+		self.offset = 0
 
 		self._tn = tn
 		self._id = id
@@ -309,6 +310,10 @@ struct Var {
 	###################################
 
 	/; gen_loc [~uint8]
+		/; if (self.loc == 0)
+			return utils.int_to_str(self.offset)
+		;/
+
 		utils.Vector out
 		out.init(1)
 
@@ -317,7 +322,10 @@ struct Var {
 		;/
 
 		~uint8 str
-		/; if (self.loc < 1)
+		/; if (self.loc + 1 < 0)
+			out.push_cstr("rel \0")
+			str = utils.strcpy(self.name)
+		;; else if (self.loc < 0)
 			str = reg_string(7, 8)
 		;; else
 			str = reg_string(self.loc, self.actual_size())
@@ -327,7 +335,7 @@ struct Var {
 
 
 		/; if (self.in_mem() == true)
-			/; if (self.loc < 0)
+			/; if (self.loc + 1 == 0)
 				int stk = 0
 				stk = stk - self.loc
 				out.push_cstr(" + \0")
@@ -343,7 +351,7 @@ struct Var {
 
 	# Returns true if the variable is known to be stored in memory
 	/; in_mem [bool]
-		/; if (self.loc < 1)
+		/; if (self.loc < 0)
 			return true
 		;/
 
@@ -397,20 +405,35 @@ struct Var {
 	;/
 
 	/; add (~CompBuf buf, ~Var other)
-		/; if (self.loc = VLOC_LITL)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset + other`.offset
+			return
 		;/
 		self.standard_op(buf, other, "add")
 	;/
 
 	/; sub (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset - other`.offset
+			return
+		;/
 		self.standard_op(buf, other, "sub")
 	;/
 
 	/; mul (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset * other`.offset
+			return
+		;/
 		self.product_op(buf, other, "imul", 1)
 	;/
 
 	/; div (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset / other`.offset
+			return
+		;/
+
 		/; if ("signed")
 			self.product_op(buf, other, "idiv", 1)
 		;; else
@@ -419,6 +442,11 @@ struct Var {
 	;/
 
 	/; mod (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset % other`.offset
+			return
+		;/
+
 		/; if ("signed")
 			self.product_op(buf, other, "idiv", 4)
 		;; else
