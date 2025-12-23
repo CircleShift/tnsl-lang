@@ -20,7 +20,7 @@ struct Function {
 		~parse.Node tn = NULL
 		~parse.Node n
 		int reg = 1
-		int stack_down = 0
+		int stack_up = 0
 		/; loop (int i = 0; i < dl`.sub.count) [i++]
 			n = dl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -33,13 +33,14 @@ struct Function {
 				Var p
 				p.init(tn, n)
 				p._resolve_type(parent)
-				/; if (p.is_reg_passed() == true && reg < 7)
+				# TODO: This is wrong
+				/; if (p.regable() == true && reg < 7)
 					p.loc = reg
 					reg++
 				;; else
 					p.loc = 0 - 1
-					p.offset = 0 - stack_down
-					stack_down = stack_down - p.actual_size()
+					p.offset = stack_up
+					stack_up = stack_up + p.actual_size()
 				;/
 				self.inputs.push(~p)
 			;/
@@ -53,6 +54,7 @@ struct Function {
 		/; loop (int i = 0; i < tl`.sub.count) [i++]
 			n = tl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
+				# TODO: also wrong
 				Var r
 				r.init(n, ~dummy)
 				r._resolve_type(parent)

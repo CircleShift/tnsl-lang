@@ -64,13 +64,13 @@ struct Scope {
 	# Make variables
 	#
 
-	/; _next_reg_slot [uint]
-		uint out = 9
+	/; _next_reg_slot [int]
+		int out = 11
 		/; if (self.parent !== NULL)
 			out = self.parent`._next_reg_slot()
 		;/
 		
-		/; if (out == 0)
+		/; if (out < 0)
 			return out
 		;/
 
@@ -80,7 +80,7 @@ struct Scope {
 			/; if (v`.loc > 0)
 				out++
 				/; if (out > 16)
-					return 0
+					return 0 - 1
 				;/
 			;/
 		;/
@@ -88,8 +88,8 @@ struct Scope {
 		return out
 	;/
 
-	/; _next_stack_slot [uint]
-		uint out = 0
+	/; _next_stack_slot [int]
+		int out = 0 - 56
 		/; if (self.parent !== NULL)
 			out = self.parent`._next_stack_slot()
 		;/
@@ -108,13 +108,14 @@ struct Scope {
 	/; mk_set_var (~Var src)
 		Var out = src`.copy()
 
-		/; if (src`.is_reg_passed() == true)
+		/; if (src`.regable() == true)
 			out.loc = self._next_reg_slot()
-			/; if (out.loc == 0)
-				out.loc = self._next_stack_slot()
+			/; if (out.loc + 1 == 0)
+				out.offset = self._next_stack_slot()
 			;/
 		;; else
-			out.loc = self._next_stack_slot()
+			out.loc = 0 - 1
+			out.offset = self._next_stack_slot()
 		;/
 
 		~int32 p = out.top_ptrc()

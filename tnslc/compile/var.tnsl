@@ -173,11 +173,15 @@ struct Var {
 		self.ptrc.push(~ptr)
 	;/
 
-	/; is_reg_passed [bool]
-		/; if (self.ptrc.count > 0)
-			return true
+	/; regable [bool]
+		~int p
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			p = self.ptrc.get(i)
+			/; if (p` !== 0)
+				return true
+			;/
 		;/
-		return false
+		return _is_primitive(self._type`.name) !== 0
 	;/
 
 	/; actual_size [uint]
@@ -326,7 +330,7 @@ struct Var {
 			out.push_cstr("rel \0")
 			str = utils.strcpy(self.name)
 		;; else if (self.loc < 0)
-			str = reg_string(7, 8)
+			str = reg_string(8, 8)
 		;; else
 			str = reg_string(self.loc, self.actual_size())
 		;/
@@ -336,12 +340,18 @@ struct Var {
 
 		/; if (self.in_mem() == true)
 			/; if (self.loc + 1 == 0)
-				int stk = 0
-				stk = stk - self.loc
-				out.push_cstr(" + \0")
-				str = utils.int_to_str(stk)
-				out.push_cstr(str)
-				_delete(str)
+				int stk = 0 - self.offset
+				/; if (stk > 0)
+					out.push_cstr(" - \0")
+					str = utils.int_to_str(stk)
+					out.push_cstr(str)
+					_delete(str)
+				;; else if (stk < 0)
+					out.push_cstr(" + \0")
+					str = utils.int_to_str(self.offset)
+					out.push_cstr(str)
+					_delete(str)
+				;/
 			;/
 			out.push_char(']')
 		;/
