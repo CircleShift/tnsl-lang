@@ -383,6 +383,21 @@ struct Var {
 
 	/; _set_mem(~CompBuf buf, ~Var other)
 		
+		~uint8 to_str = self.gen_loc()
+		~uint8 from_str = other`.gen_loc()
+
+		~uint8 str
+
+		str = utils.int_to_str(self.actual_size())
+		buf`.add_c("    mov rcx, \0")
+		buf`.add_c(str)
+		buf`.add_c("\n")
+		_delete(str)
+
+		buf`.add_c("    rep movsb\0")
+
+		_delete(to_str)
+		_delete(from_str)
 	;/
 
 	# Set this Variable to the value of other
@@ -394,9 +409,48 @@ struct Var {
 	/; set_ref(~CompBuf buf, ~Var other)
 	;/
 
+	# Generate a variable which can actually be used for operations
+	/; strip_refs (~CompBuf buf, bool from) [Var]
+		Var out = self.copy()
+		~int32 p = out.top_ptrc()
+		/; if (p == NULL)
+			return out
+		;; else if (p` !== 0)
+			return out
+		;/
+
+		~uint8 gen = out.gen_loc()
+
+		out.ptr_pop()
+		p = out.top_ptrc()
+		/; loop (p` == 0)
+			buf`.add_c("    mov rsi, \0")
+			buf`.add_c(gen)
+			buf`.add_c("\n\0")
+			out.loc = 5
+			_delete(gen)
+			gen = out.gen_loc()
+			out.ptr_pop()
+			p = out.top_ptrc()
+		;/
+
+		/; if (from == false)
+			buf`.add_c("    mov rdi, \0")
+			out.loc = 6
+		;; else
+			buf`.add_c("    mov rsi, \0")
+			out.loc = 5
+		;/
+		buf`.add_c(gen)
+		buf`.add_c("\n\0")
+		_delete(gen)
+
+		return out
+	;/
+
 	/; standard_op (~CompBuf buf, ~Var other, ~uint8 op_str)
-		~uint8 from_str = other`.gen_loc()
 		~uint8 to_str = self.gen_loc()
+		~uint8 from_str = other`.gen_loc()
 
 		buf`.add_c("    \0")
 		buf`.add_c(op_str)

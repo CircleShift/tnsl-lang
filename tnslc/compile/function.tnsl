@@ -38,9 +38,9 @@ struct Function {
 					p.loc = reg
 					reg++
 				;; else
+					stack_up = stack_up + p.actual_size()
 					p.loc = 0 - 1
 					p.offset = stack_up
-					stack_up = stack_up + p.actual_size()
 				;/
 				self.inputs.push(~p)
 			;/
@@ -51,6 +51,9 @@ struct Function {
 		~parse.Node n
 		parse.Node dummy
 		dummy.data = "### OUTPUT ###\0"
+
+		int reg = 1
+		int stack = 0
 		/; loop (int i = 0; i < tl`.sub.count) [i++]
 			n = tl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -58,6 +61,19 @@ struct Function {
 				Var r
 				r.init(n, ~dummy)
 				r._resolve_type(parent)
+				
+				/; if (r.regable() == true && reg < 7)
+					r.loc = reg
+					/; if (reg > 4)
+						r.loc = r.loc + 4
+					;/
+					reg++
+				;; else
+					r.loc = 0 - 1
+					r.offset = stack
+					stack = stack + r.actual_size()
+				;/
+
 				self.outputs.push(~r)
 			;/
 		;/
