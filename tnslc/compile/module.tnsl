@@ -295,7 +295,7 @@ struct Module {
 				m = self.subs.get(i)
 				/; if (utils.strcmp(str`, m`.name) == true)
 					~void v = m._find(stype, key, lvl + 1)
-					/; if (v != NULL)
+					/; if (v !== NULL)
 						return v
 					;/
 				;/
