@@ -118,6 +118,83 @@ struct Module {
 		;/
 	;/
 
+	/; _method_id (~uint8 id) [utils.Vector]
+		utils.Vector tmp
+		tmp.init(1)
+		utils.Vector out
+		out.init(8)
+		
+		~uint8 str
+
+		/; loop (id` !== 0) [id++]
+			/; if (id` == '.')
+				str = tmp.as_cstr()
+				out.push(~str)
+				tmp.init(1)
+			;; else
+				tmp.push(id)
+			;/
+		;/
+
+		str = tmp.as_cstr()
+		~uint8 last = utils.stradd("_#\0", str)
+		_delete(str)
+		out.push(~last)
+
+		return out
+	;/
+
+	/; _method_id_end(~utils.Vector v)
+		~~uint8 str
+		/; loop (int i = 0; i < v`.count) [i++]
+			str = v`.get(i)
+			_delete(str`)
+		;/
+		v`.end()
+	;/
+
+	/; _collect_methods(~parse.Node m)
+		~parse.Node sub
+		/; loop (int i = 0; i < m`.sub.count) [i++]
+			sub = m`.sub.get(i)
+			
+			/; if (sub`._type == parse.NTYPE_FUNCTION)
+				Function f
+				f.init(sub)
+				f.m = true
+				self.funcs.push(~f)
+			;/
+		;/
+	;/
+
+	/; collect_methods (~parse.Node mod)
+		~parse.Node sub
+		/; loop (int i = 0; i < mod`.sub.count) [i++]
+			sub = mod`.sub.get(i)
+			/; if (sub`._type == parse.NTYPE_METHOD)
+				utils.Vector id = self._method_id(sub`.data)
+				~Module m = self.find(SEARCH_SUB, ~id)
+				/; if (m !== NULL)
+					_printf("Found module for method\n\0")
+					m`._collect_methods(sub)
+				;; else
+					_printf("Failed to find module for method\n\0")
+				;/
+				_method_id_end(~id)
+			;; else if (sub`._type == parse.NTYPE_MODULE)
+				~Module m = self._find_sub(sub`.data)
+				/; if (m !== NULL)
+					m`.collect_methods(sub)
+				;/
+			;; else if (sub`._type == parse.NTYPE_EXPORT)
+				~Module m = self._find_sub(sub`.data)
+				/; if (m !== NULL)
+					m`.collect_methods(sub)
+				;/
+			;/
+		;/
+	;/
+
 	/; _decl (~parse.Node decl)
 		/; if (decl`.sub.count < 1)
 			return

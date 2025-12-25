@@ -20,6 +20,7 @@
 	mod.init(~ast, ~buffer)
 	_gen_prims(~mod)
 	mod.update_children()
+	mod.collect_methods(~ast)
 
 	# Compile code
 	mod.compile(~buffer)

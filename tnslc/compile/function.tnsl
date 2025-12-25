@@ -5,12 +5,14 @@ struct Function {
 		inputs,
 		outputs,
 	~parse.Node _up,
+	bool m
 }
 
 /; method Function
 	/; init (~parse.Node n)
 		self.name = utils.strcpy(n`.data)
 		self._up = n
+		self.m = false
 		Var v
 		self.inputs.init(len v)
 		self.outputs.init(len v)
@@ -38,9 +40,9 @@ struct Function {
 					p.loc = reg
 					reg++
 				;; else
-					stack_up = stack_up + p.actual_size()
 					p.loc = 0 - 1
 					p.offset = stack_up
+					stack_up = stack_up + p.actual_size()
 				;/
 				self.inputs.push(~p)
 			;/
@@ -134,6 +136,8 @@ struct Function {
 	;/
 
 	/; _end_func(~Scope scope, ~CompBuf cb)
+		cb`.add_c("\n\0")
+		scope`.place_end_label()
 		cb`.add_c("    lea rsp, [rbp - 56]\n\0")
 		cb`.add_c("    pop r15\n\0")
 		cb`.add_c("    pop r14\n\0")

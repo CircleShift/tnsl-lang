@@ -1,7 +1,20 @@
 
-/; main (int argc, ~~uint8 argv) [int]
-	asm "mov r10, rdi"
-	asm "mov r11, rsi"
-	return argc
+struct str {
+	~uint8 a
+}
+
+/; method str
+	/; str_get() [~uint8]
+		return a
+	;/
 ;/
+
+/; module moda
+	/; method str
+		/; str_set(~uint8 a)
+			self.a = a
+		;/
+	;/
+;/
+
 
