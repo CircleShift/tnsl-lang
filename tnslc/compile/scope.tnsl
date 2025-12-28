@@ -109,6 +109,7 @@ struct Scope {
 		Var mk = v`.copy()
 		mk.offset = 0
 
+		# TODO: Make sure this works properly
 		/; if (mk.loc > 0)
 			mk.loc = 1
 		;/
@@ -117,6 +118,42 @@ struct Scope {
 	;/
 
 	/; mk_aware_node (~parse.Node n)
+		
+		~parse.Node sub
+		~parse.Node tp = NULL
+		/; loop (int i = 0; i < n`.sub.count) [i++]
+			sub = n`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_TYPE)
+				tp = n
+			;; else if (n`._type == parse.NTYPE_ID)
+				/; if (tp == NULL)
+					_printf("COMPILER ERROR: Should have type node before first id in decl node\n\0")
+					return
+				;/
+				
+				# Part 1: Add var
+				Var v
+				v.init(tp, n`.data)
+				
+				# TODO: Make sure this works properly
+				/; if (v.regable() == true)
+					v.loc = 0 - 1
+				;; else
+					v.loc = 1
+				;/
+				v.offset = 0
+				
+				self.vars.push(~v)
+
+				# Part 2: Compute via value (if exists)
+				/; if (n`.sub.count > 0)
+					n = n`.sub.get(0)
+					/; if (n`._type == parse.NTYPE_VALUE)
+						self.precheck_stmt(n)
+					;/
+				;/
+			;/
+		;/
 	;/
 	
 	/; precheck_stmt (~parse.Node n)
