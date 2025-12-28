@@ -115,6 +115,7 @@ struct Var {
 		out.init(self._tn, self._id)
 		out._type = self._type
 		out.loc = self.loc
+		out.offset = self.offset
 
 		/; loop (int i = 0; i < self.ptrc.count) [i++]
 			~int32 p = self.ptrc.get(i)

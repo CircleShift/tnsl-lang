@@ -100,6 +100,31 @@ struct Function {
 		;/
 	;/
 
+	/; _compute_scope_vars(~Scope s)
+		
+		~Var in
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			in = self.inputs.get(i)
+			s`.mk_aware(in)
+		;/
+
+		int i = self._first_stmt_off()
+		/; if (i < 0)
+			return
+		;/
+	
+		~parse.Node _up = self._up
+		~parse.Node n
+		/; loop (i < _up`.sub.count) [i++]
+			n = _up`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_DECL)
+				s`.mk_aware_node(n)
+			;; else
+				s`.precheck_stmt(n)
+			;/
+		;/
+	;/
+
 	/; _build_func(~Module parent, ~CompBuf cb) [Scope]
 		Scope out
 		out.init(parent, cb, self.name)
@@ -124,6 +149,8 @@ struct Function {
 		cb`.add_c("    push r13\n\0")
 		cb`.add_c("    push r14\n\0")
 		cb`.add_c("    push r15 ; scope init\n\n\0")
+
+		self._compute_scope_vars(~out)
 
 		# Add all params to the scope
 		~Var in
@@ -151,17 +178,14 @@ struct Function {
 		scope`.end()
 	;/
 
-	/; _compile (~Module parent, ~CompBuf cb)
-		# Sanity check
-		~parse.Node _up = self._up
-		/; if (_up`.sub.count < 1)
-			~Scope s = self._build_func(parent, cb)
-			self._end_func(s, cb)
-			return
-		;/
-		
-		# Skip past parameters and outputs
+	/; _first_stmt_off [int]
 		int i = 0
+		~parse.Node _up = self._up
+
+		/; if (_up`.sub.count < 1)
+			return i - 1
+		;/
+
 		~parse.Node n = _up`.sub.get(i)
 		/; if (n`._type == parse.NTYPE_DLIST)
 			i++
@@ -173,13 +197,22 @@ struct Function {
 		/; if (n`._type == parse.NTYPE_TLIST)
 			i++
 		;/
+
+		return i
+	;/
+
+	/; _compile (~Module parent, ~CompBuf cb)
+		# Sanity check
+		int i = self._first_stmt_off()
 		
 		# Create scope
 		Scope fscope = self._build_func(parent, cb)
 
+		/; if (i !< 0)
+			self._compile_statements(~fscope, i)
+		;/
 		
 		# Compile and then end scope
-		self._compile_statements(~fscope, i)
 		self._end_func(~fscope, cb)
 	;/
 

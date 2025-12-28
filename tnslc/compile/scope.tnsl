@@ -105,6 +105,39 @@ struct Scope {
 		return out
 	;/
 
+	/; mk_aware (~Var v)
+		Var mk = v`.copy()
+		mk.offset = 0
+
+		/; if (mk.loc > 0)
+			mk.loc = 1
+		;/
+
+		self.vars.push(~mk)
+	;/
+
+	/; mk_aware_node (~parse.Node n)
+	;/
+	
+	/; precheck_stmt (~parse.Node n)
+	;/
+	
+	/; find_var (~uint8 name) [~Var]
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			/; if (utils.strcmp(v`.name, name) == true)
+				return v
+			;/
+		;/
+
+		/; if (self.parent !== NULL)
+			return self.parent`.find_var(name)
+		;/
+
+		return NULL
+	;/
+
 	/; mk_set_var (~Var src)
 		Var out = src`.copy()
 
