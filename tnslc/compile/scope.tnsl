@@ -134,12 +134,13 @@ struct Scope {
 				# Part 1: Add var
 				Var v
 				v.init(tp, n`.data)
+				v._resolve_type(self.mod)
 				
 				# TODO: Make sure this works properly
 				/; if (v.regable() == true)
-					v.loc = 0 - 1
-				;; else
 					v.loc = 1
+				;; else
+					v.loc = 0 - 1
 				;/
 				v.offset = 0
 				
@@ -164,7 +165,9 @@ struct Scope {
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
 			/; if (utils.strcmp(v`.name, name) == true)
-				return v
+				/; if (v`.loc > 1 || v`.offset !== 0)
+					return v
+				;/
 			;/
 		;/
 
@@ -176,28 +179,32 @@ struct Scope {
 	;/
 
 	/; mk_set_var (~Var src)
-		Var out = src`.copy()
+		~Var v = self.find_var(src`.name)
 
-		/; if (src`.regable() == true)
-			out.loc = self._next_reg_slot()
-			/; if (out.loc + 1 == 0)
-				out.offset = self._next_stack_slot()
+		/; if (v == NULL)
+			return
+		;/
+
+		/; if (v`.loc == 1)
+			v`.loc = self._next_reg_slot()
+			/; if (v`.loc + 1 == 0)
+				v`.offset = self._next_stack_slot()
 			;/
-		;; else
-			out.loc = 0 - 1
-			out.offset = self._next_stack_slot()
+		;; else if (v`.loc + 1 == 0)
+			/; if (v`.offset == 0)
+				v`.loc = 0 - 1
+				v`.offset = self._next_stack_slot()
+			;/
 		;/
 
-		~int32 p = out.top_ptrc()
+		~int32 p = v`.top_ptrc()
 		/; if (p == NULL)
-			out.set(self.cb, src)
+			v`.set(self.cb, src)
 		;; else if (p` == 0)
-			out.set_ref(self.cb, src)
+			v`.set_ref(self.cb, src)
 		;; else
-			out.set(self.cb, src)
+			v`.set(self.cb, src)
 		;/
-
-		self.vars.push(~out)
 	;/
 
 	#
