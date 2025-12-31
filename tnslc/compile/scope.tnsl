@@ -241,6 +241,51 @@ struct Scope {
 		return out
 	;/
 
+	# Get closest breakable scope
+
+	/; _closest_break [~Scope]
+		/; if (utils.ends_with(self.name, "#wrap\0"))
+			return ~self
+		;; else if (utils.ends_with(self.name, "#loop\0"))
+			return ~self
+		;/
+		
+		/; if (self.parent == NULL)
+			return NULL
+		;/
+
+		return self.parent`.closest_loop()
+	;/
+
+	/; closest_break [~Scope]
+		/; if (self.parent == NULL)
+			return NULL
+		;/
+
+		~uint8 pname = self.parent`.name
+		/; if (utils.ends_with(pname, "#wrap\0"))
+			~Scope par2 = self.parent`.parent
+			/; if (par2 !== NULL)
+				return par2`._closest_break()
+			;/
+		;/
+
+		return self._closest_break()
+	;/
+
+	# Get closest loop
+	/; closest_loop [~Scope]
+		/; if (utils.ends_with(self.name, "#loop\0"))
+			return ~self
+		;/
+		
+		/; if (self.parent == NULL)
+			return NULL
+		;/
+
+		return self.parent`.closest_loop()
+	;/
+
 
 	#
 	# Label generation

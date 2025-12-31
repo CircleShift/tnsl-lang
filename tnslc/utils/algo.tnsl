@@ -15,6 +15,25 @@
 	return out
 ;/
 
+/; ends_with (~uint8 str, suffix) [bool]
+	int chk = strlen(suffix)
+	int counter = 0
+
+	/; loop (str` !== 0) [str++]
+		/; if (suffix{counter} !== 0)
+			/; if (suffix{counter} == str`)
+				counter++
+			;; else
+				counter = 0
+			;/
+		;; else
+			counter = 0
+		;/
+	;/
+
+	return chk == counter
+;/
+
 /; base_for_char (uint8 c) [int]
 	/; if (c == 'b' || c == 'B')
 		return 2

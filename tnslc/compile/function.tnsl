@@ -240,7 +240,33 @@ struct Function {
 		/; if (utils.strcmp(n`.data, "return\0") == true)
 			# Compute value and return
 			self._compile_value(s, n)
+		;; else if (utils.strcmp(n`.data, "continue\0") == true)
+			~Scope lp = s`.closest_loop()
+			/; if (lp == NULL)
+				return
+			;/
+
+			~uint8 lab = lp`.rep_label()
+			s`.cb`.add_c("    jmp \0")
+			s`.cb`.add_c(lab)
+			s`.cb`.add_c("\n\0")
+		;; else if (utils.strcmp(n`.data, "break\0") == true)
+			~Scope br = s`.closest_break()
+			/; if (br == NULL)
+				return
+			;/
+
+			~uint8 lab = br`.rep_label()
+			s`.cb`.add_c("    jmp \0")
+			s`.cb`.add_c(lab)
+			s`.cb`.add_c("\n\0")
 		;/
+
+		_printf("COMPILER ERROR: The following was detected as flow control, but we do not handle it: '\0")
+		_printf(n`.data)
+		_printf("'\n\0")
+		_printf("COMPILER ERROR: this is likely a bug with the compiler, please report it along with the\n\0")
+		_printf("COMPILER ERROR: code snippit which caused the bug!\n\0")
 	;/
 
 	# Should handle computing a value, delegate to other funcs when needed
