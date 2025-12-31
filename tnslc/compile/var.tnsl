@@ -158,6 +158,12 @@ struct Var {
 		;/
 		_printf("\n\0")
 
+		_indent(idt + 1)
+		_print_num("loc: %d\n\0", self.loc)
+
+		_indent(idt + 1)
+		_print_num("off: %d\n\0", self.offset)
+
 		_indent(idt)
 		_printf("}\n\0")
 	;/

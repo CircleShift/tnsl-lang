@@ -77,10 +77,12 @@ struct Scope {
 		~Var v
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
-			/; if (v`.loc > 0)
+			/; if (v`.loc > 1)
 				out++
 				/; if (out > 16)
-					return 0 - 1
+					out = 0
+					out = out - 1
+					return out
 				;/
 			;/
 		;/
@@ -89,7 +91,8 @@ struct Scope {
 	;/
 
 	/; _next_stack_slot [int]
-		int out = 0 - 56
+		int out = 0
+		out = out - 56
 		/; if (self.parent !== NULL)
 			out = self.parent`._next_stack_slot()
 		;/
@@ -97,7 +100,7 @@ struct Scope {
 		~Var v
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
-			/; if (v`.loc < 0)
+			/; if (v`.loc < 0 && v`.offset !== 0)
 				out = out - v`.actual_size()
 			;/
 		;/
@@ -160,14 +163,12 @@ struct Scope {
 	/; precheck_stmt (~parse.Node n)
 	;/
 	
-	/; find_var (~uint8 name) [~Var]
+	/; _find_var (~uint8 name) [~Var]
 		~Var v
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
 			/; if (utils.strcmp(v`.name, name) == true)
-				/; if (v`.loc > 1 || v`.offset !== 0)
-					return v
-				;/
+				return v
 			;/
 		;/
 
@@ -178,22 +179,39 @@ struct Scope {
 		return NULL
 	;/
 
+	/; find_var (~uint8 name) [~Var]
+		~Var out = self._find_var(name)
+
+		/; if (out == NULL)
+			return NULL
+		;/
+		
+		/; if (out`.loc > 1 || out`.offset !== 0)
+			return out
+		;/
+		
+		return NULL
+	;/
+
 	/; mk_set_var (~Var src)
-		~Var v = self.find_var(src`.name)
+		~Var v = self._find_var(src`.name)
 
 		/; if (v == NULL)
 			return
 		;/
 
+		int tmp = 0
 		/; if (v`.loc == 1)
-			v`.loc = self._next_reg_slot()
+			int tmp = self._next_reg_slot()
+			v`.loc = tmp
 			/; if (v`.loc + 1 == 0)
-				v`.offset = self._next_stack_slot()
+				tmp = self._next_stack_slot()
+				v`.offset = tmp
 			;/
 		;; else if (v`.loc + 1 == 0)
 			/; if (v`.offset == 0)
-				v`.loc = 0 - 1
-				v`.offset = self._next_stack_slot()
+				tmp = self._next_stack_slot()
+				v`.offset = tmp
 			;/
 		;/
 

@@ -235,11 +235,14 @@ struct Function {
 		;/
 	;/
 
+	/; _return (~Scope s, ~parse.Node n)
+	;/
+
 	# Should handle break, continue, and return
 	/; _compile_flow_control (~Scope s, ~parse.Node n)
 		/; if (utils.strcmp(n`.data, "return\0") == true)
 			# Compute value and return
-			self._compile_value(s, n)
+			self._return(s, n)
 		;; else if (utils.strcmp(n`.data, "continue\0") == true)
 			~Scope lp = s`.closest_loop()
 			/; if (lp == NULL)
@@ -270,7 +273,9 @@ struct Function {
 	;/
 
 	# Should handle computing a value, delegate to other funcs when needed
-	/; _compile_value (~Scope s, ~parse.Node n)
+	/; _compile_value (~Scope s, ~parse.Node n) [Var]
+		Var out
+		return out
 	;/
 
 	/; _print (int idt)
