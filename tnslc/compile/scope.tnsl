@@ -121,14 +121,13 @@ struct Scope {
 	;/
 
 	/; mk_aware_node (~parse.Node n)
-		
 		~parse.Node sub
 		~parse.Node tp = NULL
 		/; loop (int i = 0; i < n`.sub.count) [i++]
 			sub = n`.sub.get(i)
-			/; if (n`._type == parse.NTYPE_TYPE)
-				tp = n
-			;; else if (n`._type == parse.NTYPE_ID)
+			/; if (sub`._type == parse.NTYPE_TYPE)
+				tp = sub
+			;; else if (sub`._type == parse.NTYPE_ID)
 				/; if (tp == NULL)
 					_printf("COMPILER ERROR: Should have type node before first id in decl node\n\0")
 					return
@@ -136,7 +135,7 @@ struct Scope {
 				
 				# Part 1: Add var
 				Var v
-				v.init(tp, n`.data)
+				v.init(tp, sub)
 				v._resolve_type(self.mod)
 				
 				# TODO: Make sure this works properly
@@ -150,9 +149,9 @@ struct Scope {
 				self.vars.push(~v)
 
 				# Part 2: Compute via value (if exists)
-				/; if (n`.sub.count > 0)
-					n = n`.sub.get(0)
-					/; if (n`._type == parse.NTYPE_VALUE)
+				/; if (sub`.sub.count > 0)
+					sub = sub`.sub.get(0)
+					/; if (sub`._type == parse.NTYPE_VALUE)
 						self.precheck_stmt(n)
 					;/
 				;/
@@ -193,11 +192,11 @@ struct Scope {
 		return NULL
 	;/
 
-	/; mk_set_var (~Var src)
+	/; mk_var (~Var src) [~Var]
 		~Var v = self._find_var(src`.name)
 
 		/; if (v == NULL)
-			return
+			return NULL
 		;/
 
 		int tmp = 0
@@ -215,6 +214,16 @@ struct Scope {
 			;/
 		;/
 
+		return v
+	;/
+
+	/; mk_set_var (~Var src) [~Var]
+		~Var v = self.mk_var(src)
+
+		/; if (v == NULL)
+			return NULL
+		;/
+
 		~int32 p = v`.top_ptrc()
 		/; if (p == NULL)
 			v`.set(self.cb, src)
@@ -223,6 +232,8 @@ struct Scope {
 		;; else
 			v`.set(self.cb, src)
 		;/
+
+		return v
 	;/
 
 	#

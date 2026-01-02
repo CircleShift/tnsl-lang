@@ -231,6 +231,8 @@ struct Function {
 				s`.cb`.add_c("    \0")
 				s`.cb`.add_c(n`.data)
 				s`.cb`.add_c(" ; User defined asm\n\0")
+			;; else if (n`._type == parse.NTYPE_DECL)
+				self._compile_decl(s, n)
 			;/
 		;/
 	;/
@@ -272,9 +274,36 @@ struct Function {
 		;/
 	;/
 
+	# Should handle variable declarations
+	/; _compile_decl(~Scope s, ~parse.Node n)
+		~parse.Node sub
+		/; loop (int i = 0; i < n`.sub.count) [i++]
+			sub = n`.sub.get(i)
+			/; if (sub`._type == parse.NTYPE_ID)
+				~Var v = s`._find_var(sub`.data)
+				
+				/; if (v == NULL)
+					_printf("Failed to find variable '\0")
+					_printf(sub`.data)
+					_printf("'\n\0")
+					return
+				;/
+				
+				/; if (sub`.sub.count > 0)
+					sub = sub`.sub.get(0)
+					Var val = self._compile_value(s, sub, v)
+					s`.mk_set_var(~val)
+					val.end()
+				;; else
+					s`.mk_var(v)
+				;/
+			;/
+		;/
+	;/
+
 	# Should handle computing a value, delegate to other funcs when needed
-	/; _compile_value (~Scope s, ~parse.Node n) [Var]
-		Var out
+	/; _compile_value (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+		Var out = type_hint`.copy()
 		return out
 	;/
 
