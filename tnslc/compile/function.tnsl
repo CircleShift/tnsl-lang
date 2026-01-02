@@ -237,7 +237,94 @@ struct Function {
 		;/
 	;/
 
+	/; _check_return (~parse.Node n) [bool]
+		int expected = self.outputs.count
+		int have = 0
+
+		~parse.Node val
+		/; if (n`.sub.count > 0)
+			val = n`.sub.get(0)
+			val = val`.sub.get(0)
+			/; if (expected > 1 && val`._type == parse.NTYPE_VLIST)
+				have = val`.sub.count
+			;; else
+				have = 1
+			;/
+		;/
+		
+		/; if (have == expected)
+			return true
+		;/
+
+		_print_num("ERROR: Number of return values (%d) does not match expected (\0", have)
+		_print_num("%d)\n\0", expected)
+		_printf("ERROR: A list of return values should be enclosed by {}\n\0")
+
+		return false
+	;/
+
+	/; _compile_return_vals (~Scope s, ~parse.Node n)
+		_printf("Compiling return vals!\n\0")
+		/; if (self.outputs.count == 0)
+			return
+		;/
+
+		/; if (self.outputs.count > 1)
+			n = n`.sub.get(0)
+			n = n`.sub.get(0)
+		;/
+		
+		~Var out
+		Var tmp, cmp
+		utils.Vector tmps
+		tmps.init(len cmp)
+
+		s`.cb`.add_c("\n    ; STARTING RETURN\n\0")
+
+		# Compile all values
+		~parse.Node val_node
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			val_node = n`.sub.get(i)
+			out = self.outputs.get(i)
+
+			tmp = s`.mk_tmp(out)
+			cmp = self._compile_value(s, val_node, out)
+			tmp.set(s, ~cmp)
+			cmp.end()
+			tmps.push(~tmp)
+		;/
+
+		# Set all outputs
+		~Var tt
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			out = self.outputs.get(i)
+			tt = tmps.get(i)
+			out`.set(s`.cb, tmp)
+			tt`.end()
+		;/
+
+		s`.free_tmp(tmps.count, false)
+		tmps.end()
+	;/
+
 	/; _return (~Scope s, ~parse.Node n)
+		/; if (self._check_return(n) !== true)
+			return
+		;/
+
+		# Compute all return values and set the output variables properly
+		self._compile_return_vals(s, n)
+
+		# Find root scope of function
+		/; loop (s`.parent !== NULL)
+			s = s`.parent
+		;/
+
+		# Generate jump instruction
+		~uint8 lab = s`.end_label()
+		s`.cb`.add_c("    jmp \0")
+		s`.cb`.add_c(lab)
+		s`.cb`.add_c("\n\0")
 	;/
 
 	# Should handle break, continue, and return

@@ -5,7 +5,7 @@ struct Scope {
 	
 	~Scope parent,
 
-	utils.Vector vars,
+	utils.Vector vars, tmps,
 
 	int unique
 }
@@ -47,6 +47,7 @@ struct Scope {
 
 		Var v
 		self.vars.init(len v)
+		self.tmps.init(len v)
 	;/
 	
 	/; end
@@ -58,6 +59,12 @@ struct Scope {
 			v`.end()
 		;/
 		self.vars.end()
+
+		/; loop (int i = 0; i < self.tmps.count) [i++]
+			v = self.tmps.get(i)
+			v`.end()
+		;/
+		self.tmps.end()
 	;/
 
 	#
@@ -234,6 +241,18 @@ struct Scope {
 		;/
 
 		return v
+	;/
+
+	# Make a temp variable in register or stack for use in computations
+	/; mk_tmp (~Var base) [Var]
+		Var v = base`.copy()
+		return v
+	;/
+
+	# Free n tmp variables (starts from most recently created)
+	# If you want to generate code to set the stack pointer then
+	# set code to true
+	/; free_tmp (int tmps, bool code)
 	;/
 
 	#
