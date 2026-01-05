@@ -97,6 +97,32 @@ struct Scope {
 		return out
 	;/
 
+	/; _next_tmp_slot [int]
+		int out = 2
+		/; if (self.parent !== NULL)
+			out = self.parent`._next_tmp_slot()
+		;/
+		
+		/; if (out < 0)
+			return out
+		;/
+
+		~Var v
+		/; loop (int i = 0; i < self.tmps.count) [i++]
+			v = self.vars.get(i)
+			/; if (v`.loc > 1)
+				out++
+				/; if (out > 4)
+					out = 0
+					out = out - 1
+					return out
+				;/
+			;/
+		;/
+
+		return out
+	;/
+
 	/; _next_stack_slot [int]
 		int out = 0
 		out = out - 56
@@ -108,7 +134,20 @@ struct Scope {
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
 			/; if (v`.loc < 0 && v`.offset !== 0)
-				out = out - v`.actual_size()
+				int off = v`.offset - v`.actual_size()
+				/; if (off < out)
+					out = off
+				;/
+			;/
+		;/
+
+		/; loop (int i = 0; i < self.tmps.count) [i++]
+			v = self.tmps.get(i)
+			/; if (v`.loc < 0 && v`.offset !== 0)
+				int off = v`.offset - v`.actual_size()
+				/; if (off < out)
+					out = off
+				;/
 			;/
 		;/
 
@@ -240,19 +279,79 @@ struct Scope {
 			v`.set(self.cb, src)
 		;/
 
+		/; if (v`.loc < 0)
+			int stk = v`.actual_size()
+			~uint8 stk_str = utils.int_to_str(stk)
+			self.cb`.add_c("    sub rsp, \0")
+			self.cb`.add_c(stk_str)
+			self.cb`.add_c("\n\0")
+			_delete(stk_str)
+		;/
+
 		return v
 	;/
 
 	# Make a temp variable in register or stack for use in computations
 	/; mk_tmp (~Var base) [Var]
 		Var v = base`.copy()
-		return v
+		v.offset = 0
+
+		int tmp = 0
+		/; if (v.regable() == true)
+			int tmp = self._next_tmp_slot()
+			v.loc = tmp
+			/; if (v.loc + 1 == 0)
+				tmp = self._next_stack_slot()
+				v.offset = tmp
+			;; else if (v.loc > 2)
+				v.loc = v.loc + 6
+			;/
+		;; else
+			tmp = self._next_stack_slot()
+			v.offset = tmp
+		;/
+
+		/; if (v.loc < 0)
+			int stk = v.actual_size()
+			~uint8 stk_str = utils.int_to_str(stk)
+			self.cb`.add_c("    sub rsp, \0")
+			self.cb`.add_c(stk_str)
+			self.cb`.add_c("\n\0")
+			_delete(stk_str)
+		;/
+
+		self.tmps.push(~v)
+
+		return v.copy()
 	;/
 
 	# Free n tmp variables (starts from most recently created)
 	# If you want to generate code to set the stack pointer then
 	# set code to true
 	/; free_tmp (int tmps, bool code)
+		/; if (self.tmps.count < tmps)
+			tmps = self.tmps.count
+		;/
+
+		int stk_mv = 0
+		
+		~Var tmp
+		/; loop (int i = 1; i !> tmps) [i++]
+			tmp = self.tmps.get(self.tmps.count - i)
+			/; if (tmp`.loc < 0)
+				stk_mv = stk_mv + tmp`.actual_size()
+			;/
+			tmp`.end()
+			self.tmps.pop()
+		;/
+
+		/; if (stk_mv > 0)
+			~uint8 stk_mv_str = utils.int_to_str(stk_mv)
+			self.cb`.add_c("    add rsp, \0")
+			self.cb`.add_c(stk_mv_str)
+			self.cb`.add_c("\n\0")
+			_delete(stk_mv_str)
+		;/
 	;/
 
 	#
