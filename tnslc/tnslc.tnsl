@@ -5,10 +5,20 @@
 ~uint8 DEFAULT_FOUT = "out.asm\0"
 
 ~uint8 USAGE = "
-TNSLC v0.6.0 (C) 2024 CircleShift (MPL 2.0)
+TNSLC v0.7.0 (C) 2026 CircleShift (MPL 2.0)
 
 usage:
-	tnslc (file in) [file out]
+	tnslc [options] (file in)
+
+options:
+	-o [output file]
+		Sets the file to output asm code to (default is \"out.asm\")
+	
+	-p
+		Print the parse tree and exit without compiling
+	
+	-m
+		Print the module tree and exit without compiling
 	
 \0"
 
@@ -25,20 +35,48 @@ usage:
 		_printf(USAGE)
 		return 1
 	;/
-	
+
 	utils.File fin, fout
-	fin.init(argv{1})
-	
-	/; if (argc > 2)
-		fout.init(argv{2})
-	;; else
-		fout.init(DEFAULT_FOUT)
+	int arg_counter = 1
+	int mode = 0
+	~uint8 first_str = argv{arg_counter}
+
+	/; if (first_str{0} == '-')
+		/; if (utils.strcmp(argv{arg_counter}, "-p\0") == true)
+			mode = 1
+			arg_counter++
+		;; else if (utils.strcmp(argv{arg_counter}, "-m\0") == true)
+			mode = 2
+			arg_counter++
+		;; else if (utils.strcmp(argv{arg_counter}, "-o\0") == true)
+			arg_counter++
+			/; if (arg_counter !< argc)
+				_printf(USAGE)
+				return 1
+			;/
+			fout.init(argv{arg_counter})
+		;; else
+			fout.init(DEFAULT_FOUT)
+		;/
 	;/
 
-	compile.generate(~fin, ~fout)
+	/; if (arg_counter !< argc)
+		_printf(USAGE)
+		return 1
+	;/
+	
+	fin.init(argv{arg_counter})
+	
+	/; if (mode == 0)
+		compile.generate(~fin, ~fout)
+		fout.end()
+	;; else if (mode == 1)
+		compile.parse_tree(~fin)
+	;; else if (mode == 2)
+		compile.mod_tree(~fin)
+	;/
 
 	fin.end()
-	fout.end()
 
 	return 0
 ;/

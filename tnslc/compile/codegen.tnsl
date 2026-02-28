@@ -4,12 +4,47 @@
 	;/
 ;/
 
-/; generate (~utils.File fin, fout)
+/; parse_tree(~utils.File fin)
 	# Parse files into AST
 	parse.Node ast = parse.generate_ast(fin)
 	ast.update_children()
 
+	# Print parse tree
 	parse.print_ast(~ast)
+
+	ast.end()
+;/
+
+/; mod_tree(~utils.File fin)
+	# Parse files into AST
+	parse.Node ast = parse.generate_ast(fin)
+	ast.update_children()
+
+	# Create output buffer
+	CompBuf buffer
+	buffer.init()
+
+	Module mod
+	mod.init(~ast, ~buffer)
+	_gen_prims(~mod)
+	mod.update_children()
+	mod.collect_methods(~ast)
+
+	# Compile code
+	mod.compile(~buffer)
+
+	mod.print()
+
+	# Free all structs
+	mod.end()
+	buffer.end()
+	ast.end()
+;/
+
+/; generate (~utils.File fin, fout)
+	# Parse files into AST
+	parse.Node ast = parse.generate_ast(fin)
+	ast.update_children()
 
 	# Create output buffer
 	CompBuf buffer
@@ -25,8 +60,6 @@
 	# Compile code
 	mod.compile(~buffer)
 
-	mod.print()
-
 	# Write assembly to output file
 	fout.create()
 	buffer.write_to(fout)
@@ -38,6 +71,7 @@
 	ast.end()
 ;/
 
+# Generate a primitive type with the specified size and specified name
 /; _gen_prim(~Module m, int size, ~uint8 id)
 	~Module mds = m`._create_methods(id)
 	
@@ -53,6 +87,9 @@
 	m`.structs.push(~s)
 ;/
 
+# This function generates the generic language primitives on
+# the root module so that resolution will work when creating
+# a variable or struct
 /; _gen_prims (~Module m)
 
 	# One byte prims
