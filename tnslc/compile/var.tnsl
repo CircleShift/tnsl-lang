@@ -295,7 +295,7 @@ struct Var {
 	;/
 
 	/; _static_compile (~Module parent, ~CompBuf buf)
-		# TODO: 
+		# TODO: everything
 	;/
 
 	/; ptr [int32]

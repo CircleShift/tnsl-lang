@@ -90,7 +90,7 @@ struct Module {
 		/; loop (int i = 0; i < mod`.sub.count) [i++]
 			sub = mod`.sub.get(i)
 			
-			# TODO: Vars, Enums, Method blocks
+			# TODO: Enums
 
 			/; if (sub`._type == parse.NTYPE_MODULE)
 				Module m
@@ -161,6 +161,7 @@ struct Module {
 			/; if (sub`._type == parse.NTYPE_FUNCTION)
 				Function f
 				f.init(sub)
+				# Make function aware that it is in a method block
 				f.m = true
 				self.funcs.push(~f)
 			;/
@@ -185,11 +186,15 @@ struct Module {
 				~Module m = self._find_sub(sub`.data)
 				/; if (m !== NULL)
 					m`.collect_methods(sub)
+				;; else
+					_printf("Failed to find module for method\n\0")
 				;/
 			;; else if (sub`._type == parse.NTYPE_EXPORT)
 				~Module m = self._find_sub(sub`.data)
 				/; if (m !== NULL)
 					m`.collect_methods(sub)
+				;; else
+					_printf("Failed to find module for method\n\0")
 				;/
 			;/
 		;/
@@ -209,7 +214,7 @@ struct Module {
 		~parse.Node id
 		/; loop (int i = 1; i < decl`.sub.count) [i++]
 			id = decl`.sub.get(i)
-			/; if (tn`._type == parse.NTYPE_ID)
+			/; if (id`._type == parse.NTYPE_ID)
 				# Add a new variable to the list
 				Var v
 				v.init(tn, id)
@@ -221,8 +226,8 @@ struct Module {
 	/; compile (~CompBuf cb)
 		# First, since all the types are in place, we need to size all of them.
 		self._size_structs()
-		
-		# Finally, write all functions to the code section
+
+		# Finally, write all functions to the code section and globals to the data section
 		self._compile(cb)
 	;/
 
@@ -255,18 +260,21 @@ struct Module {
 	;/
 
 	/; _compile (~CompBuf cb)
+		# Static compile all global variables
 		~Var v
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
 			v`._static_compile(~self, cb)
 		;/
 
+		# Write function to code section
 		~Function f
 		/; loop (int i = 0; i < self.funcs.count) [i++]
 			f = self.funcs.get(i)
 			f`._compile(~self, cb)
 		;/
 
+		# Recurse
 		~Module m
 		/; loop (int i = 0; i < self.subs.count) [i++]
 			m = self.subs.get(i)

@@ -56,8 +56,11 @@ options:
 			;/
 			fout.init(argv{arg_counter})
 		;; else
-			fout.init(DEFAULT_FOUT)
+			_printf(USAGE)
+			return 1
 		;/
+	;; else
+		fout.init(DEFAULT_FOUT)
 	;/
 
 	/; if (arg_counter !< argc)

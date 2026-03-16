@@ -204,6 +204,20 @@ int errors_shown = 0
 	return true
 ;/
 
+# Canonical operation order from strongest (lowest number prec) to weakest (highest number prec)
+# Parenthesis or function call done before any of these
+# 0: deref         - (`)
+# 1: member        - (.)
+# 2: refer         - (~)
+# 3: inc/dec       - (++ --)
+# 4: bit shift     - (<< >>)
+# 5: len prefix op - (len)
+# 6: mul/div       - (* / %)
+# 7: add/sub       - (+ -)
+# 8: bitwise ops   - (! & | ^ !& !| !^)
+# 9: comparison    - (== < > <== >== !== !< !>)
+# 10: boolean      - (&& || ^^ !&& !|| !^^)
+# 11: assignment   - variants of =
 /; _op_order(~uint8 op) [int]
 	int l = utils.strlen(op)
 
@@ -255,6 +269,8 @@ int errors_shown = 0
 			return 5
 		;; else if (op{1} == '=')
 			return 9
+		;; else if (op{2} == '=')
+			return 11
 		;/
 		return 10
 	;/
