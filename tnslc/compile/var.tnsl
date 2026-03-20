@@ -134,6 +134,15 @@ struct Var {
 		return out
 	;/
 
+	/; is_ref [bool]
+		~int32 p = self.top_ptrc()
+		/; if (p == NULL)
+			return false
+		;/
+
+		return p` == 0
+	;/
+
 	/; _print (int idt)
 		_indent(idt)
 		_printf("{ Var : \0")
@@ -410,11 +419,24 @@ struct Var {
 
 	# Set this Variable to the value of other
 	/; set (~CompBuf buf, ~Var other)
-		self.standard_op(buf, other, "mov\0")
+		# Options:
+		# - If builtin then move based on size (byte, word, dword, qword)
+		# - If pointer then move qword
+		# - If struct then move via rep movsb
+
+		# Changes need to be made based on whether either is on the stack
+		# or if either is a reference
+		
+		# Can move to/from stack if only one is on stack/reference
+		# otherwise we must pre-mov the source into RSI and then
+		# we can move into the recipiant's address
+		
+		/; if ()
+		;/
 	;/
 
 	# Set the address which this reference points to
-	/; set_ref(~CompBuf buf, ~Var other)
+	/; set_ref (~CompBuf buf, ~Var other)
 	;/
 
 	# Generate a variable which can actually be used for operations
@@ -474,6 +496,28 @@ struct Var {
 
 	/; product_op (~CompBuf buf, ~Var other, ~uint8 op_str, int read_reg)
 
+		Var cpy = self.copy()
+		cpy.loc = 1
+		cpy.offset = 0
+
+		# Set RAX register for product operation
+		cpy.set(buf, ~self)
+
+		~uint8 from_str = other`.gen_loc()
+
+		buf`.add_c("    \0")
+		buf`.add_c(op_str)
+		buf`.add_c(" \0")
+		buf`.add_c(from_str)
+		buf`.add_c("\n\0")
+
+		_delete(from_str)
+
+		# Set back the var from the read_reg
+		cpy.loc = read_reg
+		self.set(buf, cpy)
+		
+		cpy.end()
 	;/
 
 	/; add (~CompBuf buf, ~Var other)
@@ -497,7 +541,12 @@ struct Var {
 			self.offset = self.offset * other`.offset
 			return
 		;/
-		self.product_op(buf, other, "imul", 1)
+
+		/; if (self.name{0} == 'u')
+			self.product_op(buf, other, "mul", 1)
+		;; else
+			self.product_op(buf, other, "imul", 1)
+		;/
 	;/
 
 	/; div (~CompBuf buf, ~Var other)
@@ -506,10 +555,10 @@ struct Var {
 			return
 		;/
 
-		/; if ("signed")
-			self.product_op(buf, other, "idiv", 1)
-		;; else
+		/; if (self.name{0} == 'u')
 			self.product_op(buf, other, "div", 1)
+		;; else
+			self.product_op(buf, other, "idiv", 1)
 		;/
 	;/
 
@@ -519,10 +568,10 @@ struct Var {
 			return
 		;/
 
-		/; if ("signed")
-			self.product_op(buf, other, "idiv", 4)
-		;; else
+		/; if (self.name{0} == 'u')
 			self.product_op(buf, other, "div", 4)
+		;; else
+			self.product_op(buf, other, "idiv", 4)
 		;/
 	;/
 
@@ -536,6 +585,14 @@ struct Var {
 
 	/; xor (~CompBuf buf, ~Var other)
 		self.standard_op(buf, other, "xor")
+	;/
+
+	/; not (~CompBuf buf)
+		~uint8 to_str = self.gen_loc()
+		buf`.add_c("    not \0")
+		buf`.add_c(to_str)
+		buf`.add_c("\n\0")
+		_delete(to_str)
 	;/
 
 	/; member (~CompBuf buf, ~uint8 name) [Var]

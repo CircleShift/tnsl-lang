@@ -140,6 +140,8 @@ struct Function {
 		;/
 
 		# Write label and opening
+		# Nieve implementation: r10-r15 are callee saved registers
+		# in the TNSL style ABI
 		out.place_base_label()
 		cb`.add_c("    push rbp\n\0")
 		cb`.add_c("    lea rbp, [rsp + 8]\n\0")
