@@ -184,6 +184,23 @@ struct Var {
 		return p` == 0
 	;/
 
+	# Returns true if two or more ref layers
+	/; double_ref [bool]
+		/; if (self.ptrc.count < 2)
+			return false
+		;/
+		~int32 p = self.ptrc.get(1)
+		return p` == 0
+	;/
+
+	# Returnes true if the underlying type is a signed integer
+	/; is_signed [bool]
+		/; if (_is_primitive(self._type`.name) !== 0)
+			return self._type`.name{0} == 'i'
+		;/
+		return false
+	;/
+
 	# Returns true if the variable is a pointer
 	/; is_ptr [bool]
 		~int32 p = self.top_ptrc()
@@ -247,6 +264,17 @@ struct Var {
 			return 8
 		;; else if (self._type == NULL)
 			return 0
+		;/
+
+		return self._type`.size
+	;/
+
+	/; type_size [uint]
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			~int32 p = self.ptrc.get(i)
+			/; if (p` !== 0)
+				return 8
+			;/
 		;/
 
 		return self._type`.size
@@ -503,7 +531,7 @@ struct Var {
 
 		buf`.add_c("] ; initial struct addr move\n\0")
 
-		# For as many more times as there are 
+		# For as many more times as there are references
 		/; loop (int i = 1; i < self.ptrc.count) [i++]
 			buf`.add_c("    mov \0")
 			buf`.add_c(r)
@@ -547,6 +575,135 @@ struct Var {
 		
 	;/
 
+	# Helper to properly get the lhs of a set
+	/; _set_prim_l (~CompBuf buf) [~uint8]
+
+		# Base of address/register
+		~uint8 out
+		/; if (self.loc > 0)
+			/; if (self.in_mem() == true)
+				out = reg_string(self.loc, 8)
+			;; else
+				uint sz = self.type_size()
+				out = reg_string(self.loc, sz)
+			;/
+		;; else
+			utils.Vector vout
+			/; if (self.loc + 1 == 0)
+				# Stack
+				vout.from_cstr("rbp \0")
+			;; else
+				vout.from_cstr("rel \0")
+				vout.push_cstr(self.name)
+			;/
+
+			int off = self.offset
+			/; if (off < 0)
+				off = 0 - off
+				vout.push_cstr("- \0")
+			;; else if (off > 0)
+				vout.push_cstr("+ \0")
+			;/
+
+			/; if (off !== 0)
+				out = utils.int_to_str(off)
+				vout.push_cstr(out)
+				_delete(out)
+			;/
+
+			out = vout.as_cstr()
+			
+			/; if (self.is_ref() == true)
+				# Need to move into rdi
+				buf`.add_c("    mov rdi, [\0")
+				buf`.add_c(out)
+				buf`.add_c("]\n\0")
+				_delete(out)
+				out = utils.strcpy("rdi\0")
+			;/
+		;/
+		
+		# If in memory we need to wrap in []
+		/; if (self.in_mem() == false)
+			utils.Vector vout
+			vout.from_cstr("[\0")
+			vout.push_cstr(out)
+			vout.push_cstr("]\0")
+
+			_delete(out)
+			out = vout.as_cstr()
+		;/
+		
+		# Loop and make sure we are dereferencing properly
+		/; loop (int i = 1; i < self.ptrc.count) [i++]
+			~int pc = self.ptrc.get(i)
+			/; if (pc` !== 0)
+				i = self.ptrc.count
+			;; else
+				buf`.add_c("    mov rdi, [rdi] ; auto deref\n\0")
+			;/
+		;/
+
+		/; if (self.double_ref() == true)
+			_delete(out)
+			out = utils.strcpy("[rdi]\0")
+		;/
+
+		return out
+	;/
+
+	# Helper to properly get the rhs of a set
+	/; _set_prim_r (~CompBuf buf, ~Var lhs) [~uint8]
+		~uint8 out = self._set_prim_l(buf)
+
+		# Sign extend if required
+		bool ext = false
+		uint R = self.type_size()
+		uint L = lhs`.type_size()
+		/; if (R < L)
+			ext = true
+			~uint8 vout = reg_string(5, L)
+
+			/; if (lhs`.is_signed() == true && self.is_signed() == true)
+				/; if (R < 4)
+					buf`.add_c("    movsx \0")
+				;; else
+					buf`.add_c("    movsxd \0")
+				;/
+				buf`.add_c(vout)
+				buf`.add_c(", \0")
+			;; else if (R < 4)
+				buf`.add_c("    movzx \0")
+				buf`.add_c(vout)
+				buf`.add_c(", \0")
+			;; else
+				buf`.add_c("    mov \0")
+				buf`.add_c(vout)
+				buf`.add_c(", \0")
+			;/
+
+			buf`.add_c(out)
+			buf`.add_c("\n\0")
+			_delete(out)
+			out = vout
+		;/
+
+		/; if (ext == false)
+			/; if (self.in_mem() == true && lhs`.in_mem() == true)
+				~uint8 vout = reg_string(5, R)
+				buf`.add_c("    mov \0")
+				buf`.add_c(vout)
+				buf`.add_c(", \0")
+				buf`.add_c(out)
+				buf`.add_c("\n\0")
+				_delete(out)
+				out = vout
+			;/
+		;/
+
+		return out
+	;/
+
 
 	# Set this Variable to the value of other
 	/; set (~CompBuf buf, ~Var other)
@@ -560,11 +717,19 @@ struct Var {
 			self._set_struct(buf, other)
 			return
 		;/
+		
+		# Generate lhs set and rhs set
+		~uint8 sr = other`._set_prim_r(buf, ~self)
+		~uint8 sl = self._set_prim_l(buf)
 
-		# Ok, we are either a builtin type or a pointer.
-		# First we have to typecheck and find the correct move operation
-		# If the typecheck fails we will get a null pointer back
-		# ~uint8 tc_mov = 
+		buf`.add_c("    mov\0")
+		buf`.add_c(sl)
+		buf`.add_c(", \0")
+		buf`.add_c(sr)
+		buf`.add_c("\n\0")
+
+		_delete(sl)
+		_delete(sr)
 	;/
 
 	# Set the address which this reference points to
