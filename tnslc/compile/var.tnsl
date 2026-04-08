@@ -591,7 +591,7 @@ struct Var {
 			utils.Vector vout
 			/; if (self.loc + 1 == 0)
 				# Stack
-				vout.from_cstr("rbp \0")
+				vout.from_cstr("rbp\0")
 			;; else
 				vout.from_cstr("rel \0")
 				vout.push_cstr(self.name)
@@ -600,9 +600,9 @@ struct Var {
 			int off = self.offset
 			/; if (off < 0)
 				off = 0 - off
-				vout.push_cstr("- \0")
+				vout.push_cstr(" - \0")
 			;; else if (off > 0)
-				vout.push_cstr("+ \0")
+				vout.push_cstr(" + \0")
 			;/
 
 			/; if (off !== 0)
@@ -624,7 +624,7 @@ struct Var {
 		;/
 		
 		# If in memory we need to wrap in []
-		/; if (self.in_mem() == false)
+		/; if (self.in_mem() == true)
 			utils.Vector vout
 			vout.from_cstr("[\0")
 			vout.push_cstr(out)
@@ -722,7 +722,7 @@ struct Var {
 		~uint8 sr = other`._set_prim_r(buf, ~self)
 		~uint8 sl = self._set_prim_l(buf)
 
-		buf`.add_c("    mov\0")
+		buf`.add_c("    mov \0")
 		buf`.add_c(sl)
 		buf`.add_c(", \0")
 		buf`.add_c(sr)
