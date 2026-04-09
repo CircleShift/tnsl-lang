@@ -4,6 +4,7 @@
   :import "var.tnsl"
   :import "function.tnsl"
   :import "module.tnsl"
+  :import "tests_var.tnsl"
   :import "codegen.tnsl"
   :import "scope.tnsl"
 ;/

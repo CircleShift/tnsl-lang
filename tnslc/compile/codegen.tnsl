@@ -41,6 +41,7 @@
 	ast.end()
 ;/
 
+
 /; generate (~utils.File fin, fout)
 	# Parse files into AST
 	parse.Node ast = parse.generate_ast(fin)
@@ -59,6 +60,9 @@
 
 	# Compile code
 	mod.compile(~buffer)
+
+	# Tests
+	# var_tests(~buffer)
 
 	# Write assembly to output file
 	fout.create()

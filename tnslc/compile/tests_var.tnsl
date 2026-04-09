@@ -1,0 +1,248 @@
+
+/; var_test_mov (~Module root, ~CompBuf buf)
+	~Struct _int = root`._find_struct("int\0")
+
+	Var a
+	Var b
+
+	a._init(_int)
+	b._init(_int)
+
+	buf`.add_c("; test: register to register move, both int\n\0")
+
+	a.loc = 1
+	b.loc = 2
+	b.set(buf, ~a)
+
+	buf`.add_c("; test: register to stack move\n\0")
+	
+	b.loc = b.loc - 3
+	b.offset = b.offset - 56
+	b.set(buf, ~a)
+
+	buf`.add_c("; test: stack to register move\n\0")
+	
+	a.set(buf, ~b)
+
+	buf`.add_c("; test: stack to stack move\n\0")
+
+	a.loc = a.loc - 2
+	a.offset = 56
+	b.set(buf, ~a)
+
+	buf`.add_c("\n\0")
+
+	a.end()
+	b.end()
+;/
+
+/; var_test_movsx (~Module root, ~CompBuf buf)
+	~Struct _int = root`._find_struct("int\0")
+	~Struct _int32 = root`._find_struct("int32\0")
+	~Struct _int8 = root`._find_struct("int8\0")
+
+	Var a
+	Var b
+	Var c
+
+	a._init(_int)
+	b._init(_int32)
+	c._init(_int8)
+
+	a.loc = 1
+	b.loc = 2
+	c.loc = 3
+
+	buf`.add_c("; test: mov with extension - int8 to int32\n\0")
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int8 to int\n\0")
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int32 to int\n\0")
+	a.set(buf, ~b)
+
+	buf`.add_c("; test: mov with extension - int8 to int32 (stack to reg)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int8 to int32 (reg to stack)\n\0")
+	c.loc = 3
+	c.offset = 0
+	b.loc = b.loc - 3
+	b.offset = 5
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int8 to int32 (stack to stack)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	b.set(buf, ~c)
+
+	b.loc = 2
+	b.offset = 0
+	c.loc = 3
+	c.offset = 0
+
+	buf`.add_c("; test: mov with extension - int8 to int (stack to reg)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int8 to int (reg to stack)\n\0")
+	c.loc = 3
+	c.offset = 0
+	a.loc = a.loc - 2
+	a.offset = 5
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - int8 to int (stack to stack)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	a.set(buf, ~c)
+
+	a.loc = 1
+	a.offset = 0
+	c.loc = 3
+	c.offset = 0
+
+	buf`.add_c("; test: mov with extension - int32 to int (stack to reg)\n\0")
+	b.loc = b.loc - 3
+	b.offset = 4
+	a.set(buf, ~b)
+	buf`.add_c("; test: mov with extension - int32 to int (reg to stack)\n\0")
+	b.loc = 2
+	b.offset = 0
+	a.loc = a.loc - 2
+	a.offset = 5
+	a.set(buf, ~b)
+	buf`.add_c("; test: mov with extension - int32 to int (stack to stack)\n\0")
+	b.loc = b.loc - 3
+	b.offset = 4
+	a.set(buf, ~b)
+
+
+	buf`.add_c("\n\0")
+	a.end()
+	b.end()
+	c.end()
+;/
+
+/; var_test_movzx (~Module root, ~CompBuf buf)
+	~Struct _uint = root`._find_struct("uint\0")
+	~Struct _uint32 = root`._find_struct("uint32\0")
+	~Struct _uint8 = root`._find_struct("uint8\0")
+
+	Var a
+	Var b
+	Var c
+
+	a._init(_uint)
+	b._init(_uint32)
+	c._init(_uint8)
+
+	a.loc = 1
+	b.loc = 2
+	c.loc = 3
+
+	buf`.add_c("; test: mov with extension - uint8 to uint32\n\0")
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint8 to uint\n\0")
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint32 to uint\n\0")
+	a.set(buf, ~b)
+
+	buf`.add_c("; test: mov with extension - uint8 to uint32 (stack to reg)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint8 to uint32 (reg to stack)\n\0")
+	c.loc = 3
+	c.offset = 0
+	b.loc = b.loc - 3
+	b.offset = 5
+	b.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint8 to uint32 (stack to stack)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	b.set(buf, ~c)
+
+	b.loc = 2
+	b.offset = 0
+	c.loc = 3
+	c.offset = 0
+
+	buf`.add_c("; test: mov with extension - uint8 to uint (stack to reg)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint8 to uint (reg to stack)\n\0")
+	c.loc = 3
+	c.offset = 0
+	a.loc = a.loc - 2
+	a.offset = 5
+	a.set(buf, ~c)
+	buf`.add_c("; test: mov with extension - uint8 to uint (stack to stack)\n\0")
+	c.loc = c.loc - 4
+	c.offset = 4
+	a.set(buf, ~c)
+
+	a.loc = 1
+	a.offset = 0
+	c.loc = 3
+	c.offset = 0
+
+	buf`.add_c("; test: mov with extension - uint32 to uint (stack to reg)\n\0")
+	b.loc = b.loc - 3
+	b.offset = 4
+	a.set(buf, ~b)
+	buf`.add_c("; test: mov with extension - uint32 to uint (reg to stack)\n\0")
+	b.loc = 2
+	b.offset = 0
+	a.loc = a.loc - 2
+	a.offset = 5
+	a.set(buf, ~b)
+	buf`.add_c("; test: mov with extension - uint32 to uint (stack to stack)\n\0")
+	b.loc = b.loc - 3
+	b.offset = 4
+	a.set(buf, ~b)
+
+
+	buf`.add_c("\n\0")
+	a.end()
+	b.end()
+	c.end()
+;/
+
+# Test moving references
+/; var_test_movref (~Module root, ~CompBuf buf)
+	~Struct _int = root`._find_struct("int\0")
+	~Struct _int32 = root`._find_struct("int32\0")
+;/
+
+# Generate a test_struct type for use in testing struct moves and sub-refs
+/; _gen_test_struct(~Module m)
+	~Module mds = m`._create_methods("test\0")
+	
+	Var t
+
+	Struct s
+	s.size = 9
+	s.methods = NULL
+	s.members.init(len t)
+	s.name = utils.strcpy("test\0")
+	s._up = NULL
+	
+	m`.structs.push(~s)
+;/
+
+/; var_tests (~CompBuf buf)
+	# Setup dummy root
+	Module mod
+	mod._init()
+	mod.name = utils.strcpy("\0")
+	mod.e = true
+	_gen_prims(~mod)
+	_gen_test_struct(~mod)
+
+	var_test_mov(~mod, buf)
+	var_test_movsx(~mod, buf)
+	var_test_movzx(~mod, buf)
+	var_test_movref(~mod, buf)
+
+	mod.end()
+;/

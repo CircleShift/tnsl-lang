@@ -124,6 +124,15 @@ struct Var {
 	# Init and copy functions #
 	###########################
 
+	# Dummy init
+	/; _init (~Struct _type)
+		self.name = utils.strcpy("dummy\0")
+		self.ptrc.init(4)
+		self.loc = 0
+		self.offset = 0
+		self._type = _type
+	;/
+
 	# Initial init function, requires type node and
 	# identifier node
 	/; init (~parse.Node tn, id)
@@ -447,7 +456,7 @@ struct Var {
 
 	# Returns true if the variable is known to be stored in memory
 	/; in_mem [bool]
-		/; if (self.loc < 0)
+		/; if (self.loc < 1)
 			return true
 		;/
 
@@ -527,6 +536,9 @@ struct Var {
 			;; else
 				buf`.add_c(" + \0")
 			;/
+			~uint8 its = utils.int_to_str(o)
+			buf`.add_c(its)
+			_delete(its)
 		;/
 
 		buf`.add_c("] ; initial struct addr move\n\0")
@@ -656,6 +668,24 @@ struct Var {
 	/; _set_prim_r (~CompBuf buf, ~Var lhs) [~uint8]
 		~uint8 out = self._set_prim_l(buf)
 
+		/; if (self.in_mem() == true)
+			utils.Vector vout
+			uint ts = self.type_size()
+			/; if (ts == 1)
+				vout.from_cstr("byte \0")
+			;; else if (ts == 2)
+				vout.from_cstr("word \0")
+			;; else if (ts == 4)
+				vout.from_cstr("dword \0")
+			;; else if (ts == 8)
+				vout.from_cstr("qword \0")
+			;/
+			vout.push_cstr(out)
+
+			_delete(out)
+			out = vout.as_cstr()
+		;/
+
 		# Sign extend if required
 		bool ext = false
 		uint R = self.type_size()
@@ -677,9 +707,7 @@ struct Var {
 				buf`.add_c(vout)
 				buf`.add_c(", \0")
 			;; else
-				buf`.add_c("    mov \0")
-				buf`.add_c(vout)
-				buf`.add_c(", \0")
+				buf`.add_c("    mov esi, \0")
 			;/
 
 			buf`.add_c(out)
@@ -712,7 +740,7 @@ struct Var {
 		# - If pointer then move qword
 		# - If struct then move via rep movsb
 
-		/; if (self.is_struct() == false)
+		/; if (self.is_struct() == true)
 			# Struct set
 			self._set_struct(buf, other)
 			return
