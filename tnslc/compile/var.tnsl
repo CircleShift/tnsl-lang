@@ -202,6 +202,20 @@ struct Var {
 		return p` == 0
 	;/
 
+	# Ref level
+	/; max_ref [int]
+		int out = 0
+		/; loop (int i = 0; i < self.ptrc.count)
+			~int32 p = self.ptrc.get(i)
+			/; if (p` == 0)
+				out++
+			;; else
+				i = self.ptrc.count
+			;/
+		;/
+		return out
+	;/
+
 	# Returnes true if the underlying type is a signed integer
 	/; is_signed [bool]
 		/; if (_is_primitive(self._type`.name) !== 0)
@@ -408,52 +422,6 @@ struct Var {
 	# Variable manipulation (run time) #
 	####################################
 	
-	/; gen_loc [~uint8]
-		/; if (self.loc == 0)
-			return utils.int_to_str(self.offset)
-		;/
-
-		utils.Vector out
-		out.init(1)
-
-		/; if (self.in_mem() == true)
-			out.push_char('[')
-		;/
-
-		~uint8 str
-		/; if (self.loc + 1 < 0)
-			out.push_cstr("rel \0")
-			str = utils.strcpy(self.name)
-		;; else if (self.loc < 0)
-			str = reg_string(8, 8)
-		;; else
-			str = reg_string(self.loc, self.actual_size())
-		;/
-		out.push_cstr(str)
-		_delete(str)
-
-
-		/; if (self.in_mem() == true)
-			/; if (self.loc + 1 == 0)
-				int stk = 0 - self.offset
-				/; if (stk > 0)
-					out.push_cstr(" - \0")
-					str = utils.int_to_str(stk)
-					out.push_cstr(str)
-					_delete(str)
-				;; else if (stk < 0)
-					out.push_cstr(" + \0")
-					str = utils.int_to_str(self.offset)
-					out.push_cstr(str)
-					_delete(str)
-				;/
-			;/
-			out.push_char(']')
-		;/
-
-		return out.as_cstr()
-	;/
-
 	# Returns true if the variable is known to be stored in memory
 	/; in_mem [bool]
 		/; if (self.loc < 1)
@@ -494,7 +462,6 @@ struct Var {
 
 		return false
 	;/
-
 
 	# Operations
 
@@ -589,6 +556,10 @@ struct Var {
 
 	# Helper to properly get the lhs of a set
 	/; _set_prim_l (~CompBuf buf) [~uint8]
+		/; if (self.loc == 0)
+			_printf("SET WAS CALLED ON A LITERAL!  THIS IS A COMPILER ERROR!\0")
+			return utils.strcpy("ERR SHOULD NOT HAPPEN - TRIED TO SETPRIML ON A LITERAL\0")
+		;/
 
 		# Base of address/register
 		~uint8 out
@@ -666,6 +637,11 @@ struct Var {
 
 	# Helper to properly get the rhs of a set
 	/; _set_prim_r (~CompBuf buf, ~Var lhs) [~uint8]
+		/; if (self.loc == 0)
+			~uint8 o = utils.int_to_str(self.offset)
+			return o
+		;/
+
 		~uint8 out = self._set_prim_l(buf)
 
 		/; if (self.in_mem() == true)
@@ -718,7 +694,7 @@ struct Var {
 
 		/; if (ext == false)
 			/; if (self.in_mem() == true && lhs`.in_mem() == true)
-				~uint8 vout = reg_string(5, R)
+				~uint8 vout = reg_string(5, L)
 				buf`.add_c("    mov \0")
 				buf`.add_c(vout)
 				buf`.add_c(", \0")
@@ -761,51 +737,33 @@ struct Var {
 	;/
 
 	# Set the address which this reference points to
-	/; set_ref (~CompBuf buf, ~Var other)
+	/; set_ref (~CompBuf buf, ~Var other, int depth)
+		# count how many refs
+		int max_depth = self.max_ref()
+
+		/; if (max_depth < depth)
+			_print_num("Unable to set reference, depth %d exceeds max_depth \0", depth)
+			_print_num("%d\n\0", max_depth)
+			return
+		;/
+			
+		int32 set = 0
+		set = set - 1
+
+		Var copy = self.copy()
+		~int32 ptr = copy.ptrc.get(max_depth - depth)
+		ptr` = set
+		copy.set(buf, other)
+		copy.end()
 	;/
 
-	# Generate a variable which can actually be used for operations
-	/; strip_refs (~CompBuf buf, bool from) [Var]
-		Var out = self.copy()
-		~int32 p = out.top_ptrc()
-		/; if (p == NULL)
-			return out
-		;; else if (p` !== 0)
-			return out
-		;/
-
-		~uint8 gen = out.gen_loc()
-
-		out.ptr_pop()
-		p = out.top_ptrc()
-		/; loop (p` == 0)
-			buf`.add_c("    mov rsi, \0")
-			buf`.add_c(gen)
-			buf`.add_c("\n\0")
-			out.loc = 5
-			_delete(gen)
-			gen = out.gen_loc()
-			out.ptr_pop()
-			p = out.top_ptrc()
-		;/
-
-		/; if (from == false)
-			buf`.add_c("    mov rdi, \0")
-			out.loc = 6
-		;; else
-			buf`.add_c("    mov rsi, \0")
-			out.loc = 5
-		;/
-		buf`.add_c(gen)
-		buf`.add_c("\n\0")
-		_delete(gen)
-
-		return out
-	;/
+	#######################
+	# Standard operations #
+	#######################
 
 	/; standard_op (~CompBuf buf, ~Var other, ~uint8 op_str)
-		~uint8 to_str = self.gen_loc()
-		~uint8 from_str = other`.gen_loc()
+		~uint8 from_str = other`._set_prim_r(buf, ~self)
+		~uint8 to_str = self._set_prim_l(buf)
 
 		buf`.add_c("    \0")
 		buf`.add_c(op_str)
@@ -819,38 +777,13 @@ struct Var {
 		_delete(to_str)
 	;/
 
-	/; product_op (~CompBuf buf, ~Var other, ~uint8 op_str, int read_reg)
-
-		Var cpy = self.copy()
-		cpy.loc = 1
-		cpy.offset = 0
-
-		# Set RAX register for product operation
-		cpy.set(buf, ~self)
-
-		~uint8 from_str = other`.gen_loc()
-
-		buf`.add_c("    \0")
-		buf`.add_c(op_str)
-		buf`.add_c(" \0")
-		buf`.add_c(from_str)
-		buf`.add_c("\n\0")
-
-		_delete(from_str)
-
-		# Set back the var from the read_reg
-		cpy.loc = read_reg
-		self.set(buf, cpy)
-		
-		cpy.end()
-	;/
-
 	/; add (~CompBuf buf, ~Var other)
 		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
 			self.offset = self.offset + other`.offset
 			return
 		;/
-		self.standard_op(buf, other, "add")
+
+		self.standard_op(buf, other, "add\0")
 	;/
 
 	/; sub (~CompBuf buf, ~Var other)
@@ -858,20 +791,159 @@ struct Var {
 			self.offset = self.offset - other`.offset
 			return
 		;/
-		self.standard_op(buf, other, "sub")
+
+		self.standard_op(buf, other, "sub\0")
 	;/
+
+	/; and (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset & other`.offset
+			return
+		;/
+
+		self.standard_op(buf, other, "and\0")
+	;/
+
+	/; or (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset | other`.offset
+			return
+		;/
+
+		self.standard_op(buf, other, "or\0")
+	;/
+
+	/; xor (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset ^ other`.offset
+			return
+		;/
+
+		self.standard_op(buf, other, "xor\0")
+	;/
+
+	# Product op
 
 	/; mul (~CompBuf buf, ~Var other)
 		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
 			self.offset = self.offset * other`.offset
 			return
 		;/
+	
+		~uint8 from_str = other`._set_prim_r(buf, ~self)
+		~uint8 to_str = self._set_prim_l(buf)
 
-		/; if (self.name{0} == 'u')
-			self.product_op(buf, other, "mul", 1)
+		/; if (self.in_mem() == true)
+			uint sz = self.type_size()
+			~uint8 ax = reg_string(1, sz)
+			
+			# Move to ax register for the mul and move back afterward
+			buf`.add_c("    mov \0")
+			buf`.add_c(ax)
+			buf`.add_c(", \0")
+			buf`.add_c(to_str)
+			buf`.add_c("\n\0")
+
+			# Do actual product
+			buf`.add_c("    imul \0")
+			buf`.add_c(ax)
+			buf`.add_c(", \0")
+			buf`.add_c(from_str)
+			buf`.add_c("\n\0")
+
+			# Move back
+			buf`.add_c("    mov \0")
+			buf`.add_c(to_str)
+			buf`.add_c(", \0")
+			buf`.add_c(ax)
+			buf`.add_c("\n\0")
+
+			_delete(ax)
 		;; else
-			self.product_op(buf, other, "imul", 1)
+			buf`.add_c("    imul \0")
+			buf`.add_c(to_str)
+			buf`.add_c(", \0")
+			buf`.add_c(from_str)
+			buf`.add_c("\n\0")
 		;/
+
+		_delete(from_str)
+		_delete(to_str)
+	;/
+
+	# Division op
+
+	/; _div(~CompBuf buf, ~Var other, int r)
+		~uint8 from_str = other`._set_prim_r(buf, ~self)
+		~uint8 to_str = self._set_prim_l(buf)
+		uint sz = self.type_size()
+		~uint8 rstr = reg_string(1, sz)
+
+		/; if (other`.loc == 0)
+			# Move literal into register
+			buf`.add_c("    mov rcx, \0")
+			buf`.add_c(from_str)
+			buf`.add_c("\n\0")
+			_delete(from_str)
+			from_str = reg_string(3, sz)
+		;/
+
+		# Move dividend into rax
+		buf`.add_c("    mov \0")
+		buf`.add_c(rstr)
+		buf`.add_c(", \0")
+		buf`.add_c(to_str)
+		buf`.add_c("\n\0")
+
+		/; if (self.is_signed() == true)
+			# Sign extend
+			/; if (sz == 1)
+				buf`.add_c("    movsx ax, al\n\0")
+			;; else if (sz == 2)
+				buf`.add_c("    cwd\n\0")
+			;; else if (sz == 4)
+				buf`.add_c("    cdq\n\0")
+			;; else if (sz == 8)
+				buf`.add_c("    cqo\n\0")
+			;/
+
+			buf`.add_c("    idiv \0")
+		;; else
+			# Zero out
+			buf`.add_c("    xor ")
+			/; if (sz == 1)
+				buf`.add_c("ah, ah\n\0")
+			;; else if (sz == 2)
+				buf`.add_c("dx, dx\n\0")
+			;; else if (sz == 4)
+				buf`.add_c("edx, edx\n\0")
+			;; else if (sz == 8)
+				buf`.add_c("rdx, rdx\n\0")
+			;/
+
+			buf`.add_c("    div \0")
+		;/
+		buf`.add_c(from_str)
+		buf`.add_c("\n\0")
+
+		# Fix for bytes
+		_delete(rstr)
+		/; if (sz == 1 && r == 4)
+			rstr = utils.strcpy("ah\0")
+		;; else
+			rstr = reg_string(r, sz)
+		;/
+		
+		
+		buf`.add_c("    mov \0")
+		buf`.add_c(to_str)
+		buf`.add_c(", \0")
+		buf`.add_c(rstr)
+		buf`.add_c("\n\0")
+
+		_delete(from_str)
+		_delete(to_str)
+		_delete(rstr)
 	;/
 
 	/; div (~CompBuf buf, ~Var other)
@@ -880,11 +952,7 @@ struct Var {
 			return
 		;/
 
-		/; if (self.name{0} == 'u')
-			self.product_op(buf, other, "div", 1)
-		;; else
-			self.product_op(buf, other, "idiv", 1)
-		;/
+		self._div(buf, other, 1)
 	;/
 
 	/; mod (~CompBuf buf, ~Var other)
@@ -893,28 +961,29 @@ struct Var {
 			return
 		;/
 
-		/; if (self.name{0} == 'u')
-			self.product_op(buf, other, "div", 4)
-		;; else
-			self.product_op(buf, other, "idiv", 4)
-		;/
-	;/
-
-	/; and (~CompBuf buf, ~Var other)
-		self.standard_op(buf, other, "and")
-	;/
-
-	/; or (~CompBuf buf, ~Var other)
-		self.standard_op(buf, other, "or")
-	;/
-
-	/; xor (~CompBuf buf, ~Var other)
-		self.standard_op(buf, other, "xor")
+		self._div(buf, other, 4)
 	;/
 
 	/; not (~CompBuf buf)
-		~uint8 to_str = self.gen_loc()
+		/; if (self.loc == VLOC_LITL)
+			self.offset = !self.offset
+			return
+		;/
+
+		~uint8 to_str = self._set_prim_l(buf)
 		buf`.add_c("    not \0")
+		/; if (self.in_mem() == true)
+			uint sz = self.type_size()
+			/; if (sz == 1)
+				buf`.add_c("byte \0")
+			;; else if (sz == 2)
+				buf`.add_c("word \0")
+			;; else if (sz == 4)
+				buf`.add_c("dword \0")
+			;; else if (sz == 8)
+				buf`.add_c("qword \0")
+			;/
+		;/
 		buf`.add_c(to_str)
 		buf`.add_c("\n\0")
 		_delete(to_str)
