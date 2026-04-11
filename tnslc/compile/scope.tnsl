@@ -50,6 +50,25 @@ struct Scope {
 		self.vars.init(len v)
 		self.tmps.init(len v)
 	;/
+
+	/; print
+		_printf("==== SCOPE DATA ====\n\0")
+
+		_printf("Scope label: \0")
+		~uint8 lab = self.base_label()
+		_printf(lab)
+		_printf("\n\n\0")
+		_delete(lab)
+
+		_printf("Pre-tracked vars:\n\0")
+		~Var v
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			v = self.vars.get(i)
+			v`._print(0)
+		;/
+
+		_printf("====================\n\0")
+	;/
 	
 	/; end
 		_delete(self.name)
@@ -135,7 +154,7 @@ struct Scope {
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
 			/; if (v`.loc < 0 && v`.offset !== 0)
-				int off = v`.offset - v`.actual_size()
+				int off = v`.offset
 				/; if (off < out)
 					out = off
 				;/
@@ -145,7 +164,7 @@ struct Scope {
 		/; loop (int i = 0; i < self.tmps.count) [i++]
 			v = self.tmps.get(i)
 			/; if (v`.loc < 0 && v`.offset !== 0)
-				int off = v`.offset - v`.actual_size()
+				int off = v`.offset
 				/; if (off < out)
 					out = off
 				;/
@@ -285,12 +304,14 @@ struct Scope {
 			v`.loc = tmp
 			/; if (v`.loc + 1 == 0)
 				tmp = self._next_stack_slot()
-				v`.offset = tmp
+				int sz = v`.actual_size()
+				v`.offset = tmp - sz
 			;/
 		;; else if (v`.loc + 1 == 0)
 			/; if (v`.offset == 0)
 				tmp = self._next_stack_slot()
-				v`.offset = tmp
+				int sz = v`.actual_size()
+				v`.offset = tmp - sz
 			;/
 		;/
 
@@ -336,13 +357,15 @@ struct Scope {
 			v.loc = tmp
 			/; if (v.loc + 1 == 0)
 				tmp = self._next_stack_slot()
-				v.offset = tmp
+				int sz = v.actual_size()
+				v.offset = tmp - sz
 			;; else if (v.loc > 2)
 				v.loc = v.loc + 6
 			;/
 		;; else
 			tmp = self._next_stack_slot()
-			v.offset = tmp
+			int sz = v.actual_size()
+			v.offset = tmp - sz
 		;/
 
 		/; if (v.loc < 0)

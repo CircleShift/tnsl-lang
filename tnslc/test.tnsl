@@ -1,11 +1,5 @@
 
-/; main (int argc, ~~uint8 argv) [int]
-	int i = 0
-	/; if (len args > 1)
-		i = len args
-	;; else
-		i = ~args
-	;/
-	return i
+/; pass_a (int a) [int]
+	return a
 ;/
 

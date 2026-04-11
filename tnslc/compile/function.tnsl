@@ -260,7 +260,8 @@ struct Function {
 
 		_print_num("ERROR: Number of return values (%d) does not match expected (\0", have)
 		_print_num("%d)\n\0", expected)
-		_printf("ERROR: A list of return values should be enclosed by {}\n\0")
+		_printf("ERROR: To return multiple values enclose them in {}\n\0")
+		_printf("ERROR: To add more return values, add them (comma separated) between [] at the end of the function definition\n\0")
 
 		return false
 	;/
@@ -271,42 +272,50 @@ struct Function {
 			return
 		;/
 
+		n = n`.sub.get(0)
 		/; if (self.outputs.count > 1)
-			n = n`.sub.get(0)
 			n = n`.sub.get(0)
 		;/
 		
-		~Var out
-		Var tmp, cmp
-		utils.Vector tmps
-		tmps.init(len cmp)
-
 		s`.cb`.add_c("\n    ; STARTING RETURN\n\0")
+		
+		~Var out
+		Var cmp
+		/; if (self.outputs.count > 1)
+			~parse.Node val_node
+			Var tmp
+			utils.Vector tmps
+			tmps.init(len cmp)
 
-		# Compile all values
-		~parse.Node val_node
-		/; loop (int i = 0; i < self.outputs.count) [i++]
-			val_node = n`.sub.get(i)
-			out = self.outputs.get(i)
+			# Compile all values
+			/; loop (int i = 0; i < self.outputs.count) [i++]
+				val_node = n`.sub.get(i)
+				out = self.outputs.get(i)
 
-			tmp = s`.mk_tmp(out)
-			cmp = self._compile_value(s, val_node, out)
-			tmp.set(s`.cb, ~cmp)
+				tmp = s`.mk_tmp(out)
+				cmp = self._compile_value(s, val_node, out)
+				tmp.set(s`.cb, ~cmp)
+				cmp.end()
+				tmps.push(~tmp)
+			;/
+
+			# Set all outputs
+			~Var tt
+			/; loop (int i = 0; i < self.outputs.count) [i++]
+				out = self.outputs.get(i)
+				tt = tmps.get(i)
+				out`.set(s`.cb, tt)
+				tt`.end()
+			;/
+
+			s`.free_tmp(tmps.count, false)
+			tmps.end()
+		;; else
+			out = self.outputs.get(0)
+			cmp = self._compile_value(s, n, out)
+			out`.set(s`.cb, ~cmp)
 			cmp.end()
-			tmps.push(~tmp)
 		;/
-
-		# Set all outputs
-		~Var tt
-		/; loop (int i = 0; i < self.outputs.count) [i++]
-			out = self.outputs.get(i)
-			tt = tmps.get(i)
-			out`.set(s`.cb, tt)
-			tt`.end()
-		;/
-
-		s`.free_tmp(tmps.count, false)
-		tmps.end()
 	;/
 
 	/; _return (~Scope s, ~parse.Node n)
@@ -393,8 +402,68 @@ struct Function {
 		;/
 	;/
 
+	/; _compile_literal (~parse.Node n) [int]
+		/; if (utils.strcmp(n`.data, "true\0") == true)
+			return 1
+		;; else if (utils.strcmp(n`.data, "false\0") == true)
+			return 0
+		;; else if (utils.strcmp(n`.data, "null\0") == true)
+			return 0
+		;/
+
+		return utils.cstr_to_int(n`.data)
+	;/
+
+	/; _compile_base_id (~Scope s, ~parse.Node n) [~Var]
+		# First, check scope
+		~Var found = s`.find_var(n`.data)
+
+		# If that fails, do a search in the module
+		/; if (found == NULL)
+			utils.Vector v
+			v.init(8)
+			~uint8 str = n`.data 
+			v.push(~str)
+			found = s`.mod`.find(SEARCH_VAR, ~v)
+		;/
+
+		/; if (found == NULL)
+			_printf("Could not find variable with identifier \"\0")
+			_printf(n`.data)
+			_printf("\" in scope \0")
+			~uint8 bl = s`.base_label()
+			_printf(bl)
+			_delete(bl)
+			_printf("\n\0")
+		;/
+
+		return found
+	;/
+
 	# Should handle computing a value, delegate to other funcs when needed
 	/; _compile_value (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+		/; if (n`._type == parse.NTYPE_VALUE)
+			~parse.Node v = n`.sub.get(0)
+			return self._compile_value(s, v, type_hint)
+
+		;; else if (n`._type == parse.NTYPE_LITERAL)
+			/; if (type_hint`.is_struct() == false)
+				Var out = type_hint`.copy()
+				/; loop (out.is_ref() == true)
+					out.ptr_pop()
+				;/
+				out.loc = 0
+				out.offset = self._compile_literal(n)
+				return out
+			;/
+		
+		;; else if (n`._type == parse.NTYPE_ID)
+			~Var o = self._compile_base_id(s, n)
+			/; if (o !== NULL)
+				return o`.copy()
+			;/
+		;/
+
 		Var out = type_hint`.copy()
 		return out
 	;/
