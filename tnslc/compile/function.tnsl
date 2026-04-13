@@ -440,6 +440,45 @@ struct Function {
 		return found
 	;/
 
+	/; _compile_set (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+		# TODO
+		Var out
+		return out
+	;/
+
+	/; _compile_bin (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+		# TODO
+		Var out
+		return out
+	;/
+
+	/; _compile_pre (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+		Var out
+
+		/; if (utils.strcmp(n`.data, "-\0") == true)
+			~parse.Node sub = n`.sub.get(0)
+			out = self._compile_value(s, sub, type_hint)
+			out.neg(s`.cb)
+		;; else if (utils.strcmp(n`.data, "!\0") == true)
+			_printf("! not impl\n\0")
+		;; else if (utils.strcmp(n`.data, "~\0") == true)
+			_printf("~ not impl\n\0")
+		;; else if (utils.strcmp(n`.data, "--\0") == true)
+			_printf("-- not impl\n\0")
+		;; else if (utils.strcmp(n`.data, "++\0") == true)
+			_printf("++ not impl\n\0")
+		;; else if (utils.strcmp(n`.data, "len\0") == true)
+			_printf("len not impl\n\0")
+		;; else
+			_printf("COMPILER ERROR: \"\0")
+			_printf(n`.data)
+			_printf("\" NOT RECOGNIZED AS A VALID PREOP\n\0")
+			out = type_hint`.copy()
+		;/
+
+		return out
+	;/
+
 	# Should handle computing a value, delegate to other funcs when needed
 	/; _compile_value (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
 		/; if (n`._type == parse.NTYPE_VALUE)
@@ -456,12 +495,28 @@ struct Function {
 				out.offset = self._compile_literal(n)
 				return out
 			;/
+
+			_printf("Could not compile literal \"\0")
+			_printf(n`.data)
+			_printf("\" in scope \0")
+			~uint8 bl = s`.base_label()
+			_printf(bl)
+			_delete(bl)
+			_printf(" since the type was struct \"\0")
+			_printf(type_hint`._type`.name)
+			_printf("\"\n\0")
 		
 		;; else if (n`._type == parse.NTYPE_ID)
 			~Var o = self._compile_base_id(s, n)
 			/; if (o !== NULL)
 				return o`.copy()
 			;/
+
+		;; else if (n`._type == parse.NTYPE_PRE_OP)
+			return self._compile_pre(s, n, type_hint)
+
+		;; else if (n`._type == parse.NTYPE_BIN_OP)
+			return self._compile_bin(s, n, type_hint)
 		;/
 
 		Var out = type_hint`.copy()

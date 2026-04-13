@@ -1,5 +1,9 @@
 
-/; pass_a (int a) [int]
-	return a
+/; five [int]
+	return 5
+;/
+
+/; main (int argc, ~~uint8 argv) [int]
+	return five()
 ;/
 

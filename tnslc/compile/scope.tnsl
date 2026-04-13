@@ -338,6 +338,7 @@ struct Scope {
 
 		/; if (v`.is_ref() == true)
 			int rc = v`.max_ref()
+			rc = rc - 1
 			v`.set_ref(self.cb, src, rc)
 		;; else
 			v`.set(self.cb, src)

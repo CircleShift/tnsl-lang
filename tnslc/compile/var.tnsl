@@ -183,31 +183,35 @@ struct Var {
 		return out
 	;/
 
-	# Returns true if the variable is a reference
-	/; is_ref [bool]
-		~int32 p = self.top_ptrc()
-		/; if (p == NULL)
+	/; is_ptrc (int idx, int32 ptype) [bool]
+		/; if (idx !< self.ptrc.count)
 			return false
 		;/
+		
+		idx = self.ptrc.count - idx
+		idx = idx - 1
+		~int32 chk = self.ptrc.get(idx)
+		return chk` == ptype
+	;/
 
-		return p` == 0
+	# Returns true if the variable is a reference
+	/; is_ref [bool]
+		return self.is_ptrc(0, 0)
 	;/
 
 	# Returns true if two or more ref layers
 	/; double_ref [bool]
-		/; if (self.ptrc.count < 2)
+		/; if (self.is_ref() == false)
 			return false
 		;/
-		~int32 p = self.ptrc.get(1)
-		return p` == 0
+		return self.is_ptrc(1, 0)
 	;/
 
 	# Ref level
 	/; max_ref [int]
 		int out = 0
 		/; loop (int i = 0; i < self.ptrc.count)
-			~int32 p = self.ptrc.get(i)
-			/; if (p` == 0)
+			/; if (self.is_ptrc(i, 0) == true)
 				out++
 			;; else
 				i = self.ptrc.count
@@ -566,6 +570,24 @@ struct Var {
 		/; if (self.loc > 0)
 			/; if (self.in_mem() == true)
 				out = reg_string(self.loc, 8)
+				/; if (self.offset !== 0)
+					utils.Vector vout
+					vout.from_cstr(out)
+					
+					int off = self.offset
+					/; if (off < 0)
+						off = 0 - off
+						vout.push_cstr(" - \0")
+					;; else if (off > 0)
+						vout.push_cstr(" + \0")
+					;/
+
+					_delete(out)
+					out = utils.int_to_str(off)
+					vout.push_cstr(out)
+					_delete(out)
+					out = vout.as_cstr()
+				;/
 			;; else
 				uint sz = self.type_size()
 				out = reg_string(self.loc, sz)
@@ -619,11 +641,10 @@ struct Var {
 		
 		# Loop and make sure we are dereferencing properly
 		/; loop (int i = 1; i < self.ptrc.count) [i++]
-			~int pc = self.ptrc.get(i)
-			/; if (pc` !== 0)
-				i = self.ptrc.count
-			;; else
+			/; if (self.is_ptrc(i, 0) == true)
 				buf`.add_c("    mov rdi, [rdi] ; auto deref\n\0")
+			;; else
+				i = self.ptrc.count
 			;/
 		;/
 
@@ -741,20 +762,76 @@ struct Var {
 		# count how many refs
 		int max_depth = self.max_ref()
 
-		/; if (max_depth < depth)
-			_print_num("Unable to set reference, depth %d exceeds max_depth \0", depth)
+		/; if (depth !< max_depth)
+			_print_num("ERROR: Unable to set reference, depth %d equals or exceeds max_depth \0", depth)
 			_print_num("%d\n\0", max_depth)
+			_printf("       When taking ref of variable \"\0")
+			_printf(other`.name)
+			_printf("\" into variable \"\0")
+			_printf(self.name)
+			_printf("\"\n\0")
 			return
 		;/
 			
 		int32 set = 0
 		set = set - 1
 
+		max_depth = copy.ptrc.count - max_depth
+
 		Var copy = self.copy()
-		~int32 ptr = copy.ptrc.get(max_depth - depth)
+		~int32 ptr = copy.ptrc.get(max_depth + depth)
 		ptr` = set
 		copy.set(buf, other)
 		copy.end()
+	;/
+
+	# Copy the pointer to this variable into the output reg (or not if not needed)
+	/; take_ptr (~CompBuf buf, int reg) [Var]
+		Var vcpy = self.copy()
+		/; if (self.in_mem() == false)
+			_printf("COMPILER ERROR: UNABLE TO GET REFERENCE OF VAR \"\0")
+			_printf(self.name)
+			_printf("\" PLEASE REPORT THIS BUG!\n\0")
+			return vcpy
+		;/
+		
+		int32 set = 0
+		set = set - 1
+		/; if (vcpy.is_ref() == true)
+			# If we are a ref, we want to set the first one and that's it
+			int idx = 0
+			/; loop (int i = 0; i < vcpy.ptrc.count) [i++]
+				/; if (vcpy.is_ptrc(i, 0) == false)
+					i = vcpy.ptrc.count
+				;; else
+					set++
+				;/
+			;/
+
+			idx = vcpy.ptrc.count - idx
+			~int32 p = vcpy.ptrc.get(idx)
+			p` = set
+		;; else
+			/; if (self.is_struct() == true)
+				self._set_struct_r(buf, reg)
+			;; else
+				~uint8 source = self._set_prim_l(buf)
+				~uint8 rstr = reg_string(reg, 8)
+				buf`.add_c("    lea \0")
+				buf`.add_c(rstr)
+				buf`.add_c(", \0")
+				buf`.add_c(source)
+				buf`.add_c("\n\0")
+				_delete(source)
+				_delete(rstr)
+			;/
+
+			vcpy.loc = reg
+			vcpy.offset = 0
+			vcpy.ptr_push(set)
+		;/
+
+		return vcpy
 	;/
 
 	#######################
@@ -989,11 +1066,66 @@ struct Var {
 		_delete(to_str)
 	;/
 
-	/; member (~CompBuf buf, ~uint8 name) [Var]
-		Var out
-		return out
+	/; neg (~CompBuf buf)
+		/; if (self.loc == VLOC_LITL)
+			int off = 0
+			self.offset = off - self.offset
+			return
+		;/
+
+		~uint8 to_str = self._set_prim_l(buf)
+		buf`.add_c("    neg \0")
+		/; if (self.in_mem() == true)
+			uint sz = self.type_size()
+			/; if (sz == 1)
+				buf`.add_c("byte \0")
+			;; else if (sz == 2)
+				buf`.add_c("word \0")
+			;; else if (sz == 4)
+				buf`.add_c("dword \0")
+			;; else if (sz == 8)
+				buf`.add_c("qword \0")
+			;/
+		;/
+		buf`.add_c(to_str)
+		buf`.add_c("\n\0")
+		_delete(to_str)
 	;/
 
+	/; member (~CompBuf buf, ~uint8 name) [Var]
+		/; if (self.is_struct() == false)
+			_printf("ERROR: Attempted to get a member named \"\0")
+			_printf(name)
+			_printf("\" from a primitive type \"\0")
+			_printf(self._type`.name)
+			_printf("\"\n\0")
+			_printf("       (If the previous type was in fact a structure then the variable was probably a pointer)\n\0")
+			return self.copy()
+		;/
+		
+		~Var mbr = self`._type`.get_member(name)
+
+		/; if (mbr == NULL)
+			_printf("ERROR: member \"\0")
+			_printf(name)
+			_printf("\" not found in struct \"\0")
+			_printf(self._type`.name)
+			_printf("\n\0")
+			return self.copy()
+		;/
+		
+		Var out = mbr`.copy()
+
+		/; if (self.is_ref() == true)
+			self._set_struct_r(buf, 5)
+			out.loc = 5
+		;; else
+			out.loc = self.loc
+			out.offset = out.offset + self.offset
+		;/
+
+		return out
+	;/
 
 	# Printing
 

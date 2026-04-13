@@ -136,10 +136,11 @@ struct Struct {
 		_printf("}\n\0")
 	;/
 
-	/; add_member(~parse.Node tn, ~parse.Node id)
+	/; add_member(~parse.Node tn, ~parse.Node id, int offset)
 		Var v
 		v.init(tn, id)
 		v._resolve_type(self.methods)
+		v.offset = offset
 		self.members.push(~v)
 	;/
 
@@ -198,7 +199,7 @@ struct Struct {
 					_printf("\n\0")
 					return
 				;/
-				self.add_member(tn, n)
+				self.add_member(tn, n, total)
 				total = total + add_size
 			;/
 		;/
