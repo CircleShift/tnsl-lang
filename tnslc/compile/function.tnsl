@@ -235,6 +235,10 @@ struct Function {
 				s`.cb`.add_c(" ; User defined asm\n\0")
 			;; else if (n`._type == parse.NTYPE_DECL)
 				self._compile_decl(s, n)
+			;; else if (n`._type == parse.NTYPE_VALUE)
+				
+				Var v = self._compile_value(s, n)
+				v.end()
 			;/
 		;/
 	;/
@@ -402,19 +406,12 @@ struct Function {
 		;/
 	;/
 
-	/; _compile_literal (~parse.Node n) [int]
-		/; if (utils.strcmp(n`.data, "true\0") == true)
-			return 1
-		;; else if (utils.strcmp(n`.data, "false\0") == true)
-			return 0
-		;; else if (utils.strcmp(n`.data, "null\0") == true)
-			return 0
-		;/
-
-		return utils.cstr_to_int(n`.data)
+	/; _compile_func_call(~Scope s, ~parse.Node n, ~Function f) [Var]
+		Var out
+		return out
 	;/
 
-	/; _compile_base_id (~Scope s, ~parse.Node n) [~Var]
+	/; _compile_base_id (~Scope s, ~parse.Node n) [Var]
 		# First, check scope
 		~Var found = s`.find_var(n`.data)
 
@@ -425,28 +422,45 @@ struct Function {
 			~uint8 str = n`.data 
 			v.push(~str)
 			found = s`.mod`.find(SEARCH_VAR, ~v)
+			v.end()
 		;/
 
-		/; if (found == NULL)
-			_printf("Could not find variable with identifier \"\0")
-			_printf(n`.data)
-			_printf("\" in scope \0")
-			~uint8 bl = s`.base_label()
-			_printf(bl)
-			_delete(bl)
-			_printf("\n\0")
+		/; if (found !== NULL)
+			return found`.copy()
 		;/
 
-		return found
+		~Function f
+		utils.Vector v
+		v.init(8)
+		~uint8 str = n`.data 
+		v.push(~str)
+		/; if (s`.mod`.is_method() == true)
+			~Module search_mod = s`.mod`.parent
+			f = search_mod`.find(SEARCH_FUNC, ~v)
+		;; else
+			f = s`.mod`.find(SEARCH_FUNC, ~v)
+		;/
+		v.end()
+
+		_printf("Could not find variable/function with identifier \"\0")
+		_printf(n`.data)
+		_printf("\" in scope \0")
+		~uint8 bl = s`.base_label()
+		_printf(bl)
+		_delete(bl)
+		_printf("\n\0")
+		
+		Var out
+		return out
 	;/
 
-	/; _compile_set (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+	/; _compile_set (~Scope s, ~parse.Node n) [Var]
 		# TODO
 		Var out
 		return out
 	;/
 
-	/; _compile_bin (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+	/; _compile_bin (~Scope s, ~parse.Node n) [Var]
 		# TODO
 		Var out
 		return out
@@ -457,10 +471,12 @@ struct Function {
 
 		/; if (utils.strcmp(n`.data, "-\0") == true)
 			~parse.Node sub = n`.sub.get(0)
-			out = self._compile_value(s, sub, type_hint)
+			out = self._compile_value(s, sub)
 			out.neg(s`.cb)
 		;; else if (utils.strcmp(n`.data, "!\0") == true)
-			_printf("! not impl\n\0")
+			~parse.Node sub = n`.sub.get(0)
+			out = self._compile_value(s, sub)
+			out.not(s`.cb)
 		;; else if (utils.strcmp(n`.data, "~\0") == true)
 			_printf("~ not impl\n\0")
 		;; else if (utils.strcmp(n`.data, "--\0") == true)
@@ -479,47 +495,67 @@ struct Function {
 		return out
 	;/
 
+	/; _find_literal_type (~Scope s, ~uint8 name) [~Struct]
+		utils.Vector vec
+		vec.init(8)
+		vec.push(~name)
+		
+		~Struct out
+		s`.mod`.find(SEARCH_STRUCT, ~vec)
+		
+		vec.end()
+
+		return out
+	;/
+
+	/; _compile_literal (~Scope s, ~parse.Node n) [Var]
+		Var out
+
+		/; if (utils.strcmp(n`.data, "true\0") == true)
+			~Struct t = self._find_literal_type(s, "bool\0")
+			out._init(t)
+			out.offset = 1
+		;; else if (utils.strcmp(n`.data, "false\0") == true)
+			~Struct t = self._find_literal_type(s, "bool\0")
+			out._init(t)
+			out.offset = 0
+		;; else if (utils.strcmp(n`.data, "null\0") == true)
+			~Struct t = self._find_literal_type(s, "void\0")
+			out._init(t)
+			out.offset = 0
+		;; else
+			~Struct t = self._find_literal_type(s, "int\0")
+			out._init(t)
+			out.offset = utils.cstr_to_int(n`.data)
+		;/
+		
+		return out
+	;/
+
 	# Should handle computing a value, delegate to other funcs when needed
-	/; _compile_value (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
+	/; _compile_value (~Scope s, ~parse.Node n) [Var]
 		/; if (n`._type == parse.NTYPE_VALUE)
 			~parse.Node v = n`.sub.get(0)
-			return self._compile_value(s, v, type_hint)
+			return self._compile_value(s, v)
 
 		;; else if (n`._type == parse.NTYPE_LITERAL)
-			/; if (type_hint`.is_struct() == false)
-				Var out = type_hint`.copy()
-				/; loop (out.is_ref() == true)
-					out.ptr_pop()
-				;/
-				out.loc = 0
-				out.offset = self._compile_literal(n)
-				return out
-			;/
-
-			_printf("Could not compile literal \"\0")
-			_printf(n`.data)
-			_printf("\" in scope \0")
-			~uint8 bl = s`.base_label()
-			_printf(bl)
-			_delete(bl)
-			_printf(" since the type was struct \"\0")
-			_printf(type_hint`._type`.name)
-			_printf("\"\n\0")
+			return self._compile_literal(s, n)
 		
 		;; else if (n`._type == parse.NTYPE_ID)
-			~Var o = self._compile_base_id(s, n)
-			/; if (o !== NULL)
-				return o`.copy()
-			;/
+			return self._compile_base_id(s, n)
 
 		;; else if (n`._type == parse.NTYPE_PRE_OP)
-			return self._compile_pre(s, n, type_hint)
+			return self._compile_pre(s, n)
 
 		;; else if (n`._type == parse.NTYPE_BIN_OP)
-			return self._compile_bin(s, n, type_hint)
+			return self._compile_bin(s, n)
 		;/
 
-		Var out = type_hint`.copy()
+		_printf("COMPILER ERROR: NOT IMPL NODE TYPE \"\0")
+		parse.print_node_type(n)
+		_printf("\" IN ROOT VAL COMPUTATION\n\0")
+		Var out
+		out._init(NULL)
 		return out
 	;/
 

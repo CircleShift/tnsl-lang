@@ -85,6 +85,22 @@ struct Module {
 		return out
 	;/
 
+	/; is_method [bool]
+		/; if (utils.strlen(self.name) < 3)
+			return false
+		;/
+
+		/; if (self.name{0} !== '_')
+			return false
+		;; else if (self.name{1} !== '#')
+			return false
+		;; else if (self.name{2} == '#')
+			return false
+		;/
+
+		return true
+	;/
+
 	/; _from_tree (~parse.Node mod, ~CompBuf buf)
 		~parse.Node sub
 		/; loop (int i = 0; i < mod`.sub.count) [i++]
