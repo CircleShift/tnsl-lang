@@ -412,6 +412,11 @@ struct Scope {
 		;/
 	;/
 
+	# Returns true if the variable is in a temp spot
+	/; is_tmp (~Var v) [bool]
+		return false
+	;/
+
 	#
 	# Sub scope
 	#

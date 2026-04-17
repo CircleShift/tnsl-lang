@@ -440,7 +440,7 @@ struct Function {
 		;/
 	;/
 
-	/; _compile_func_call(~Scope s, ~parse.Node n, ~Function f) [Var]
+	/; _compile_call(~Scope s, ~parse.Node n, ~Function f) [Var]
 		Var out
 		return out
 	;/
@@ -500,10 +500,60 @@ struct Function {
 		return out
 	;/
 
-	/; _compile_bin (~Scope s, ~parse.Node n) [Var]
-		# TODO
+	/; _compile_chain(~Scope s, ~parse.Node n) [Var]
 		Var out
 		return out
+	;/
+
+	/; _compile_bin (~Scope s, ~parse.Node n) [Var]
+		# TODO
+		/; if (utils.strcmp(n`.data, ".\0") == true)
+			return self._compile_chain(s, n)
+		;/
+
+		~parse.Node lhn = n`.sub.get(0)
+		~parse.Node rhn = n`.sub.get(1)
+
+		# If we are setting
+		/; if (utils.strcmp(n`.data, "=\0") == true)
+			Var rhs = self._compile_value(s, rhn)
+			# TODO: move rhs maybe if it is in rdi
+			Var lhs = self._compile_value(s, lhn)
+			lhs.set(s`.cb, ~rhs)
+			rhs.end()
+			return lhs
+		;/
+		
+		# Otherwise
+		Var lhs = self._compile_value(s, lhn)
+		/; if (s`.is_tmp(~lhs) == false)
+			Var tmp = s`.mk_tmp(~lhs)
+			tmp.set(s`.cb, ~lhs)
+			lhs.end()
+			lhs = tmp
+		;/
+		Var rhs = self._compile_value(s, rhn)
+
+		/; if (utils.strcmp(n`.data, "*\0") == true)
+			lhs.mul(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "/\0") == true)
+			lhs.div(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "%\0") == true)
+			lhs.mod(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "+\0") == true)
+			lhs.add(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "-\0") == true)
+			lhs.sub(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "&\0") == true)
+			lhs.and(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "|\0") == true)
+			lhs.or(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "^\0") == true)
+			lhs.xor(s`.cb, ~rhs)
+		;/
+		
+		rhs.end()
+		return lhs
 	;/
 
 	/; _compile_pre (~Scope s, ~parse.Node n, ~Var type_hint) [Var]
