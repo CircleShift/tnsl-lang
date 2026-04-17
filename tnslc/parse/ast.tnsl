@@ -1864,8 +1864,9 @@ int errors_shown = 0
 		
 		return
 	;/
-
-	~uint8 rel = utils.unquote_str(first`.data)
+	
+	utils.Vector relv = utils.unquote_str(first`.data)
+	~uint8 rel = relv.as_cstr()
 	utils.File imp = fin`.relative(rel)
 	_delete(rel)
 
@@ -1896,7 +1897,8 @@ int errors_shown = 0
 	;/
 	
 	Node an
-	an.init(NTYPE_ASM, utils.unquote_str(first`.data))
+	utils.Vector asmv = utils.unquote_str(first`.data)
+	an.init(NTYPE_ASM, asmv.as_cstr())
 	mod`.add_child(~an)
 
 	Token tmp = produce_next_token(fin, first`)

@@ -5,6 +5,7 @@ struct Function {
 		inputs,
 		outputs,
 	~parse.Node _up,
+	int call_padding,
 	bool m
 }
 
@@ -13,6 +14,7 @@ struct Function {
 		self.name = utils.strcpy(n`.data)
 		self._up = n
 		self.m = false
+		self.call_padding = 0
 		Var v
 		self.inputs.init(len v)
 		self.outputs.init(len v)
@@ -22,7 +24,7 @@ struct Function {
 		~parse.Node tn = NULL
 		~parse.Node n
 		int reg = 1
-		int stack_up = 0
+		int stack_up = 8
 		/; loop (int i = 0; i < dl`.sub.count) [i++]
 			n = dl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -97,6 +99,38 @@ struct Function {
 
 		/; if (lst`._type == parse.NTYPE_TLIST)
 			self._resolve_tlist(parent, lst)
+		;/
+
+		int i_size = 0
+		int o_size = 0
+		~Var v
+		
+		/; loop (int i = 0; i < self.inputs.count) [i++]
+			v = self.inputs.get(i)
+			/; if (v`.loc < 0)
+				int vsz = v`.actual_size()
+				i_size = i_size + vsz
+			;/
+		;/
+		
+		/; loop (int i = 0; i < self.outputs.count) [i++]
+			v = self.outputs.get(i)
+			/; if (v`.loc < 0)
+				int vsz = v`.actual_size()
+				o_size = o_size + vsz
+			;/
+		;/
+
+		/; if (o_size > i_size)
+			int padding = o_size - i_size
+
+			/; loop (int i = 0; i < self.inputs.count) [i++]
+				v = self.inputs.get(i)
+				int off = v`.offset
+				v`.offset = off + padding
+			;/
+
+			self.call_padding = padding
 		;/
 	;/
 
@@ -426,7 +460,7 @@ struct Function {
 		;/
 
 		/; if (found !== NULL)
-			return found`.copy()
+			return found`.as_global()
 		;/
 
 		~Function f
@@ -441,6 +475,12 @@ struct Function {
 			f = s`.mod`.find(SEARCH_FUNC, ~v)
 		;/
 		v.end()
+
+		/; if (f !== NULL)
+			_printf("TODO: Function call\n\0")
+			Var out
+			return out
+		;/
 
 		_printf("Could not find variable/function with identifier \"\0")
 		_printf(n`.data)

@@ -250,7 +250,7 @@
 	return cha`
 ;/
 
-/; unquote_str(~uint8 str) [~uint8]
+/; unquote_str(~uint8 str) [Vector]
 	Vector out
 	out.init(1)
 
@@ -263,6 +263,6 @@
 		out.push(~buf)
 	;/
 
-	return out.as_cstr()
+	return out
 ;/
 

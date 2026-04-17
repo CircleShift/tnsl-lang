@@ -115,7 +115,10 @@ struct Var {
 	utils.Vector ptrc,
 	int loc, offset,
 	
-	~parse.Node _tn, _id
+	~parse.Node _tn, _id,
+
+	# Used for globals
+	~Module parent
 }
 
 /; method Var
@@ -131,6 +134,7 @@ struct Var {
 		self.loc = 0
 		self.offset = 0
 		self._type = _type
+		self.parent = NULL
 	;/
 
 	# Initial init function, requires type node and
@@ -140,6 +144,7 @@ struct Var {
 		self.ptrc.init(4)
 		self.loc = 0
 		self.offset = 0
+		self.parent = NULL
 
 		self._tn = tn
 		self._id = id
@@ -404,9 +409,418 @@ struct Var {
 		;/
 	;/
 
+	######################
+	# Static compilation #
+	######################
+
+	/; _static_compile_arr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
+		return utils.strcpy("TODO\0")
+	;/
+
+	/; _static_compile_ptr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
+		
+		/; if (n`._type == parse.NTYPE_VALUE)
+			n = n`.sub.get(0)
+			return self._static_compile_ptr(n, out, depth)
+		;/
+
+		/; if (n`._type == parse.NTYPE_LITERAL)
+			
+			/; if (n`.data{0} == '"')
+				# Generate string
+				~uint8 tmp = self._global_ptr()
+				out`.push_cstr(tmp)
+				out`.push_cstr(":\n\0")
+				_delete(tmp)
+				
+
+				utils.Vector vout = utils.unquote_str(n`.data)
+				tmp = utils.int_to_str(vout.count)
+				out`.push_cstr("    dq \0")
+				out`.push_cstr(tmp)
+				out`.push_cstr("\n\0")
+				_delete(tmp)
+
+				/; if (vout.count > 0)
+					out`.push_cstr("    db \0")
+				;/
+				
+				/; loop (int i = 1; i < vout.count) [i++]
+					~uint8 uptr = vout.get(i - 1)
+					uint8 utmp = uptr`
+					tmp = utils.int_to_str(utmp)
+					out`.push_cstr(tmp)
+					out`.push_cstr(", \0")
+					_delete(tmp)
+				;/
+
+				/; if (vout.count > 0)
+					int i = vout.count
+					~uint8 uptr = vout.get(i - 1)
+					uint8 utmp = uptr`
+					tmp = utils.int_to_str(utmp)
+					out`.push_cstr(tmp)
+					_delete(tmp)
+				;/
+
+				out`.push_cstr("\n\0")
+				
+				# Generate response text
+				vout.end()
+				tmp = self._global_ptr()
+				vout.from_cstr("    dq \0")
+				vout.push_cstr(tmp)
+				_delete(tmp)
+
+				int idx = self.ptrc.count - 1
+				idx = idx - depth
+				~int32 pc = self.ptrc.get(idx)
+				/; if (pc` < 1)
+					vout.push_cstr(" + 8\0")
+				;/
+				vout.push_cstr("\n\0")
+
+				return vout.as_cstr()
+			;/
+			
+			# Literal not string - literal address
+			# TODO
+		;; else if (n`._type == parse.NTYPE_VLIST)
+			return self._static_compile_arr(n, out, depth)
+		;/
+
+		# Do a literal evaluation and then 
+		return utils.strcpy("TODO\0")
+	;/
+
+	/; _static_compile_struct(~parse.Node n, ~utils.Vector out) [~uint8]
+		return utils.strcpy("TODO\0")
+	;/
+
+	/; _static_comp_prim_r_dot(~parse.Node n) [Var]
+		# Has to do:
+		# Variable dot chain mod
+		# Variable dot chain struct
+		_printf("TODO: _static_comp_prim_r_dot\n\0")
+		Var out
+		out._init(self._type)
+		return out
+	;/
+
+	/; _static_comp_prim_r_bin(~parse.Node n) [Var]
+		/; if (n`.data{0} == '.')
+			return self._static_comp_prim_r_dot(n)
+		;/
+		
+		~parse.Node na = n`.sub.get(0)
+		~parse.Node nb = n`.sub.get(1)
+		
+		Var a = self._static_comp_prim_r(na)
+		Var b = self._static_comp_prim_r(nb)
+		
+		/; if (a.loc !== 0)
+			_printf("TODO: _static_comp_prim_r_bin: Pointer types not yet supported in binary ops at compile time\n\0")
+			b.end()
+			return a
+		;; else if (b.loc !== 0)
+			_printf("TODO: _static_comp_prim_r_bin: Pointer types not yet supported in binary ops at compile time\n\0")
+			a.end()
+			return b
+		;/
+
+		/; if (utils.strcmp(n`.data, "*\0") == true)
+			a.offset = a.offset * b.offset
+		;; else if (utils.strcmp(n`.data, "/\0") == true)
+			a.offset = a.offset / b.offset
+		;; else if (utils.strcmp(n`.data, "%\0") == true)
+			a.offset = a.offset % b.offset
+		;; else if (utils.strcmp(n`.data, "+\0") == true)
+			a.offset = a.offset + b.offset
+		;; else if (utils.strcmp(n`.data, "-\0") == true)
+			a.offset = a.offset - b.offset
+		;; else
+			_printf("TODO: _static_comp_prim_r_bin: Bin op \"\0")
+			_printf(n`.data)
+			_printf("\" not yet supported at comptime\n\0")
+		;/
+
+		b.end()
+		return a
+	;/
+
+	/; _static_comp_prim_r_pre(~parse.Node n) [Var]
+		_printf("TODO: _static_comp_prim_r_pre\n\0")
+		Var out
+		out._init(self._type)
+		return out
+	;/
+
+	/; _static_comp_prim_r_post(~parse.Node n) [Var]
+		# Has to do:
+		# deref of variables
+		# array index
+		_printf("TODO: _static_comp_prim_r_post\n\0")
+		Var out
+		out._init(self._type)
+		return out
+	;/
+
+	/; _static_comp_prim_r_id(~parse.Node n) [Var]
+		# Has to do:
+		# Get variable and static comp
+		~uint8 name = n`.data
+		utils.Vector v
+		v.init(8)
+		v.push(~name)
+		~Var vid = self.parent`.find(SEARCH_VAR, ~v)
+		v.end()
+
+		/; if (vid == NULL)
+			_printf("ERROR: Unable to find id \"\0")
+			_printf(name)
+			_printf("\" when compiling global \"\0")
+			_printf(self.name)
+			_printf(" returning dummy\n\0")
+			Var out
+			out._init(self._type)
+			return out
+		;/
+
+		/; if (vid`.loc > 0)
+			_printf("ERROR: CIRCULAR REFERENCE DETECTED WHEN INITIALIZING GLOBAL!\n\0")
+			_printf("       Something in \"\0")
+			_printf(name)
+			_printf("\" depends on \"")
+			_printf(self.name)
+			_printf("\" which depends on the former.\n\0")
+			Var out
+			out._init(self._type)
+			return out
+		;/
+
+		/; if (vid`.is_struct() == true)
+			_printf("ERROR: Attempted to set primitive global \"\0")
+			_printf(self.name)
+			_printf("\" to \"")
+			_printf(name)
+			_printf("\" which is a struct, not a primitive\n\0")
+			Var out
+			out._init(self._type)
+			return out
+		;; else if (vid`.ptrc.count > 0)
+			return vid`.as_global()
+		;/
+
+		# If this is also a primitive, we want to do a static comp and
+		# return whatever the variable spits out
+		~parse.Node cross_n = vid`._id
+
+		/; if (cross_n`.sub.count < 1)
+			cross_n = NULL
+		;; else
+			cross_n = cross_n`.sub.get(0)
+			/; if (cross_n`._type !== parse.NTYPE_VALUE)
+				_printf("COMPILER ERROR: When static compiling var \"\0")
+				_printf(name)
+				_printf("\" the sub-node was not a value\n\0")
+				Var out
+				out._init(self._type)
+				return out
+			;; else if (cross_n`.sub.count < 1)
+				cross_n = NULL
+			;; else
+				cross_n = cross_n`.sub.get(0)
+			;/
+		;/
+
+		/; if (cross_n !== NULL)
+			return vid`._static_comp_prim_r(cross_n)
+		;/
+
+		Var out
+		out._init(self._type)
+		return out
+	;/
+
+	/; _static_comp_prim_r(~parse.Node n) [Var]
+		/; if (n`._type == parse.NTYPE_VALUE)
+			n = n`.sub.get(0)
+			return self._static_comp_prim_r(n)
+		;/
+
+		/; if (n`._type == parse.NTYPE_LITERAL)
+			int lval = 0
+			/; if (utils.strcmp(n`.data, "true\0") == true)
+				lval = 1
+			;; else if (utils.strcmp(n`.data, "iota\0") == true)
+				_printf("COMPILER ERROR: iota not yet implemented\n\0")
+			;; else if (n`.data{0} !< '0' && n`.data{0} !> '9')
+				lval = utils.cstr_to_int(n`.data)
+			;; else if (n`.data{0} == '\'')
+				~uint8 cha = n`.data
+				cha++
+				uint8 uval = utils.unquote_cha(cha)
+				lval = uval
+			;; else if (n`.data{0} == '"')
+				_printf("ERROR: Attempted to set a non-pointer or non-array to a string literal!\n\0")
+				_printf("       Literal: \0")
+				_printf(n`.data)
+				_printf("\n\0")
+			;/
+			Var out
+			out._init(self._type)
+			out.offset = lval
+			return out
+		;; else if (n`._type == parse.NTYPE_BIN_OP)
+			return self._static_comp_prim_r_bin(n)
+		;; else if (n`._type == parse.NTYPE_PRE_OP)
+			return self._static_comp_prim_r_pre(n)
+		;; else if (n`._type == parse.NTYPE_POST_OP)
+			return self._static_comp_prim_r_post(n)
+		;; else if (n`._type == parse.NTYPE_ID)
+			return self._static_comp_prim_r_id(n)
+		;/
+		
+		_printf("COMPILER ERROR: _static_comp_prim_r: Unable to work on node given\n\0")
+		Var out
+		out._init(self._type)
+		return out
+	;/
+
+	/; _static_compile_prim(~parse.Node n) [~uint8]
+		Var vout = self._static_comp_prim_r(n)
+		
+		utils.Vector out
+		out.init(1)
+
+		int sz = self.type_size()
+		/; if (sz == 1)
+			out.push_cstr("    db \0")
+		;; else if (sz == 2)
+			out.push_cstr("    dw \0")
+		;; else if (sz == 4)
+			out.push_cstr("    dd \0")
+		;; else if (sz == 8)
+			out.push_cstr("    dq \0")
+		;/
+		
+		/; if (vout.loc == 0)
+			~uint8 nstr = utils.int_to_str(vout.offset)
+			out.push_cstr(nstr)
+			out.push_cstr("\n\0")
+			_delete(nstr)
+		;; else
+			_print_num("COMPILER ERROR: Type of var %d not yet supported for static comp\n\0", vout.loc)
+		;/
+
+		vout.end()
+		return out.as_cstr()
+	;/
+
+	/; _static_compile_zero [~uint8]
+		utils.Vector zero
+		zero.from_cstr("    db \0")
+		int sz = self.type_size()
+		/; loop (int i = 1; i < sz) [i++]
+			zero.push_cstr("0, \0")
+		;/
+		zero.push_cstr("0\n\0")
+		return zero.as_cstr()
+	;/
+
 	# Compile the variable into the data section
-	/; _static_compile (~Module parent, ~CompBuf buf)
-		# TODO: everything
+	/; _static_compile (~CompBuf buf)
+		# Mark we are in compilation stage to detect circular refs
+		self.loc = 1
+
+		# Get node which we are statically compiling
+		~parse.Node n = self._id
+		/; if (n`.sub.count < 1)
+			n = NULL
+		;; else
+			n = n`.sub.get(0)
+			/; if (n`._type !== parse.NTYPE_VALUE)
+				_printf("COMPILER ERROR: When static compiling var \"\0")
+				_printf(self.name)
+				_printf("\" the sub-node was not a value\n\0")
+				return
+			;; else if (n`.sub.count < 1)
+				n = NULL
+			;; else
+				n = n`.sub.get(0)
+			;/
+		;/
+
+		utils.Vector out
+		out.init(1)
+		
+		~uint8 after
+		/; if (n == NULL)
+			# Fallback to zero initialization if no value provided
+			after = self._static_compile_zero()
+		;; else if (self.ptrc.count > 0)
+			# Pointer, reference, or array
+			after = self._static_compile_ptr(n, ~out, 0)
+		;; else if (self.is_struct() == true)
+			# struct, should either be a vlist with all required parameters or a
+			# variable of the same type which we can static compile from
+			after = self._static_compile_struct(n, ~out)
+		;; else
+			# primitive
+			after = self._static_compile_prim(n)
+		;/
+		
+		# Generate label and data
+		~uint8 lab = self._global_base()
+		out.push_cstr(lab)
+		out.push_cstr(":\n\0")
+		out.push_cstr(after)
+		_delete(after)
+		_delete(lab)
+
+		# Add to data sec
+		~uint8 outs = out.as_cstr()
+		buf`.add_d(outs)
+		buf`.add_d("\n\0")
+		out.end()
+
+		# No longer compiling this variable
+		self.loc = 0
+	;/
+
+	/; _global_base [~uint8]
+		utils.Vector name
+		name.init(1)
+		_recursive_mod_name(self.parent, ~name)
+
+		/; if (name.count !== 0)
+			name.push_char('.')
+		;/
+
+		name.push_cstr(self.name)
+		return name.as_cstr()
+	;/
+
+	/; _global_ptr [~uint8]
+		utils.Vector name
+		name.init(1)
+		_recursive_mod_name(self.parent, ~name)
+
+		/; if (name.count !== 0)
+			name.push_char('.')
+		;/
+
+		name.push_cstr(self.name)
+		name.push_cstr("#ptr\0")
+
+		return name.as_cstr()
+	;/
+
+	# Get a proper global variable
+	/; as_global [Var]
+		Var out = self.copy()
+		out.name = self._global_base()
+		return out
 	;/
 	
 	/; ptr_push (int32 p)

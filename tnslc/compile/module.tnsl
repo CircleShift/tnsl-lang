@@ -67,6 +67,12 @@ struct Module {
 
 			n.end()
 		;/
+
+		~Var var
+		/; loop (int i = 0; i < self.vars.count) [i++]
+			var = self.vars.get(i)
+			var`.parent = ~self
+		;/
 	;/
 
 	/; _create_methods (~uint8 name) [~Module]
@@ -280,7 +286,7 @@ struct Module {
 		~Var v
 		/; loop (int i = 0; i < self.vars.count) [i++]
 			v = self.vars.get(i)
-			v`._static_compile(~self, cb)
+			v`._static_compile(cb)
 		;/
 
 		# Write function to code section
