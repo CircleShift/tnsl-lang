@@ -428,10 +428,6 @@ struct Function {
 					return
 				;/
 
-				_printf("Looks like we found \"")
-				_printf(sub`.data)
-				_printf("\" for make setting\n\0")
-				
 				/; if (sub`.sub.count > 0)
 					sub = sub`.sub.get(0)
 					Var val = self._compile_value(s, sub)

@@ -335,9 +335,6 @@ struct Scope {
 	;/
 
 	/; mk_set_var (~Var src) [~Var]
-		_printf("Make setting \"\0")
-		_printf(src`.name)
-		_printf("\"\n\0")
 		~Var v = self.mk_var(src)
 
 		/; if (v == NULL)
