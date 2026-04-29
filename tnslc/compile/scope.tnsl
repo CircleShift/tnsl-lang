@@ -288,6 +288,11 @@ struct Scope {
 			return out
 		;/
 		
+		_printf("ERROR: Found variable \"\0")
+		_printf(name)
+		_printf("\" but it doesn't look like it's been initialized yet!\n\0")
+		_print_num("    Loc: %d\n\0", out`.loc)
+		_print_num("    Offset: %d\n\0", out`.offset)
 		return NULL
 	;/
 
@@ -330,6 +335,9 @@ struct Scope {
 	;/
 
 	/; mk_set_var (~Var src) [~Var]
+		_printf("Make setting \"\0")
+		_printf(src`.name)
+		_printf("\"\n\0")
 		~Var v = self.mk_var(src)
 
 		/; if (v == NULL)
@@ -415,6 +423,32 @@ struct Scope {
 	# Returns true if the variable is in a temp spot
 	/; is_tmp (~Var v) [bool]
 		return false
+	;/
+
+	/; free_to (~Var tmp, bool code)
+		# TODO:DETERMINE HOW MANY TMPS
+		int tmps = 0
+		~Var v
+		/; loop (int i - 1; i !> self.tmps.count) [i++]
+			v = self.tmps.get(self.tmps.count - i)
+			/; if (v`.offset == tmp`.offset)
+				tmps = self.tmps.count
+				tmps = tmps - i
+				tmps = tmps + 1
+			;/
+		;/
+
+		/; if (tmps !== 0)
+			self.free_tmp(tmps, code)
+		;; else
+			~uint8 scope_name = self.base_label()
+			int off = tmp`.offset
+			_printf("COMPILER ERROR: Unable to find temp to free to in scope \"\0")
+			_printf(scope_name)
+			_printf("\"\n\0")
+			_print_num("                Was looking for tmp with offset %d but could not find one.\n\0", off)
+		;/
+
 	;/
 
 	#

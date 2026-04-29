@@ -312,6 +312,23 @@ struct Var {
 		return self._type`.size
 	;/
 
+	/; find_method (~uint8 name) [~Function]
+		~int32 p
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			p = self.ptrc.get(i)
+			/; if (p` !== 0)
+				_printf("ERROR: Tried to find method \"\0")
+				_printf(name)
+				_printf("\" on a variable but we had a pointer in the chain\n\0")
+				return false
+			;/
+		;/
+
+		~Module mod = self._type`.methods
+		~Function out = mod`._find_func(name)
+		return out
+	;/
+
 	#####################################
 	# Variable manipulation (comp time) #
 	#####################################
@@ -1203,9 +1220,9 @@ struct Var {
 	/; take_ptr (~CompBuf buf, int reg) [Var]
 		Var vcpy = self.copy()
 		/; if (self.in_mem() == false)
-			_printf("COMPILER ERROR: UNABLE TO GET REFERENCE OF VAR \"\0")
+			_printf("ERROR: UNABLE TO GET REFERENCE OF VAR \"\0")
 			_printf(self.name)
-			_printf("\" PLEASE REPORT THIS BUG!\n\0")
+			_printf("\"\n\0")
 			return vcpy
 		;/
 		
@@ -1246,6 +1263,97 @@ struct Var {
 		;/
 
 		return vcpy
+	;/
+
+	/; _de_ref
+		uint idx = self.ptrc.count
+		~int32 ptr
+		/; loop (idx > 0)
+			idx = idx - 1
+			ptr = self.ptrc.get(idx)
+			/; if (ptr` !== 0)
+				/; if (ptr` > 0)
+					_printf("ERROR: Can't take direct de-ref of array variable, try an index (name: \"\0")
+					_printf(self.name)
+					_printf("\")\n\0")
+				;; else
+					ptr` = 0
+				;/
+				return
+			;/
+		;/
+	;/
+
+	/; de_ref [Var]
+		Var out = self.copy()
+		out._de_ref()
+		return out
+	;/
+
+	/; index (~CompBuf buf, ~Var idx, int reg) [Var]
+		buf`.add_c("    ; Gen index\n\0")
+
+		# Create a literal with the size of the type
+		# Don't need to init or end this one
+		uint mul_sz = self.type_size()
+		Var oo
+		oo.offset = mul_sz
+		oo.loc = 0
+
+		# Generate output variable
+		Var out = self.copy()
+		out.offset = 0
+		out.loc = reg
+
+		# Strip off any refs
+		/; loop (out.is_ref() == true)
+			out.ptr_pop()
+		;/
+
+		# Multiply index by size of type
+		out.set(buf, idx)
+		out.mul(buf, ~oo)
+
+		# If we are an array, want to add 8 since the beginning encodes the length
+		/; if (out.is_arr() == true)
+			oo.offset = 8
+			out.add(buf, ~oo)
+		;/
+
+		# Get address in rsi
+		~uint8 to_str = self._set_prim_l(buf)
+
+		# If we are a "known length array" we need to lea instead of mov
+		~int32 optrc = out.top_ptrc()
+		/; if (optrc !== NULL)
+			/; if (optrc` > 1)
+				buf`.add_c("    lea rsi, \0")
+			;; else
+				buf`.add_c("    mov rsi, \0")
+			;/
+		;; else
+			_printf("ERROR: Can't take index of non-array variable \"\0")
+			_printf(self.name)
+			_printf("\"\n\0")
+			_delete(to_str)
+			return out
+		;/
+		buf`.add_c(to_str)
+		buf`.add_c("\n\0")
+		_delete(to_str)
+
+		# Add address to computed offset
+		to_str = out._set_prim_l(buf)
+		buf`.add_c("    add \0")
+		buf`.add_c(to_str)
+		buf`.add_c(", rsi\n\0")
+
+		# deref
+		int32 ptr_ref = 0
+		out.ptr_pop()
+		out.ptr_push(ptr_ref)
+
+		return out
 	;/
 
 	#######################
@@ -1455,14 +1563,11 @@ struct Var {
 		self._div(buf, other, 4)
 	;/
 
-	/; not (~CompBuf buf)
-		/; if (self.loc == VLOC_LITL)
-			self.offset = !self.offset
-			return
-		;/
-
+	/; _unary (~CompBuf buf, ~uint8 op)
 		~uint8 to_str = self._set_prim_l(buf)
-		buf`.add_c("    not \0")
+		buf`.add_c("    \0")
+		buf`.add_c(op)
+		buf`.add_c(" \0")
 		/; if (self.in_mem() == true)
 			uint sz = self.type_size()
 			/; if (sz == 1)
@@ -1480,6 +1585,15 @@ struct Var {
 		_delete(to_str)
 	;/
 
+	/; not (~CompBuf buf)
+		/; if (self.loc == VLOC_LITL)
+			self.offset = !self.offset
+			return
+		;/
+		
+		self._unary(buf, "not\0")
+	;/
+
 	/; neg (~CompBuf buf)
 		/; if (self.loc == VLOC_LITL)
 			int off = 0
@@ -1487,23 +1601,25 @@ struct Var {
 			return
 		;/
 
-		~uint8 to_str = self._set_prim_l(buf)
-		buf`.add_c("    neg \0")
-		/; if (self.in_mem() == true)
-			uint sz = self.type_size()
-			/; if (sz == 1)
-				buf`.add_c("byte \0")
-			;; else if (sz == 2)
-				buf`.add_c("word \0")
-			;; else if (sz == 4)
-				buf`.add_c("dword \0")
-			;; else if (sz == 8)
-				buf`.add_c("qword \0")
-			;/
+		self._unary(buf, "neg\0")
+	;/
+
+	/; inc (~CompBuf buf)
+		/; if (self.loc == VLOC_LITL)
+			self.offset++
+			return
 		;/
-		buf`.add_c(to_str)
-		buf`.add_c("\n\0")
-		_delete(to_str)
+
+		self._unary(buf, "inc\0")
+	;/
+
+	/; dec (~CompBuf buf)
+		/; if (self.loc == VLOC_LITL)
+			self.offset++
+			return
+		;/
+
+		self._unary(buf, "dec\0")
 	;/
 
 	/; member (~CompBuf buf, ~uint8 name) [Var]
@@ -1514,7 +1630,9 @@ struct Var {
 			_printf(self._type`.name)
 			_printf("\"\n\0")
 			_printf("       (If the previous type was in fact a structure then the variable was probably a pointer)\n\0")
-			return self.copy()
+			Var out
+			out.loc = 0
+			return out
 		;/
 		
 		~Var mbr = self`._type`.get_member(name)
@@ -1525,7 +1643,9 @@ struct Var {
 			_printf("\" not found in struct \"\0")
 			_printf(self._type`.name)
 			_printf("\n\0")
-			return self.copy()
+			Var out
+			out.loc = 0
+			return out
 		;/
 		
 		Var out = mbr`.copy()

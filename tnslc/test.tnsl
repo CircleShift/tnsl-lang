@@ -1,9 +1,7 @@
 
-/; five [int]
-	return 5
-;/
 
-/; main (int argc, ~~uint8 argv) [int]
-	return five()
+/; main [int]
+	int a = 0
+	return a
 ;/
 
