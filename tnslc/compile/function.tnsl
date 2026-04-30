@@ -544,7 +544,8 @@ struct Function {
 			# If could not find in scope then try to find in module
 			~uint8 name = base`.data
 			v`.push(~name)
-			vv = s`.mod`.find(SEARCH_VAR, v)
+			~Module mod = s`.mod
+			vv = mod`.find(SEARCH_VAR, v)
 			/; if (vv !== NULL)
 				result = vv`.as_global()
 				v`.end()
@@ -623,7 +624,7 @@ struct Function {
 			;/
 			self._compile_chain_r_post(s, post, ~result)
 		;/
-
+		
 		return result
 	;/
 

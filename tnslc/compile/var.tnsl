@@ -837,6 +837,11 @@ struct Var {
 	/; as_global [Var]
 		Var out = self.copy()
 		out.name = self._global_base()
+		
+		int loc = 0
+		loc = loc - 2
+		out.loc = loc
+
 		return out
 	;/
 	
