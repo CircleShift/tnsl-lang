@@ -135,6 +135,8 @@ struct Var {
 		self.offset = 0
 		self._type = _type
 		self.parent = NULL
+		self._tn = NULL
+		self._id = NULL
 	;/
 
 	# Initial init function, requires type node and
@@ -165,8 +167,14 @@ struct Var {
 	# A copy without the pointer chain
 	/; shallow_copy [Var]
 		Var out
-		out.init(self._tn, self._id)
-		out._type = self._type
+		/; if (self._tn !== NULL)
+			out.init(self._tn, self._id)
+			out._type = self._type
+		;; else
+			out._init(self._type)
+			_delete(out.name)
+			out.name = utils.strcpy(self.name)
+		;/
 		out.loc = self.loc
 		out.offset = self.offset
 		return out
@@ -215,7 +223,7 @@ struct Var {
 	# Ref level
 	/; max_ref [int]
 		int out = 0
-		/; loop (int i = 0; i < self.ptrc.count)
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
 			/; if (self.is_ptrc(i, 0) == true)
 				out++
 			;; else
@@ -1089,6 +1097,9 @@ struct Var {
 			out = utils.strcpy("[rdi]\0")
 		;/
 
+		/; if (out{0} == '[')
+		;/
+
 		return out
 	;/
 
@@ -1212,10 +1223,11 @@ struct Var {
 		int32 set = 0
 		set = set - 1
 
-		max_depth = copy.ptrc.count - max_depth
+		max_depth = self.ptrc.count - max_depth
+		max_depth = max_depth + depth
 
 		Var copy = self.copy()
-		~int32 ptr = copy.ptrc.get(max_depth + depth)
+		~int32 ptr = copy.ptrc.get(max_depth)
 		ptr` = set
 		copy.set(buf, other)
 		copy.end()
@@ -1662,7 +1674,8 @@ struct Var {
 			out.loc = self.loc
 			out.offset = out.offset + self.offset
 		;/
-
+		
+		# out._print(0)
 		return out
 	;/
 

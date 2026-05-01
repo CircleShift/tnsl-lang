@@ -96,15 +96,38 @@ struct Module {
 			return false
 		;/
 
-		/; if (self.name{0} !== '_')
+		~uint8 name = self.name
+
+		/; if (name{0} !== '_')
 			return false
-		;; else if (self.name{1} !== '#')
+		;; else if (name{1} !== '#')
 			return false
-		;; else if (self.name{2} == '#')
+		;; else if (name{2} == '#')
 			return false
 		;/
 
 		return true
+	;/
+
+	/; related_type [~Struct]
+		/; if (self.is_method() == false)
+			return NULL
+		;/
+
+		~Module m = self.parent
+		~Module match = ~self
+		~Struct s
+		/; loop (int i = 0; i < m`.structs.count) [i++]
+			s = m`.structs.get(i)
+			/; if (s`.methods == match)
+				return s
+			;/
+		;/
+
+		_printf("COMPILER ERROR: UNABLE to find a sutable struct for module \"\0")
+		_printf(self.name)
+		_printf("\"\n\0")
+		return NULL
 	;/
 
 	/; _from_tree (~parse.Node mod, ~CompBuf buf)
