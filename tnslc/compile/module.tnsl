@@ -73,6 +73,12 @@ struct Module {
 			var = self.vars.get(i)
 			var`.parent = ~self
 		;/
+
+		~Function func
+		/; loop (int i = 0; i < self.funcs.count) [i++]
+			func = self.funcs.get(i)
+			func`.mod = ~self
+		;/
 	;/
 
 	/; _create_methods (~uint8 name) [~Module]

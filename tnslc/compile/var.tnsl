@@ -920,7 +920,7 @@ struct Var {
 		buf`.add_c("    ; putting struct address into register\n\0")
 		
 		# Initial deref or move
-		/; if (self.ptrc.count > 0)
+		/; if (self.ptrc.count > 1)
 			buf`.add_c("    mov \0")
 		;; else
 			buf`.add_c("    lea \0")
@@ -1670,6 +1670,7 @@ struct Var {
 		/; if (self.is_ref() == true)
 			self._set_struct_r(buf, 5)
 			out.loc = 5
+			out.ptr_push(0)
 		;; else
 			out.loc = self.loc
 			out.offset = out.offset + self.offset

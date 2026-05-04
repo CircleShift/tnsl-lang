@@ -6,7 +6,8 @@ struct Function {
 		outputs,
 	~parse.Node _up,
 	int call_padding,
-	bool m
+	bool m,
+	~Module mod
 }
 
 /; method Function
@@ -185,6 +186,15 @@ struct Function {
 				s`.precheck_stmt(n)
 			;/
 		;/
+	;/
+
+
+	/; _call_label [~uint8]
+		Scope tmp
+		tmp.init(self.mod, NULL, self.name)
+		~uint8 out = tmp.base_label()
+		tmp.end()
+		return out
 	;/
 
 	/; _build_func(~Module parent, ~CompBuf cb) [Scope]
@@ -478,9 +488,172 @@ struct Function {
 		;/
 	;/
 
-	/; _compile_call(~Scope s, ~parse.Node params, ~Function f, ~Var self, bool mth) [Var]
-		Var out
-		return out
+	/; _compile_call(~Scope s, ~parse.Node params, ~Function f, ~Var _self, bool mth) [Var]
+		# Generate result tmp if required
+		Var result
+		~Var out
+		/; if (f`.outputs.count > 0)
+			out = f`.outputs.get(0)
+			result = s`.mk_tmp(out)
+		;; else
+			~Struct t = self._find_literal_type(s, "void\0")
+			result._init(t)
+		;/
+
+		# Save caller saved tmp variables
+		Var handle = s`.save_caller_tmp()
+
+		# Check that parameter count matches
+		int param_count = params`.sub.count
+		/; if (mth == true)
+			param_count++
+		;/
+
+		/; if (param_count !== f`.inputs.count)
+			~uint8 blab = s`.base_label()
+			_printf("ERROR: Failed to call function \"\0")
+			_printf(f`.name)
+			_printf("\" from scope \"\0")
+			_printf(blab)
+			_printf("\"\n\0")
+			_print_num("       Number of arguments (%d) did not match number of provided parameters \0", f`.inputs.count)
+			_print_num("(%d)\n\0", param_count)
+			_delete(blab)
+			result.loc = 0
+			return result
+		;/
+
+		# Then generate a vector to store all the tmp variables which will store the
+		# params as intermediaries
+		utils.Vector tmps
+		tmps.init(len result)
+		tmps._grow(param_count)
+
+		# Create all stack based tmps
+		~Var inp
+		Var last_stack
+		last_stack.loc = 0
+		/; loop (int i = 1; i !> f`.inputs.count) [i++]
+			int pidx = f`.inputs.count - i
+			inp = f`.inputs.get(pidx)
+			/; if (inp`.loc < 0)
+				# Make tmp on stack and compute
+				Var to_set = s`.mk_tmp_stack(inp)
+				
+				/; if (to_set.is_ref() == true)
+					# Correct for ref
+					int32 ptrc = 0
+					ptrc = ptrc - 1
+					to_set.ptr_pop()
+					to_set.ptr_push(ptrc)
+				;/
+
+				~Var tmp = tmps.get(pidx)
+				tmp` = to_set
+				last_stack = to_set
+			;/
+		;/
+
+		# Create all register based tmps
+		Var last_reg
+		last_reg.loc = 0
+		/; loop (int i = 0; i < f`.inputs.count) [i++]
+			inp = f`.inputs.get(i)
+			/; if (inp`.loc > 0)
+				# Make tmp on stack and compute
+				Var to_set = s`.mk_tmp_stack(inp)
+				
+				/; if (to_set.is_ref() == true)
+					# Correct for ref
+					int32 ptrc = 0
+					ptrc = ptrc - 1
+					to_set.ptr_pop()
+					to_set.ptr_push(ptrc)
+				;/
+
+				~Var tmp = tmps.get(i)
+				tmp` = to_set
+				last_reg = to_set
+			;/
+		;/
+
+		# Set 'self' if required
+		int use_self = 0
+		/; if (mth == true)
+			inp = tmps.get(0)
+			inp`.set(s`.cb, _self)
+			use_self++
+		;/
+
+		# compile all parameters and put them into tmp vars
+		~parse.Node pnode
+		/; loop (int i = use_self; i < f`.inputs.count) [i++]
+			pnode = params`.sub.get(i)
+			inp = tmps.get(i)
+
+			Var param = self._compile_value(s, pnode)
+			inp`.set(s`.cb, ~param)
+			/; if (s`.is_tmp(~param))
+				s`.free_to(~param, true)
+			;/
+			param.end()
+		;/
+
+		# Move all register parameters into registers and free the stack space
+		~Var ptmp
+		/; loop (int i = 0; i < f`.inputs.count) [i++]
+			inp = f`.inputs.get(i)
+			/; if (inp`.loc > 0)
+				ptmp = tmps.get(i)
+				inp`.set(s`.cb, ptmp)
+			;/
+		;/
+		s`.free_after(~last_stack, true)
+
+		# Pad out the stack for return if required
+		~CompBuf buf = s`.cb
+		/; if (f`.call_padding > 0)
+			~uint8 pad_num = utils.int_to_str(f`.call_padding)
+			buf`.add_c("    sub rsp, \0")
+			buf`.add_c(pad_num)
+			buf`.add_c("\n\0")
+			_delete(pad_num)
+		;/
+
+		# Do call
+		~uint8 call = f`._call_label()
+		buf`.add_c("    call \0")
+		buf`.add_c(call)
+		buf`.add_c("\n\0")
+		_delete(call)
+
+		# Generate result variable and move into the result if required
+		/; if (f`.outputs.count > 0)
+			Var out_pos = out`.copy()
+			out_pos.loc = last_stack.loc
+			out_pos.offset = last_stack.offset
+			/; if (f`.call_padding > 0)
+				int offset = out_pos.offset
+				offset = offset - f`.call_padding
+				out_pos.offset = offset
+			;/
+			result.set(s`.cb, ~out_pos)
+			out_pos.end()
+		;/
+
+		# Free all in tmp vector
+		/; loop (int i = 0; i < tmps.count) [i++]
+			inp = tmps.get(i)
+			inp`.end()
+		;/
+		tmps.end()
+
+		# Restore tmps in regs
+		s`.restore_caller_tmp(~handle)
+		handle.end()
+
+		s`.free_after(~result, true)
+		return result
 	;/
 
 	# Chain compilation functions get pretty long.  Read at your own risk
@@ -665,14 +838,7 @@ struct Function {
 	# Function: the very long one.
 	/; _compile_chain_r (~Scope s, ~parse.Node n, ~utils.Vector v) [Var]
 		~parse.Node lhn = n`.sub.get(0)
-		Var working
-		working.loc = 0
-
-		/; if (utils.strcmp(lhn`.data, ".\0") == true)
-			working = self._compile_chain_r(s, lhn, v)
-		;; else
-			working = self._compile_chain_r_base(s, lhn, v)
-		;/
+		Var working = self._compile_chain_r_base(s, lhn, v)
 
 		/; if (v`.count == 0)
 			/; if (working.loc == 0)
@@ -681,51 +847,79 @@ struct Function {
 			;/
 		;/
 
+		# The way in which chains are parsed puts all dots in the second sub-node
+
 		# Several points here: if have not found var or func yet need to try
 		# if we can't and there is a post-op, then we need to stop.
+		bool run = true
+		~parse.Node rhn
+		/; loop (run == true)
+			rhn = n`.sub.get(1)
 
-		~parse.Node rhn = n`.sub.get(1)
-		# Sanity
-		/; if (rhn`._type !== parse.NTYPE_ID)
-			_printf("TODO: tnslc does not currently support dot-chains with literals or non-identifiers in the middle\n\0")
-			v`.end()
-			v`.count = 0
-			working.loc = 0
-			return working
-		;/
-
-		/; if (v`.count !== 0)
-			# If we haven't yet found the var add to the vec and search the module
-			~uint8 dat = rhn`.data
-			v`.push(~dat)
-
-			~Module mod = s`.mod
-			~Var find = mod`.find(SEARCH_VAR, v)
-
-			/; if (find !== NULL)
-				working = find`.as_global()
-				v`.end()
-				v`.count = 0
+			/; if (utils.strcmp(rhn`.data, ".\0") == true)
+				n = rhn
+				rhn = n`.sub.get(0)
+			;; else
+				run = false
 			;/
 
-			# Then check for post-op.
-			/; if (rhn`.sub.count > 0)
-				~parse.Node post_op = rhn`.sub.get(0)
-				/; if (utils.strcmp(post_op`.data, "(\0") == true)
-					# Try a call
-					/; if (find !== NULL)
-						_printf("TODO: TNSL doesn't currently have good support for function calling by value\n\0")
-						return working
-					;/
+			# Sanity
+			/; if (rhn`._type !== parse.NTYPE_ID)
+				_printf("TODO: tnslc does not currently support dot-chains with literals or non-identifiers in the middle\n\0")
+				v`.end()
+				v`.count = 0
+				working.loc = 0
+				return working
+			;/
 
-					# Try to find function.  Does not matter if we are a module since this is multi-part search
-					~Module mod = s`.mod
+			/; if (v`.count !== 0)
+				# If we haven't yet found the var add to the vec and search the module
+				~uint8 dat = rhn`.data
+				v`.push(~dat)
 
-					# Already tried to find in module so can just use v for search.
-					~Function to_call = mod`.find(SEARCH_FUNC, v)
+				~Module mod = s`.mod
+				~Var find = mod`.find(SEARCH_VAR, v)
 
-					/; if (to_call == NULL)
-						_printf("ERROR: Unable to find function or variable with name \"\0")
+				/; if (find !== NULL)
+					working = find`.as_global()
+					v`.end()
+					v`.count = 0
+				;/
+
+				# Then check for post-op.
+				/; if (rhn`.sub.count > 0)
+					~parse.Node post_op = rhn`.sub.get(0)
+					/; if (utils.strcmp(post_op`.data, "(\0") == true)
+						# Try a call
+						/; if (find !== NULL)
+							_printf("TODO: TNSL doesn't currently have good support for function calling by value\n\0")
+							return working
+						;/
+
+						# Try to find function.  Does not matter if we are a module since this is multi-part search
+						~Module mod = s`.mod
+
+						# Already tried to find in module so can just use v for search.
+						~Function to_call = mod`.find(SEARCH_FUNC, v)
+
+						/; if (to_call == NULL)
+							_printf("ERROR: Unable to find function or variable with name \"\0")
+							_printf(rhn`.data)
+							_printf("\" in scope \"\0")
+							~uint8 blab = s`.base_label()
+							_printf(blab)
+							_printf("\"\n\0")
+							_delete(blab)
+							v`.end()
+							v`.count = 0
+							return working
+						;/
+
+						# Do call
+						working = self._compile_call(s, post_op, to_call, NULL, false)
+					;; else if (working.loc == 0)
+						# Didn't find a variable but there was a post op
+						_printf("ERROR: Failed to find variable (dot chain ends in \"\0")
 						_printf(rhn`.data)
 						_printf("\" in scope \"\0")
 						~uint8 blab = s`.base_label()
@@ -735,80 +929,67 @@ struct Function {
 						v`.end()
 						v`.count = 0
 						return working
+					;; else
+						# Do the post op on the found variable
+						self._compile_chain_r_post(s, post_op, ~working)
 					;/
-
-					# Do call
-					working = self._compile_call(s, post_op, to_call, NULL, false)
-				;; else if (working.loc == 0)
-					# Didn't find a variable but there was a post op
-					_printf("ERROR: Failed to find variable (dot chain ends in \"\0")
-					_printf(rhn`.data)
-					_printf("\" in scope \"\0")
-					~uint8 blab = s`.base_label()
-					_printf(blab)
-					_printf("\"\n\0")
-					_delete(blab)
-					v`.end()
-					v`.count = 0
-					return working
-				;; else
-					# Do the post op on the found variable
-					self._compile_chain_r_post(s, post_op, ~working)
 				;/
-			;/
-		;; else
-			# We already have a var, not doing anything with the vector any more
+			;; else
+				# We already have a var, not doing anything with the vector any more
 
-			# Check method call
-			int post_idx = 0
-			/; if (rhn`.sub.count > 0)
-				~parse.Node post = rhn`.sub.get(0)
-				/; if (utils.strcmp(post`.data, "(\0") == true)
-					# Try method
-					post_idx++
-					~Function to_call = working.find_method(rhn`.data)
+				# Check method call
+				int post_idx = 0
+				/; if (rhn`.sub.count > 0)
+					~parse.Node post = rhn`.sub.get(0)
+					/; if (utils.strcmp(post`.data, "(\0") == true)
+						# Try method
+						post_idx++
+						~Function to_call = working.find_method(rhn`.data)
 
-					/; if (to_call == NULL)
+						/; if (to_call == NULL)
+							working.end()
+							working.loc = 0
+							return working
+						;/
+
+						# Create space for the variable in a tmp
+						Var result = self._compile_call(s, post, to_call, ~working, true)
+						working.end()
+						working = result
+					;/
+				;/
+
+				/; if (post_idx == 0)
+					# Normal member
+					Var mbr = working.member(s`.cb, rhn`.data)
+
+					/; if (mbr.loc == 0)
+						# If the member didn't exist we end here
+						# The member function already prints some info
 						working.end()
 						working.loc = 0
 						return working
 					;/
+					_printf("Member:\n\0")
+					mbr._print(0)
 
-					# Create space for the variable in a tmp
-					Var result = self._compile_call(s, post, to_call, ~working, true)
 					working.end()
-					working = result
+					working = mbr
+
+					/; if (rhn`.sub.count > 0)
+						# Do first post-op after the member
+						~parse.Node post = rhn`.sub.get(0)
+						self._compile_chain_r_post(s, post, ~working)
+					;/
 				;/
 			;/
 
-			/; if (post_idx == 0)
-				# Normal member
-				Var mbr = working.member(s`.cb, rhn`.data)
-
-				/; if (mbr.loc == 0)
-					# If the member didn't exist we end here
-					# The member function already prints some info
-					working.end()
-					working.loc = 0
-					return working
-				;/
-
-				working.end()
-				working = mbr
-
-				/; if (rhn`.sub.count > 0)
-					# Do first post-op after the member
-					~parse.Node post = rhn`.sub.get(0)
-					self._compile_chain_r_post(s, post, ~working)
-				;/
+			# Loop over rest of post ops
+			~parse.Node post
+			/; loop (int i = 1; i < rhn`.sub.count) [i++]
+				post = rhn`.sub.get(i)
+				self._compile_chain_r_post(s, post, ~working)
 			;/
-		;/
-
-		# Loop over rest of post ops
-		~parse.Node post
-		/; loop (int i = 1; i < rhn`.sub.count) [i++]
-			post = rhn`.sub.get(i)
-			self._compile_chain_r_post(s, post, ~working)
 		;/
 
 		return working
