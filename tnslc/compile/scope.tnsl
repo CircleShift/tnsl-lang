@@ -414,8 +414,19 @@ struct Scope {
 		return v.copy()
 	;/
 
-	/; _save_caller_tmp (~utils.Vector vec)
-		# TODO
+	/; _get_reg_tmp (~utils.Vector vec)
+		/; if (self.parent !== NULL)
+			~Scope p = self.parent
+			p`._get_reg_tmp(vec)
+		;/
+
+		~Var tmp
+		/; loop (int i = 0; i < self.tmps.count) [i++]
+			tmp = self.tmps.get(i)
+			/; if (tmp`.loc > 0)
+				vec`.push(tmp)
+			;/
+		;/
 	;/
 
 	/; save_caller_tmp [Var]
@@ -423,13 +434,29 @@ struct Scope {
 		utils.Vector tmps
 		tmps.init(len tmp)
 
-		self._save_caller_tmp(~tmps)
+		self._get_reg_tmp(~tmps)
+
+		/; if (tmps.count == 0)
+			tmps.end()
+			return tmp
+		;/
 
 		~Var to_save
 		/; loop (int i = 0; i < tmps.count) [i++]
 			to_save = tmps.get(i)
 			tmp = self.mk_tmp_stack(to_save)
-			tmp.set(self.cb, to_save)
+			
+			/; if (tmp.is_ref() == true)
+				# Handle ref
+				Var ref_val = to_save`.take_ptr(self.cb, 1)
+				Var ref_set = tmp.take_ptr(self.cb, 2)
+				ref_set.set(self.cb, ~ref_val)
+				ref_val.end()
+				ref_set.end()
+			;; else
+				tmp.set(self.cb, to_save)
+			;/
+
 			/; if (i < tmps.count - 1)
 				tmp.end()
 			;/
@@ -440,7 +467,47 @@ struct Scope {
 	;/
 
 	/; restore_caller_tmp (~Var handle)
-		# TODO
+		Var tmp
+		utils.Vector tmps
+		tmps.init(len tmp)
+
+		self._get_reg_tmp(~tmps)
+
+		/; if (tmps.count == 0)
+			return
+		;/
+
+		int end_idx = 0
+		~Var tmp
+		/; loop (int i = 0; i < self.tmps.count) [i++]
+			tmp = self.tmps.get(i)
+			/; if (tmp`.offset == handle`.offset)
+				/; if (tmp`.loc == handle`.loc)
+					end_idx = i + 1
+					i = self.tmps.count
+				;/
+			;/
+		;/
+
+		~Var to_set
+		/; loop (int i = 0; i < tmps.count) [i++]
+			int idx = i + end_idx - tmps.count
+			to_set = tmps.get(i)
+			tmp = self.tmps.get(idx)
+			
+			/; if (to_set`.is_ref() == true)
+				# Handle ref
+				Var ref_val = tmp`.take_ptr(self.cb, 1)
+				Var ref_set = to_set`.take_ptr(self.cb, 2)
+				ref_set.set(self.cb, ~ref_val)
+				ref_val.end()
+				ref_set.end()
+			;; else
+				to_set`.set(self.cb, tmp)
+			;/
+		;/
+
+		handle`.end()
 	;/
 
 	# Free n tmp variables (starts from most recently created)

@@ -650,7 +650,6 @@ struct Function {
 
 		# Restore tmps in regs
 		s`.restore_caller_tmp(~handle)
-		handle.end()
 
 		s`.free_after(~result, true)
 		return result
