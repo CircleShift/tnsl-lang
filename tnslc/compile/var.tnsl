@@ -1183,7 +1183,7 @@ struct Var {
 		# - If builtin then move based on size (byte, word, dword, qword)
 		# - If pointer then move qword
 		# - If struct then move via rep movsb
-
+		
 		/; if (self.is_struct() == true)
 			# Struct set
 			self._set_struct(buf, other)
@@ -1252,7 +1252,7 @@ struct Var {
 				/; if (vcpy.is_ptrc(i, 0) == false)
 					i = vcpy.ptrc.count
 				;; else
-					set++
+					idx++
 				;/
 			;/
 
@@ -1276,6 +1276,8 @@ struct Var {
 
 			vcpy.loc = reg
 			vcpy.offset = 0
+			vcpy.ptrc.end()
+			vcpy.ptrc.init(4)
 			vcpy.ptr_push(set)
 		;/
 

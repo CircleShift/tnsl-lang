@@ -214,6 +214,7 @@ struct Module {
 				f.init(sub)
 				# Make function aware that it is in a method block
 				f.m = true
+				f.mod = ~self
 				self.funcs.push(~f)
 			;/
 		;/

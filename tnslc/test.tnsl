@@ -4,21 +4,16 @@ struct A {
 }
 
 /; method A
-	/; get_a [int]
-		return self.a
+	/; add_one
+		int a = self.a + 1
 	;/
 ;/
 
-/; module mod
-	/; func1 [int]
-		return 4
-	;/
-;/
-
-/; main (int argc, ~~uint8 argv) [int]
-	asm "mov r10, rdi"
-	asm "mov r11, rsi"
-
-	return argc
+/; main (uint argc, ~~uint8 argv) [uint]
+	A a
+	a.a = 1
+	a.b = 2
+	a.add_one()
+	return a.a + a.b
 ;/
 

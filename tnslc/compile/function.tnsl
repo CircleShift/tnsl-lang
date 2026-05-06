@@ -37,12 +37,6 @@ struct Function {
 			p.loc = reg
 			reg++
 			self.inputs.push(~p)
-			_printf("Generated self:\n\0")
-			p._print(0)
-		;; else
-			_printf("Did not generate self for \"\0")
-			_printf(self.name)
-			_printf("\"\n\0")
 		;/
 
 		/; if (dl == NULL)
@@ -77,8 +71,8 @@ struct Function {
 
 	/; _resolve_tlist (~Module parent, ~parse.Node tl)
 		~parse.Node n
-		parse.Node dummy
-		dummy.data = "### OUTPUT ###\0"
+		parse.Node out_id
+		out_id.data = "# OUTPUT #\0"
 
 		int reg = 1
 		int stack = 0
@@ -87,8 +81,10 @@ struct Function {
 			/; if (n`._type == parse.NTYPE_TYPE)
 				# TODO: also wrong
 				Var r
-				r.init(n, ~dummy)
+				r.init(n, ~out_id)
 				r._resolve_type(parent)
+				r._id = NULL
+				r._tn = NULL
 				
 				/; if (r.regable() == true && reg < 7)
 					r.loc = reg
@@ -191,6 +187,7 @@ struct Function {
 
 	/; _call_label [~uint8]
 		Scope tmp
+		self.mod`._print(0)
 		tmp.init(self.mod, NULL, self.name)
 		~uint8 out = tmp.base_label()
 		tmp.end()
@@ -489,12 +486,16 @@ struct Function {
 	;/
 
 	/; _compile_call(~Scope s, ~parse.Node params, ~Function f, ~Var _self, bool mth) [Var]
-		# Generate result tmp if required
 		Var result
 		~Var out
 		/; if (f`.outputs.count > 0)
+			# Generate result tmp if required
 			out = f`.outputs.get(0)
-			result = s`.mk_tmp(out)
+			/; if (out`.loc < 0)
+				result = s`.mk_tmp_stack(out)
+			;; else
+				result = out`.copy()
+			;/
 		;; else
 			~Struct t = self._find_literal_type(s, "void\0")
 			result._init(t)
@@ -507,6 +508,14 @@ struct Function {
 		int param_count = params`.sub.count
 		/; if (mth == true)
 			param_count++
+		;/
+
+		/; if (params`.sub.count == 1)
+			~parse.Node nn
+			nn = params`.sub.get(0)
+			/; if (nn`._type == parse.NTYPE_VALUE && nn`.sub.count == 0)
+				param_count = param_count - 1
+			;/
 		;/
 
 		/; if (param_count !== f`.inputs.count)
@@ -528,6 +537,7 @@ struct Function {
 		utils.Vector tmps
 		tmps.init(len result)
 		tmps._grow(param_count)
+		tmps.count = param_count
 
 		# Create all stack based tmps
 		~Var inp
@@ -548,8 +558,7 @@ struct Function {
 					to_set.ptr_push(ptrc)
 				;/
 
-				~Var tmp = tmps.get(pidx)
-				tmp` = to_set
+				tmps.replace(pidx, ~to_set)
 				last_stack = to_set
 			;/
 		;/
@@ -571,8 +580,7 @@ struct Function {
 					to_set.ptr_push(ptrc)
 				;/
 
-				~Var tmp = tmps.get(i)
-				tmp` = to_set
+				tmps.replace(i, ~to_set)
 				last_reg = to_set
 			;/
 		;/
@@ -581,7 +589,10 @@ struct Function {
 		int use_self = 0
 		/; if (mth == true)
 			inp = tmps.get(0)
-			inp`.set(s`.cb, _self)
+
+			Var _sptr = _self`.take_ptr(s`.cb, 1)
+			inp`.set(s`.cb, ~_sptr)
+			_sptr.end()
 			use_self++
 		;/
 
@@ -598,17 +609,26 @@ struct Function {
 			;/
 			param.end()
 		;/
-
+		
 		# Move all register parameters into registers and free the stack space
 		~Var ptmp
 		/; loop (int i = 0; i < f`.inputs.count) [i++]
 			inp = f`.inputs.get(i)
 			/; if (inp`.loc > 0)
 				ptmp = tmps.get(i)
-				inp`.set(s`.cb, ptmp)
+				/; if (inp`.is_ref() == true)
+					Var to_set = inp`.take_ptr(s`.cb, 1)
+					to_set.set(s`.cb, ptmp)
+					to_set.end()
+				;; else
+					inp`.set(s`.cb, ptmp)
+				;/
 			;/
 		;/
-		s`.free_after(~last_stack, true)
+		
+		/; if (last_stack.loc !== 0)
+			s`.free_after(~last_stack, true)
+		;/
 
 		# Pad out the stack for return if required
 		~CompBuf buf = s`.cb
@@ -629,16 +649,18 @@ struct Function {
 
 		# Generate result variable and move into the result if required
 		/; if (f`.outputs.count > 0)
-			Var out_pos = out`.copy()
-			out_pos.loc = last_stack.loc
-			out_pos.offset = last_stack.offset
-			/; if (f`.call_padding > 0)
-				int offset = out_pos.offset
-				offset = offset - f`.call_padding
-				out_pos.offset = offset
+			/; if (out`.loc < 0)
+				Var out_pos = out`.copy()
+				out_pos.loc = last_stack.loc
+				out_pos.offset = last_stack.offset
+				/; if (f`.call_padding > 0)
+					int offset = out_pos.offset
+					offset = offset - f`.call_padding
+					out_pos.offset = offset
+				;/
+				result.set(s`.cb, ~out_pos)
+				out_pos.end()
 			;/
-			result.set(s`.cb, ~out_pos)
-			out_pos.end()
 		;/
 
 		# Free all in tmp vector
@@ -651,7 +673,10 @@ struct Function {
 		# Restore tmps in regs
 		s`.restore_caller_tmp(~handle)
 
-		s`.free_after(~result, true)
+		/; if (result.loc < 0)
+			s`.free_after(~result, true)
+		;/
+
 		return result
 	;/
 
@@ -798,6 +823,8 @@ struct Function {
 
 				# Do call
 				result = self._compile_call(s, sub, to_call, NULL, false)
+				v`.end()
+				v`.count = 0
 
 			;; else if (result.loc == 0)
 				# Exit
@@ -830,7 +857,7 @@ struct Function {
 			;/
 			self._compile_chain_r_post(s, post, ~result)
 		;/
-		
+
 		return result
 	;/
 
@@ -1017,11 +1044,46 @@ struct Function {
 
 		# If we are setting
 		/; if (utils.strcmp(n`.data, "=\0") == true)
+			Var lhs = self._compile_value(s, lhn)
+
+			/; if (s`.is_tmp(~lhs) == true)
+				s`.free_after(~lhs, true)
+			;/
+
+			# TODO: move lhs maybe if it is in rdi
+			/; if (lhs.loc > 0 && lhs.loc < 11)
+				Var tmp = s`.mk_tmp(~lhs)
+				
+				bool was_ref = false
+				/; if (lhs.is_ref() == true)
+					was_ref = true
+					int32 ptr = 0
+					ptr = ptr - 1
+					tmp.ptr_pop()
+					lhs.ptr_pop()
+					tmp.ptr_push(ptr)
+					lhs.ptr_push(ptr)
+				;/
+
+				tmp.set(s`.cb, ~lhs)
+				lhs.end()
+				lhs = tmp
+
+				/; if (was_ref == true)
+					lhs.ptr_pop()
+					lhs.ptr_push(0)
+				;/
+			;/
+
 			Var rhs = self._compile_value(s, rhn)
-			# TODO: move rhs maybe if it is in rdi
-			Var lhs = self._compile_set(s, lhn)
 			lhs.set(s`.cb, ~rhs)
+
+			# Cleanup rhs
+			/; if (s`.is_tmp(~rhs) == true)
+				s`.free_to(~rhs, true)
+			;/
 			rhs.end()
+			
 			return lhs
 		;/
 		
@@ -1158,7 +1220,7 @@ struct Function {
 			Var out = self._compile_chain_r_base(s, n, ~tmp)
 			/; if (tmp.count !== 0)
 				tmp.end()
-			;; else if (out.loc !== 0)
+			;; else
 				return out
 			;/
 
