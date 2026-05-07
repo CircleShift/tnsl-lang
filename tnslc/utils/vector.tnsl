@@ -56,6 +56,19 @@ uint VECTOR_MAX_GROW = 256
 		self.count++
 	;/
 
+	/; replace (int index, ~void el)
+		~uint8 start = self.get(index)
+		/; if (start == NULL)
+			return
+		;/
+
+		/; loop (int i = 0; i < self._elsz) [i++]
+			~uint8 to = start + i
+			~uint8 from = el + i
+			to` = from`
+		;/
+	;/
+
 	/; _shrink(uint i)
 		/; if (i !< self.size)
 			self.size = 1

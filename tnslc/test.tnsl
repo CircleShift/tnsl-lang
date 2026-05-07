@@ -9,7 +9,7 @@ struct A {
 	;/
 ;/
 
-/; main (uint argc, ~~uint8 argv) [uint]
+/; main (int argc, ~~uint8 argv) [int]
 	A a
 	a.a = 1
 	a.b = 2

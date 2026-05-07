@@ -373,7 +373,14 @@ struct Function {
 
 				tmp = s`.mk_tmp(out)
 				cmp = self._compile_value(s, val_node)
-				tmp.set(s`.cb, ~cmp)
+				/; if (tmp.is_ref() == true)
+					int32 pp = 0
+					pp = pp - 1
+					tmp.ptr_pop()
+					tmp.ptr_push(pp)
+				;; else
+					tmp.set(s`.cb, ~cmp)
+				;/
 				cmp.end()
 				tmps.push(~tmp)
 			;/
@@ -651,15 +658,39 @@ struct Function {
 		/; if (f`.outputs.count > 0)
 			/; if (out`.loc < 0)
 				Var out_pos = out`.copy()
+
+				/; if (out_pos.is_ref() == true)
+					int32 pp = 0
+					pp = pp - 1
+					out_pos.ptr_pop()
+					out_pos.ptr_push(pp)
+				;/
+
 				out_pos.loc = last_stack.loc
 				out_pos.offset = last_stack.offset
+
 				/; if (f`.call_padding > 0)
 					int offset = out_pos.offset
 					offset = offset - f`.call_padding
 					out_pos.offset = offset
 				;/
+				
+				bool is_ref = false
+				/; if (result.is_ref() == true)
+					is_ref = true
+					int32 pp = 0
+					pp = pp - 1
+					result.ptr_pop()
+					result.ptr_push(pp)
+				;/
+
 				result.set(s`.cb, ~out_pos)
 				out_pos.end()
+				
+				/; if (is_ref == true)
+					result.ptr_pop()
+					result.ptr_push(0)
+				;/
 			;/
 		;/
 
@@ -680,6 +711,16 @@ struct Function {
 		return result
 	;/
 
+	/; _set_var_ptr(~void v, ~void new_val)
+		Var v
+		int sz = len v
+		/; loop (int i = 0; i < sz) [i++]
+			~uint8 out = v + i
+			~uint8 in = new_val + i
+			out` = in`
+		;/
+	;/
+
 	# Chain compilation functions get pretty long.  Read at your own risk
 
 	/; _compile_chain_r_post(~Scope s, ~parse.Node post, ~Var v)
@@ -689,17 +730,30 @@ struct Function {
 		;; else if (utils.strcmp(post`.data, "`\0") == true)
 			Var tmp = v`.de_ref()
 			v`.end()
-			v` = tmp
+			self._set_var_ptr(v, ~tmp)
 		;; else if (utils.strcmp(post`.data, "{\0") == true)
 			post = post`.sub.get(0)
 
 			# make sure we store variable if it's in a register which may be overwritten
 			/; if (v`.loc > 0)
 				/; if (s`.is_tmp(v) == false)
+					bool is_ref = false
+					/; if (v`.is_ref() == true)
+						is_ref = true
+						int32 pp = 0
+						pp = pp - 1
+						v`.ptr_pop()
+						v`.ptr_push(pp)
+					;/
+
 					Var tmp = s`.mk_tmp(v)
 					tmp.set(s`.cb, v)
 					v`.end()
-					v` = tmp
+					/; if (is_ref == true)
+						tmp.ptr_pop()
+						tmp.ptr_push(0)
+					;/
+					self._set_var_ptr(v, ~tmp)
 				;/
 			;/
 
@@ -721,13 +775,11 @@ struct Function {
 
 			v`.end()
 			idx.end()
-			v` = tmp
+			self._set_var_ptr(v, ~tmp)
 		;; else if (utils.strcmp(post`.data, "++\0") == true)
 			# Generate copy (make sure no refs)
 			Var copy = v`.copy()
-			/; loop (copy.is_ptr(0, 0) == true)
-				copy.ptr_pop()
-			;/
+			copy.strip_refs()
 			# Make tmp var
 			Var tmp = s`.mk_tmp(~copy)
 			copy.end()
@@ -736,13 +788,11 @@ struct Function {
 			# Increment the old
 			v`.inc(s`.cb)
 			v`.end()
-			v` = tmp
+			self._set_var_ptr(v, ~tmp)
 		;; else if (utils.strcmp(post`.data, "--\0") == true)
 			# Generate copy (make sure no refs)
 			Var copy = v`.copy()
-			/; loop (copy.is_ptr(0, 0) == true)
-				copy.ptr_pop()
-			;/
+			copy.strip_refs()
 			# Make tmp var
 			Var tmp = s`.mk_tmp(~copy)
 			copy.end()
@@ -751,7 +801,7 @@ struct Function {
 			# Decrement the old
 			v`.dec(s`.cb)
 			v`.end()
-			v` = tmp
+			self._set_var_ptr(v, ~tmp)
 		;/
 	;/
 
@@ -1028,11 +1078,6 @@ struct Function {
 		return self._compile_chain_r(s, n, ~chain)
 	;/
 
-	/; _compile_set (~Scope s, ~parse.Node n) [Var]
-		Var out
-		return out
-	;/
-
 	/; _compile_bin (~Scope s, ~parse.Node n) [Var]
 		# TODO
 		/; if (utils.strcmp(n`.data, ".\0") == true)
@@ -1052,26 +1097,26 @@ struct Function {
 
 			# TODO: move lhs maybe if it is in rdi
 			/; if (lhs.loc > 0 && lhs.loc < 11)
-				Var tmp = s`.mk_tmp(~lhs)
-				
-				bool was_ref = false
-				/; if (lhs.is_ref() == true)
-					was_ref = true
-					int32 ptr = 0
-					ptr = ptr - 1
-					tmp.ptr_pop()
-					lhs.ptr_pop()
-					tmp.ptr_push(ptr)
-					lhs.ptr_push(ptr)
-				;/
+				/; if (s`.is_tmp(~lhs) == false)
+					bool was_ref = false
+					/; if (lhs.is_ref() == true)
+						was_ref = true
+						int32 ptr = 0
+						ptr = ptr - 1
+						lhs.ptr_pop()
+						lhs.ptr_push(ptr)
+					;/
 
-				tmp.set(s`.cb, ~lhs)
-				lhs.end()
-				lhs = tmp
+					Var tmp = s`.mk_tmp(~lhs)
+					
+					tmp.set(s`.cb, ~lhs)
+					lhs.end()
+					lhs = tmp
 
-				/; if (was_ref == true)
-					lhs.ptr_pop()
-					lhs.ptr_push(0)
+					/; if (was_ref == true)
+						lhs.ptr_pop()
+						lhs.ptr_push(0)
+					;/
 				;/
 			;/
 
@@ -1090,11 +1135,27 @@ struct Function {
 		# Otherwise
 		Var lhs = self._compile_value(s, lhn)
 		/; if (s`.is_tmp(~lhs) == false)
-			Var tmp = s`.mk_tmp(~lhs)
+			Var copy = lhs.copy()
+			copy.strip_refs()
+			Var tmp = s`.mk_tmp(~copy)
+			copy.end()
+			
 			tmp.set(s`.cb, ~lhs)
 			lhs.end()
 			lhs = tmp
 		;/
+
+		/; if (lhs.is_ref() == true)
+			Var copy = lhs.copy()
+			copy.strip_refs()
+			Var tmp = s`.mk_tmp(~copy)
+			copy.end()
+			
+			tmp.set(s`.cb, ~lhs)
+			lhs.end()
+			lhs = tmp
+		;/
+
 		Var rhs = self._compile_value(s, rhn)
 
 		/; if (utils.strcmp(n`.data, "*\0") == true)
@@ -1115,11 +1176,9 @@ struct Function {
 			lhs.xor(s`.cb, ~rhs)
 		;/
 
-		/; if (s`.is_tmp(~rhs) == true)
-			s`.free_to(~rhs, true)
-		;/
-		
+		s`.free_after(~lhs, true)
 		rhs.end()
+
 		return lhs
 	;/
 

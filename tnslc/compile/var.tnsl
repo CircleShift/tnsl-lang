@@ -207,6 +207,12 @@ struct Var {
 		return chk` == ptype
 	;/
 
+	/; strip_refs
+		/; loop (self.is_ptrc(0, 0) == true)
+			self.ptr_pop()
+		;/
+	;/
+
 	# Returns true if the variable is a reference
 	/; is_ref [bool]
 		return self.is_ptrc(0, 0)
@@ -1098,6 +1104,21 @@ struct Var {
 		;/
 
 		/; if (out{0} == '[')
+			utils.Vector vout
+			uint ts = self.type_size()
+			/; if (ts == 1)
+				vout.from_cstr("byte \0")
+			;; else if (ts == 2)
+				vout.from_cstr("word \0")
+			;; else if (ts == 4)
+				vout.from_cstr("dword \0")
+			;; else if (ts == 8)
+				vout.from_cstr("qword \0")
+			;/
+			vout.push_cstr(out)
+
+			_delete(out)
+			out = vout.as_cstr()
 		;/
 
 		return out
