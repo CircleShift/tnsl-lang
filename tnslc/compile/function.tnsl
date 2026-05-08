@@ -159,6 +159,18 @@ struct Function {
 		;/
 	;/
 
+	/; _compute_scope_vars_loop(~Scope s, ~parse.Node upper, int i)
+		~parse.Node n
+		/; loop (i < upper`.sub.count) [i++]
+			n = upper`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_DECL)
+				s`.mk_aware_node(n)
+			;; else
+				s`.precheck_stmt(n)
+			;/
+		;/
+	;/
+
 	/; _compute_scope_vars(~Scope s)
 		
 		~Var in
@@ -173,15 +185,7 @@ struct Function {
 		;/
 	
 		~parse.Node _up = self._up
-		~parse.Node n
-		/; loop (i < _up`.sub.count) [i++]
-			n = _up`.sub.get(i)
-			/; if (n`._type == parse.NTYPE_DECL)
-				s`.mk_aware_node(n)
-			;; else
-				s`.precheck_stmt(n)
-			;/
-		;/
+		self._compute_scope_vars_loop(s, _up, i)
 	;/
 
 
@@ -286,7 +290,8 @@ struct Function {
 		Scope fscope = self._build_func(parent, cb)
 
 		/; if (i !< 0)
-			self._compile_statements(~fscope, i)
+			~parse.Node _up = self._up
+			self._compile_statements(~fscope, _up, i)
 		;/
 		
 		# Compile and then end scope
@@ -297,8 +302,7 @@ struct Function {
 	# Compiling individual statements
 	#
 
-	/; _compile_statements (~Scope s, int off)
-		~parse.Node _up = self._up
+	/; _compile_statements (~Scope s, ~parse.Node _up, int off)
 		~parse.Node n = NULL
 		/; loop (off < _up`.sub.count) [off++]
 			n = _up`.sub.get(off)
@@ -313,9 +317,178 @@ struct Function {
 			;; else if (n`._type == parse.NTYPE_VALUE)
 				
 				Var v = self._compile_value(s, n)
+				/; if (s`.is_tmp(~v))
+					s`.free_to(~v, true)
+				;/
 				v.end()
+			;; else if (n`._type == parse.NTYPE_IF_BLOCK)
+				off = self._compile_if(s, _up, off)
+			;; else if (n`._type == parse.NTYPE_LOOP_BLOCK)
+				self._compile_loop(s, n)
 			;/
 		;/
+	;/
+
+	/; _compile_cf_pre(~Scope s, ~parse.Node _up) [bool]
+		~parse.Node n = NULL
+
+		bool last_var = false
+		Var v
+
+		/; loop (int off = 0; off < _up`.sub.count) [off++]
+			n = _up`.sub.get(off)
+			/; if (n`._type == parse.NTYPE_FLOW_CONTROL)
+				self._compile_flow_control(s, n)
+			;; else if (n`._type == parse.NTYPE_ASM)
+				s`.cb`.add_c("    \0")
+				s`.cb`.add_c(n`.data)
+				s`.cb`.add_c(" ; User defined asm\n\0")
+			;; else if (n`._type == parse.NTYPE_DECL)
+				self._compile_decl(s, n)
+			;; else if (n`._type == parse.NTYPE_VALUE)
+				
+				v = self._compile_value(s, n)
+				
+				int count = _up`.sub.count
+				/; if (off + 1 == count)
+					last_var = true
+				;; else
+					/; if (s`.is_tmp(~v))
+						s`.free_to(~v, true)
+					;/
+					v.end()
+				;/
+			;; else if (n`._type == parse.NTYPE_IF_BLOCK)
+				off = self._compile_if(s, _up, off)
+			;; else if (n`._type == parse.NTYPE_LOOP_BLOCK)
+				self._compile_loop(s, n)
+			;/
+		;/
+
+		/; if (last_var == true)
+			last_var = false
+			/; if (v.is_struct() == false)
+				# Do cond jmp
+				~CompBuf buf = s`.cb
+				~uint8 lab = s`.end_label()
+				/; if (v.loc == 0 && v.offset == 0)
+					# False was passed, always jump to end
+					buf`.add_c("    jmp \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;; else if (v.loc !== 0)
+					v.test(s`.cb)
+					buf`.add_c("    je \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;/
+				_delete(lab)
+				last_var = true
+			;/
+
+			/; if (s`.is_tmp(~v) == true)
+				s`.free_to(~v, true)
+			;/
+			v.end()
+		;/
+
+		return last_var
+	;/
+
+	/; _compile_cf_post(~Scope s, ~parse.Node pre, post)
+	;/
+
+	/; _compile_if_if(~Scope wrap, ~parse.Node n)
+		/; if (n`.sub.count < 1)
+			# Sanity
+			return
+		;/
+
+		# Generate and pre-compute scope
+		Scope s = wrap`.gen_sub("if\0")
+		~parse.Node first = n`.sub.get(0)
+		int off = 0
+
+		# Compile pre statements if applicable and do conditional jmp
+		/; if (first`._type == parse.NTYPE_SLIST)
+			self._compute_scope_vars_loop(s, first, 0)
+			self._compute_scope_vars_loop(s, n, 1)
+			self._compile_cf_pre(~s, first)
+			off = off + 1
+		;; else
+			self._compute_scope_vars_loop(s, n, 0)
+		;/
+
+		# Actually compile all the functions
+		self._compile_statements(~s, n, off)
+
+		# If we did execute the if branch then we are jumping to the end of the wrapper
+		~CompBuf cb = wrap`.cb
+		cb`.add_c("    jmp \0")
+		~uint8 lab = wrap`.end_label()
+		cb`.add_c(lab)
+		cb`.add_c("\n\0")
+		_delete(lab)
+
+		# Place an anchor for the negative case to latch on to and clean up the scope
+		s.place_end_label()
+		s.end()
+	;/
+
+	/; _compile_if_elif(~Scope wrap, ~parse.Node n) [bool]
+		/; if (n`._type !== parse.NTYPE_ELIF_BLOCK)
+			return false
+		;/
+
+		self._compile_if_if(wrap, n)
+		return true
+	;/
+
+	/; _compile_if_else(~Scope wrap, ~parse.Node n) [bool]
+		/; if (n`._type !== parse.NTYPE_ELSE_BLOCK)
+			return false
+		;/
+
+		self._compile_if_if(wrap, n)
+		return true
+	;/
+
+	/; _compile_if (~Scope s, ~parse.Node n, int off) [int]
+		Scope wrap = s`.gen_sub("wrap\0")
+		
+		~parse.Node block = n`.sub.get(off)
+		self._compile_if_if(~wrap, block)
+
+		bool run = true
+		/; loop (run == true)
+			off = off + 1
+			/; if (off !< n`.sub.count)
+				run = false
+			;; else
+				block = n`.sub.get(off)
+				/; if (self._compile_if_elif(~wrap, block) == false)
+					run = false
+				;/
+			;/
+		;/
+
+		/; if (off < n`.sub.count)
+			/; if (self._compile_if_else(~wrap, block) == true)
+				off = off + 1
+			;/
+		;/
+
+		wrap.place_end_label()
+		wrap.end()
+
+		off = off - 1
+		return off
+	;/
+
+
+	/; _compile_loop (~Scope s, ~parse.Node n)
+		# TODO
+		_printf("Loops not impl, sorry :(\n\0")
 	;/
 
 	/; _check_return (~parse.Node n) [bool]
@@ -1223,7 +1396,7 @@ struct Function {
 		vec.push(~name)
 		
 		~Struct out
-		s`.mod`.find(SEARCH_STRUCT, ~vec)
+		out = s`.mod`.find(SEARCH_STRUCT, ~vec)
 		
 		vec.end()
 
