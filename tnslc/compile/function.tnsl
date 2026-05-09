@@ -395,7 +395,99 @@ struct Function {
 		return last_var
 	;/
 
-	/; _compile_cf_post(~Scope s, ~parse.Node pre, post)
+	/; _compile_cf_post(~Scope s, ~parse.Node pre, post, bool has_pre)
+		~parse.Node n = NULL
+
+		bool last_var = false
+		Var v
+
+		/; loop (int i = 0; i < post`.sub.count) [i++]
+			n = post`.sub.get(i)
+			/; if (n`._type == parse.NTYPE_FLOW_CONTROL)
+				self._compile_flow_control(s, n)
+			;; else if (n`._type == parse.NTYPE_ASM)
+				s`.cb`.add_c("    \0")
+				s`.cb`.add_c(n`.data)
+				s`.cb`.add_c(" ; User defined asm\n\0")
+			;; else if (n`._type == parse.NTYPE_DECL)
+				self._compile_decl(s, n)
+			;; else if (n`._type == parse.NTYPE_VALUE)
+				
+				v = self._compile_value(s, n)
+				
+				int count = post`.sub.count
+				/; if (i + 1 == count)
+					last_var = true
+				;; else
+					/; if (s`.is_tmp(~v))
+						s`.free_to(~v, true)
+					;/
+					v.end()
+				;/
+			;; else if (n`._type == parse.NTYPE_IF_BLOCK)
+				i = self._compile_if(s, post, i)
+			;; else if (n`._type == parse.NTYPE_LOOP_BLOCK)
+				self._compile_loop(s, n)
+			;/
+		;/
+
+		/; if (last_var == true)
+			last_var = false
+			/; if (v.is_struct() == false)
+				# Do cond jmp
+				~CompBuf buf = s`.cb
+				~uint8 lab = s`.end_label()
+				/; if (v.loc == 0 && v.offset == 0)
+					# False was passed, always jump to end
+					buf`.add_c("    jmp \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;; else if (v.loc !== 0)
+					v.test(s`.cb)
+					buf`.add_c("    je \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;/
+				_delete(lab)
+				last_var = true
+			;/
+
+			/; if (s`.is_tmp(~v) == true)
+				s`.free_to(~v, true)
+			;/
+			v.end()
+		;/
+
+		/; if (last_var == false)
+			/; if (has_pre == true)
+				# Grab last item from pre block and compile as value.  Then do similar to above
+				# as if it was the last statement
+				int off = pre`.sub.count - 1
+				n = pre`.sub.get(off)
+				v = self._compile_value(s, n)
+
+				# Do cond jmp
+				~CompBuf buf = s`.cb
+				~uint8 lab = s`.end_label()
+				/; if (v.loc == 0 && v.offset == 0)
+					# False was passed, always jump to end
+					buf`.add_c("    jmp \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;; else if (v.loc !== 0)
+					v.test(s`.cb)
+					buf`.add_c("    je \0")
+					buf`.add_c(lab)
+					buf`.add_c("\n\0")
+				;/
+				_delete(lab)
+
+				/; if (s`.is_tmp(~v) == true)
+					s`.free_to(~v, true)
+				;/
+				v.end()
+			;/
+		;/
 	;/
 
 	/; _compile_if_if(~Scope wrap, ~parse.Node n)
@@ -411,15 +503,15 @@ struct Function {
 
 		# Compile pre statements if applicable and do conditional jmp
 		/; if (first`._type == parse.NTYPE_SLIST)
-			self._compute_scope_vars_loop(s, first, 0)
-			self._compute_scope_vars_loop(s, n, 1)
+			self._compute_scope_vars_loop(~s, first, 0)
+			self._compute_scope_vars_loop(~s, n, 1)
 			self._compile_cf_pre(~s, first)
 			off = off + 1
 		;; else
-			self._compute_scope_vars_loop(s, n, 0)
+			self._compute_scope_vars_loop(~s, n, 0)
 		;/
 
-		# Actually compile all the functions
+		# Actually compile all the statements
 		self._compile_statements(~s, n, off)
 
 		# If we did execute the if branch then we are jumping to the end of the wrapper
@@ -489,6 +581,107 @@ struct Function {
 	/; _compile_loop (~Scope s, ~parse.Node n)
 		# TODO
 		_printf("Loops not impl, sorry :(\n\0")
+
+		# Generate scope
+		Scope ls = s`.gen_sub("loop\0")
+
+		# Grab pre-statements, post-statements, and offset
+		~parse.Node pre = NULL
+		~parse.Node post = NULL
+		int off = 0
+
+		/; if (n`.sub.count > 0)
+			~parse.Node first = n`.sub.get(0)
+			/; if (first`._type == parse.NTYPE_SLIST)
+				/; if (utils.strcmp(first`.data, "(\0") == true)
+					pre = first
+					off++
+				;; else if (utils.strcmp(first`.data, "[\0") == true)
+					post = first
+					off++
+				;/
+			;/
+		;/
+
+		/; if (n`.sub.count > 1)
+			~parse.Node second = n`.sub.get(1)
+			/; if (second`._type == parse.NTYPE_SLIST)
+				/; if (utils.strcmp(second`.data, "[\0") == true)
+					post = second
+					off++
+				;/
+			;/
+		;/
+
+		# Scope pre-check
+		/; if (pre !== NULL)
+			self._compute_scope_vars_loop(~ls, pre, 0)
+		;/
+
+		/; if (post !== NULL)
+			self._compute_scope_vars_loop(~ls, post, 0)
+		;/
+		
+		self._compute_scope_vars_loop(~ls, n, off)
+
+		# Compile pre statements if applicable and do conditional jmp
+		bool has_pre = false
+		/; if (pre !== NULL)
+			has_pre = self._compile_cf_pre(~ls, pre)
+		;/
+
+		# Place an anchor for repeating the loop to latch on to
+		ls.place_start_label()
+
+		# Actually compile all the statements
+		self._compile_statements(~ls, n, off)
+
+		# Place an anchor for continue statements to latch on to
+		ls.place_rep_label()
+
+		# Compile post-statements if applicable
+		/; if (post !== NULL)
+			self._compile_cf_post(~ls, pre, post, has_pre)
+		;; else if (has_pre == true)
+			# In this case no post but we have a valid condition in the pre-statements
+			# so we should use that as the rep condition
+			int idx = pre`.sub.count - 1
+			~parse.Node last = pre`.sub.get(idx)
+			Var v = self._compile_value(~ls, last)
+
+			# Do cond jmp
+			~CompBuf buf = ls.cb
+			~uint8 lab = ls.end_label()
+			/; if (v.loc == 0 && v.offset == 0)
+				# False was passed, always jump to end
+				buf`.add_c("    jmp \0")
+				buf`.add_c(lab)
+				buf`.add_c("\n\0")
+			;; else if (v.loc !== 0)
+				v.test(s`.cb)
+				buf`.add_c("    je \0")
+				buf`.add_c(lab)
+				buf`.add_c("\n\0")
+			;/
+			_delete(lab)
+
+			/; if (ls.is_tmp(~v) == true)
+				ls.free_to(~v, true)
+			;/
+			v.end()
+		;/
+
+		# Default to repeating the loop
+		~CompBuf cb = ls.cb
+		cb`.add_c("    jmp \0")
+		~uint8 lab = ls.start_label()
+		cb`.add_c(lab)
+		cb`.add_c("\n\0")
+		_delete(lab)
+
+		# Place an anchor for breaks to latch on to and clean up the scope
+		ls.place_end_label()
+		ls.end()
 	;/
 
 	/; _check_return (~parse.Node n) [bool]
