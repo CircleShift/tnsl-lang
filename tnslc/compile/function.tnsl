@@ -10,6 +10,9 @@ struct Function {
 	~Module mod
 }
 
+~uint8 BOOL_OPS = "&&,||,^^,!&&,!||,!^^\0"
+~uint8 CMP_OPS = "==,<,>,!==,!<,!>,<==,>==\0"
+
 /; method Function
 	/; init (~parse.Node n)
 		self.name = utils.strcpy(n`.data)
@@ -579,9 +582,6 @@ struct Function {
 
 
 	/; _compile_loop (~Scope s, ~parse.Node n)
-		# TODO
-		_printf("Loops not impl, sorry :(\n\0")
-
 		# Generate scope
 		Scope ls = s`.gen_sub("loop\0")
 
@@ -1437,17 +1437,226 @@ struct Function {
 		return working
 	;/
 
-	/; _compile_chain(~Scope s, ~parse.Node n) [Var]
+	/; _compile_chain (~Scope s, ~parse.Node n) [Var]
 		# FIND_VAR!!!!!
 		utils.Vector chain
 		chain.init(8)
 		return self._compile_chain_r(s, n, ~chain)
 	;/
 
+	/; _compile_bool_op (~Scope s, ~parse.Node n) [Var]
+		Scope bs = s`.gen_sub("bool\0")
+		~parse.Node lhn = n`.sub.get(0)
+		~parse.Node rhn = n`.sub.get(1)
+		
+		~uint8 op = n`.data
+
+		~Struct t = self._find_literal_type(s, "bool\0")
+		Var dummy
+		dummy._init(t)
+		Var out = s`.mk_tmp(~dummy)
+		dummy.end()
+
+		# Compute left hand side
+		Var lhs = self._compile_value(s, lhn)
+		/; if (s`.is_tmp(~lhs) == true)
+			s`.free_after(~lhs, true)
+		;/
+
+		/; if (lhs.is_struct() == true)
+			_printf("Can not use struct as boolean value\n\0")
+			lhs.end()
+			bs.end()
+			return out
+		;/
+
+		~CompBuf buf = s`.cb
+
+		# Pre-operation (jmp or mov) for this bool operator
+		/; if (op{1} == '&')
+			lhs.test(buf)
+			~uint8 lab = bs.end_label()
+			buf`.add_c("    je \0")
+			buf`.add_c(lab)
+			buf`.add_c("\n\0")
+		;; else if (op{1} == '|')
+			lhs.test(buf)
+			~uint8 lab = bs.end_label()
+			buf`.add_c("    jne \0")
+			buf`.add_c(lab)
+			buf`.add_c("\n\0")
+		;; else if (op{1} == '^')
+			/; if (lhs.loc > 0 && lhs.loc < 11)
+				/; if (s`.is_tmp(~lhs) == false)
+					bool was_ref = false
+					/; if (lhs.is_ref() == true)
+						was_ref = true
+						int32 ptr = 0
+						ptr = ptr - 1
+						lhs.ptr_pop()
+						lhs.ptr_push(ptr)
+					;/
+
+					Var tmp = s`.mk_tmp(~lhs)
+					
+					tmp.set(s`.cb, ~lhs)
+					lhs.end()
+					lhs = tmp
+
+					/; if (was_ref == true)
+						lhs.ptr_pop()
+						lhs.ptr_push(0)
+					;/
+				;/
+			;/
+		;/
+
+		# Compute right hand side
+		Var rhs = self._compile_value(s, rhn)
+
+		/; if (rhs.is_struct() == true)
+			_printf("Can not use struct as boolean value\n\0")
+			lhs.end()
+			rhs.end()
+			bs.end()
+			return out
+		;/
+
+		# Post compare or test for this particular bool op
+		/; if (op{1} == '^')
+			# Mov lhs to a register
+			bool is_ref = lhs.is_ref()
+			/; if (lhs.loc < 1 || is_ref == true)
+				Var tmp = lhs.copy()
+				tmp.strip_refs()
+				tmp.loc = 3
+				tmp.offset = 0
+				tmp.set(s`.cb, ~lhs)
+				lhs.end()
+				lhs = tmp
+			;/
+
+			/; if (op{0} == '!')
+				out.cmov(s`.cb, ~lhs, ~rhs, "e\0")
+			;; else
+				out.cmov(s`.cb, ~lhs, ~rhs, "e\0")
+			;/
+		;; else
+			rhs.test(buf)
+			bs.place_end_label()
+			/; if (op{0} == '!')
+				out.cset(buf, "e\0")
+			;; else
+				out.cset(buf, "ne\0")
+			;/
+		;/
+
+		lhs.end()
+		rhs.end()
+		s`.free_after(~out, true)
+		bs.end()
+		return out
+	;/
+
+	/; _compile_cmp_op (~Scope s, ~parse.Node n) [Var]
+		~parse.Node lhn = n`.sub.get(0)
+		~parse.Node rhn = n`.sub.get(1)
+
+		# Setup output
+		~Struct t = self._find_literal_type(s, "bool\0")
+		Var dummy
+		dummy._init(t)
+		Var out = s`.mk_tmp(~dummy)
+		dummy.end()
+
+		# Compute left hand side
+		Var lhs = self._compile_value(s, lhn)
+		/; if (s`.is_tmp(~lhs) == true)
+			s`.free_after(~lhs, true)
+		;/
+
+		# TODO: move lhs maybe if it is in rdi
+		/; if (lhs.loc > 0 && lhs.loc < 11)
+			/; if (s`.is_tmp(~lhs) == false)
+				bool was_ref = false
+				/; if (lhs.is_ref() == true)
+					was_ref = true
+					int32 ptr = 0
+					ptr = ptr - 1
+					lhs.ptr_pop()
+					lhs.ptr_push(ptr)
+				;/
+
+				Var tmp = s`.mk_tmp(~lhs)
+				
+				tmp.set(s`.cb, ~lhs)
+				lhs.end()
+				lhs = tmp
+
+				/; if (was_ref == true)
+					lhs.ptr_pop()
+					lhs.ptr_push(0)
+				;/
+			;/
+		;/
+
+		# Compute right hand side
+		Var rhs = self._compile_value(s, rhn)
+
+		# Check not structs
+		/; if (lhs.is_struct() == true || rhs.is_struct() == true)
+			_printf("Can not compare structs in this version of tnsl\n\0")
+			lhs.end()
+			rhs.end()
+			s`.free_after(~out, true)
+			return out
+		;/
+
+		# Mov lhs to a register
+		bool is_ref = lhs.is_ref()
+		/; if (lhs.loc < 1 || is_ref == true)
+			Var tmp = lhs.copy()
+			tmp.strip_refs()
+			tmp.loc = 3
+			tmp.offset = 0
+			tmp.set(s`.cb, ~lhs)
+			lhs.end()
+			lhs = tmp
+		;/
+
+		# Do comparitive move
+		/; if (utils.strcmp(n`.data, "==\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "e\0")
+		;; else if (utils.strcmp(n`.data, "<\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "l\0")
+		;; else if (utils.strcmp(n`.data, ">\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "g\0")
+		;; else if (utils.strcmp(n`.data, "!==\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "ne\0")
+		;; else if (utils.strcmp(n`.data, "!<\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "nl\0")
+		;; else if (utils.strcmp(n`.data, "!>\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "ng\0")
+		;; else if (utils.strcmp(n`.data, "<==\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "le\0")
+		;; else if (utils.strcmp(n`.data, ">==\0") == true)
+			out.cmov(s`.cb, ~lhs, ~rhs, "ge\0")
+		;/
+
+		lhs.end()
+		rhs.end()
+		s`.free_after(~out, true)
+		return out
+	;/
+
 	/; _compile_bin (~Scope s, ~parse.Node n) [Var]
 		# TODO
 		/; if (utils.strcmp(n`.data, ".\0") == true)
 			return self._compile_chain(s, n)
+		;; else if (parse._in_csv(BOOL_OPS, n`.data) == true)
+			return self._compile_bool_op(s, n)
+		;; else if (parse._in_csv(CMP_OPS, n`.data) == true)
+			return self._compile_cmp_op(s, n)
 		;/
 
 		~parse.Node lhn = n`.sub.get(0)

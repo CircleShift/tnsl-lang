@@ -1662,6 +1662,8 @@ struct Var {
 		self._unary(buf, "dec\0")
 	;/
 
+	# Boolean related
+
 	/; test (~CompBuf buf)
 		~uint8 to_str = self._set_prim_l(buf)
 		buf`.add_c("    cmp \0")
@@ -1680,6 +1682,63 @@ struct Var {
 		buf`.add_c(to_str)
 		buf`.add_c(", 0\n\0")
 		_delete(to_str)
+	;/
+
+	/; cmov (~CompBuf buf, ~Var a, ~Var b, ~uint8 cc)
+		
+		buf`.add_c("    cmp \0")
+		~uint8 a_str = a`._set_prim_l(buf)
+		buf`.add_c(a_str)
+		_delete(a_str)
+		buf`.add_c(", \0")
+		~uint8 b_str = b`._set_prim_r(buf, a)
+		buf`.add_c(b_str)
+		_delete(b_str)
+		buf`.add_c("\n\0")
+
+		buf`.add_c("    mov ax, 0\n\0")
+		buf`.add_c("    mov cx, 1\n\0")
+		buf`.add_c("    cmov\0")
+		buf`.add_c(cc)
+		buf`.add_c(" ax, cx ; Compare set\n\0")
+
+		~uint8 to_str = self._set_prim_l(buf)
+
+		Var ax = self.copy()
+		ax.loc = 1
+
+		buf`.add_c("    mov \0")
+		~uint8 to_str = self._set_prim_l(buf)
+		buf`.add_c(to_str)
+		_delete(to_str)
+		buf`.add_c(", \0")
+		~uint8 ax_str = ax._set_prim_r(buf, ~self)
+		buf`.add_c(ax_str)
+		_delete(ax_str)
+		buf`.add_c(" ; Mov after compare\n\0")
+	;/
+
+	/; cset (~CompBuf buf, ~uint8 cc)
+		buf`.add_c("    mov ax, 0\n\0")
+		buf`.add_c("    mov cx, 1\n\0")
+		buf`.add_c("    cmov\0")
+		buf`.add_c(cc)
+		buf`.add_c(" ax, cx ; Compare set\n\0")
+
+		~uint8 to_str = self._set_prim_l(buf)
+
+		Var ax = self.copy()
+		ax.loc = 1
+
+		buf`.add_c("    mov \0")
+		~uint8 to_str = self._set_prim_l(buf)
+		buf`.add_c(to_str)scope
+		_delete(to_str)
+		buf`.add_c(", \0")
+		~uint8 ax_str = ax._set_prim_r(buf, ~self)
+		buf`.add_c(ax_str)
+		_delete(ax_str)
+		buf`.add_c(" ; Mov after compare\n\0")
 	;/
 
 	/; member (~CompBuf buf, ~uint8 name) [Var]
