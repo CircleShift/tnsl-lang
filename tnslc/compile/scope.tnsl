@@ -639,6 +639,7 @@ struct Scope {
 		return out
 	;/
 
+
 	# Get closest breakable scope
 	/; _closest_break [~Scope]
 		/; if (utils.ends_with(self.name, "#wrap\0"))
@@ -747,6 +748,20 @@ struct Scope {
 		self.cb`.add_c(el)
 		self.cb`.add_c(":\n\0")
 		_delete(el)
+	;/
+
+	/; gen_const_name [~uint8]
+		utils.Vector v = self._base_label()
+
+		~uint8 u = utils.int_to_str(self.unique)
+		v.push_char('#')
+		v.push_cstr(u)
+		v.push_cstr("#const\0")
+		_delete(u)
+
+		self.unique++
+
+		return v.as_cstr()
 	;/
 ;/
 

@@ -257,6 +257,30 @@ struct Var {
 		return p` < 0
 	;/
 
+	/; first_non_ref_idx [int]
+		int idx = 0
+		idx = idx - 1
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			/; if (self.is_ptrc(i, 0) == false)
+				idx = i
+				i = self.ptrc.count
+			;/
+		;/
+		return idx
+	;/
+
+	/; first_non_ref [int32]
+		int idx = self.first_non_ref_idx()
+
+		/; if (idx < 0)
+			return 0
+		;/
+
+		int count = self.ptrc.count - idx
+		~int32 out = self.ptrc.get(count)
+		return out`
+	;/
+
 	# Returns true if the variable is an array
 	/; is_arr [bool]
 		~int32 p = self.top_ptrc()
@@ -287,6 +311,19 @@ struct Var {
 		;/
 
 		return _is_primitive(self._type`.name) == 0
+	;/
+
+	/; is_bool [bool]
+		# Check first if we are a pointer of some sort
+		~int32 p
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			p = self.ptrc.get(i)
+			/; if (p` !== 0)
+				return false
+			;/
+		;/
+
+		return utils.strcmp(self._type`.name, "bool\0") == true
 	;/
 
 	# Compute and add the correct pointer chain value for an array
@@ -1330,12 +1367,24 @@ struct Var {
 		return out
 	;/
 
+	/; index_size [int]
+		/; loop (int i = 0; i < self.ptrc.count) [i++]
+			/; if (self.is_ptrc(i, 0) == false)
+				/; if (i + 1 < self.ptrc.count)
+					return 8
+				;/
+			;/
+		;/
+
+		return self._type`.size
+	;/
+
 	/; index (~CompBuf buf, ~Var idx, int reg) [Var]
 		buf`.add_c("    ; Gen index\n\0")
 
 		# Create a literal with the size of the type
 		# Don't need to init or end this one
-		uint mul_sz = self.type_size()
+		uint mul_sz = self.index_size()
 		Var oo
 		oo.offset = mul_sz
 		oo.loc = 0
@@ -1422,7 +1471,31 @@ struct Var {
 			return
 		;/
 
-		self.standard_op(buf, other, "add\0")
+		/; if (self.first_non_ref() < 0)
+			int idx = self.first_non_ref_idx()
+
+			Var vl
+			vl.loc = 0
+			/; if (idx + 1 < self.ptrc.count)
+				vl.offset = 8
+			;; else
+				vl.offset = self._type`.size
+			;/
+
+			int32 ppc = 0
+			ppc = ppc - 1
+			Var vo = other`.copy()
+			vo.strip_refs()
+			vo.ptr_push(ppc)
+			vo.loc = 3
+			vo.set(buf, ~vl)
+			vo.mul(buf, other)
+
+			self.standard_op(buf, ~vo, "add\0")
+			vo.end()
+		;; else
+			self.standard_op(buf, other, "add\0")
+		;/
 	;/
 
 	/; sub (~CompBuf buf, ~Var other)
@@ -1431,7 +1504,31 @@ struct Var {
 			return
 		;/
 
-		self.standard_op(buf, other, "sub\0")
+		/; if (self.first_non_ref() < 0)
+			int idx = self.first_non_ref_idx()
+
+			Var vl
+			vl.loc = 0
+			/; if (idx + 1 < self.ptrc.count)
+				vl.offset = 8
+			;; else
+				vl.offset = self._type`.size
+			;/
+
+			int32 ppc = 0
+			ppc = ppc - 1
+			Var vo = other`.copy()
+			vo.strip_refs()
+			vo.ptr_push(ppc)
+			vo.loc = 3
+			vo.set(buf, ~vl)
+			vo.mul(buf, other)
+
+			self.standard_op(buf, ~vo, "sub\0")
+			vo.end()
+		;; else
+			self.standard_op(buf, other, "sub\0")
+		;/
 	;/
 
 	/; and (~CompBuf buf, ~Var other)
@@ -1650,7 +1747,19 @@ struct Var {
 			return
 		;/
 
-		self._unary(buf, "inc\0")
+		/; if (self.first_non_ref() < 0)
+			int idx = self.first_non_ref_idx()
+			Var vv
+			vv.loc = 0
+			/; if (idx + 1 < self.ptrc.count)
+				vv.offset = 8
+			;; else
+				vv.offset = self._type`.size
+			;/
+			self.standard_op(buf, ~vv, "add\0")
+		;; else
+			self._unary(buf, "inc\0")
+		;/
 	;/
 
 	/; dec (~CompBuf buf)
@@ -1659,7 +1768,19 @@ struct Var {
 			return
 		;/
 
-		self._unary(buf, "dec\0")
+		/; if (self.first_non_ref() < 0)
+			int idx = self.first_non_ref_idx()
+			Var vv
+			vv.loc = 0
+			/; if (idx + 1 < self.ptrc.count)
+				vv.offset = 8
+			;; else
+				vv.offset = self._type`.size
+			;/
+			self.standard_op(buf, ~vv, "sub\0")
+		;; else
+			self._unary(buf, "dec\0")
+		;/
 	;/
 
 	# Boolean related

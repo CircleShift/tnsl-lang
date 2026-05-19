@@ -194,7 +194,6 @@ struct Function {
 
 	/; _call_label [~uint8]
 		Scope tmp
-		self.mod`._print(0)
 		tmp.init(self.mod, NULL, self.name)
 		~uint8 out = tmp.base_label()
 		tmp.end()
@@ -370,7 +369,7 @@ struct Function {
 
 		/; if (last_var == true)
 			last_var = false
-			/; if (v.is_struct() == false)
+			/; if (v.is_bool() == true)
 				# Do cond jmp
 				~CompBuf buf = s`.cb
 				~uint8 lab = s`.end_label()
@@ -436,7 +435,7 @@ struct Function {
 
 		/; if (last_var == true)
 			last_var = false
-			/; if (v.is_struct() == false)
+			/; if (v.is_bool() == true)
 				# Do cond jmp
 				~CompBuf buf = s`.cb
 				~uint8 lab = s`.end_label()
@@ -1078,8 +1077,8 @@ struct Function {
 	;/
 
 	/; _set_var_ptr(~void v, ~void new_val)
-		Var v
-		int sz = len v
+		Var vv
+		int sz = len vv
 		/; loop (int i = 0; i < sz) [i++]
 			~uint8 out = v + i
 			~uint8 in = new_val + i
@@ -1829,7 +1828,56 @@ struct Function {
 			uint8 val = utils.unquote_cha(dat)
 			out.offset = val
 		;; else if (n`.data{0} == '\"')
-			_printf("TODO: in-function strings\n\0")
+			~Struct t = self._find_literal_type(s, "uint8\0")
+			~uint8 dlab = s`.gen_const_name()
+			out._init(t)
+			_delete(out.name)
+			out.name = dlab
+			out.ptr_push(1)
+
+			~CompBuf buf = s`.cb
+			buf`.add_d(dlab)
+			buf`.add_d(":\n    db \0")
+			
+			utils.Vector vout = utils.unquote_str(n`.data)
+
+			/; loop (int i = 1; i < vout.count) [i++]
+				~uint8 uptr = vout.get(i - 1)
+				uint8 utmp = uptr`
+				tmp = utils.int_to_str(utmp)
+				buf`.add_d(tmp)
+				buf`.add_d(", \0")
+				_delete(tmp)
+			;/
+
+			/; if (vout.count > 0)
+				int i = vout.count
+				~uint8 uptr = vout.get(i - 1)
+				uint8 utmp = uptr`
+				tmp = utils.int_to_str(utmp)
+				buf`.add_d(tmp)
+				_delete(tmp)
+			;; else
+				buf`.add_d("0\0")
+			;/
+
+			buf`.add_d("\n\0")
+
+			# Generate response text
+			vout.end()
+			tmp = self._global_ptr()
+			vout.from_cstr("    dq \0")
+			vout.push_cstr(tmp)
+			_delete(tmp)
+
+			int idx = self.ptrc.count - 1
+			idx = idx - depth
+			~int32 pc = self.ptrc.get(idx)
+			/; if (pc` < 1)
+				vout.push_cstr(" + 8\0")
+			;/
+			vout.push_cstr("\n\0")
+
 		;; else
 			~Struct t = self._find_literal_type(s, "int\0")
 			out._init(t)
