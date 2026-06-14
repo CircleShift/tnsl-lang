@@ -1,16 +1,12 @@
 
-/; five [int]
-	return 5
+/; get_first (~uint8 str) [uint8]
+	return str{0}
 ;/
 
 /; main (int argc, ~~uint8 argv) [int]
-	# Mov input from C
-	asm "mov r10, rdi"
-	asm "mov r11, rsi"
+	int a, b
+	get_first(a + b, 1)
 
-	/; if (argc < 5 && argc > 1)
-		return argc
-	;/
-
-	return five()
+	return get_first("1234")
 ;/
+

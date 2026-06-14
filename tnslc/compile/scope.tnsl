@@ -334,7 +334,7 @@ struct Scope {
 		return v
 	;/
 
-	/; mk_set_var (~Var src) [~Var]
+	/; mk_set_var (~Var src, ~Var set) [~Var]
 		~Var v = self.mk_var(src)
 
 		/; if (v == NULL)
@@ -344,9 +344,9 @@ struct Scope {
 		/; if (v`.is_ref() == true)
 			int rc = v`.max_ref()
 			rc = rc - 1
-			v`.set_ref(self.cb, src, rc)
+			v`.set_ref(self.cb, set, rc)
 		;; else
-			v`.set(self.cb, src)
+			v`.set(self.cb, set)
 		;/
 
 		return v

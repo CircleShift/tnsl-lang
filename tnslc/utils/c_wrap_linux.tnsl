@@ -1,9 +1,9 @@
 # Must be included at the top of the file
 asm "extern malloc, realloc, free, printf, putchar, open, close, read, write, lseek, perror"
 
-{}uint8 _alert = "Alert!\n\0"
-{}uint8 _dec = "%d\n\0"
-{}uint8 _ptr = "%p\n\0"
+~uint8 _alert = "Alert!\n\0"
+~uint8 _dec = "%d\n\0"
+~uint8 _ptr = "%p\n\0"
 
 ~void NULL = 0
 
@@ -275,5 +275,5 @@ asm "extern malloc, realloc, free, printf, putchar, open, close, read, write, ls
 ;/
 
 /; print_alert
-    _printf(~_alert{0})
+    _printf(_alert)
 ;/
