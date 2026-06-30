@@ -967,9 +967,9 @@ struct Function {
 		# compile all parameters and put them into tmp vars
 		~parse.Node pnode
 		/; loop (int i = use_self; i < f`.inputs.count) [i++]
-			pnode = params`.sub.get(i)
+			pnode = params`.sub.get(i - use_self)
 			inp = tmps.get(i)
-
+			
 			Var param = self._compile_value(s, pnode)
 			inp`.set(s`.cb, ~param)
 			/; if (s`.is_tmp(~param))
@@ -1175,6 +1175,11 @@ struct Function {
 		/; if (base`._type !== parse.NTYPE_ID)
 			_printf("TODO: tnslc does not currently support dot-chains with literals or non-identifiers as primary\n\0")
 			_printf("      will look into either intuiting the type from context or requiring a cast in the future\n\0")
+			_printf("      Offending token was: \"\0")
+			_printf(base`.data)
+			_printf("\" of type \0")
+			parse.print_node_type(base)
+			_printf("\n\0")
 			v`.end()
 			v`.count = 0
 			return result
@@ -1407,8 +1412,6 @@ struct Function {
 						working.loc = 0
 						return working
 					;/
-					_printf("Member:\n\0")
-					mbr._print(0)
 
 					working.end()
 					working = mbr
@@ -1660,7 +1663,6 @@ struct Function {
 		# If we are setting
 		/; if (utils.strcmp(n`.data, "=\0") == true)
 			Var lhs = self._compile_value(s, lhn)
-			lhs._print(0)
 
 			/; if (s`.is_tmp(~lhs) == true)
 				s`.free_after(~lhs, true)
@@ -1778,7 +1780,33 @@ struct Function {
 			out = self._compile_value(s, sub)
 			out.inc(s`.cb)
 		;; else if (utils.strcmp(n`.data, "len\0") == true)
-			_printf("len not impl\n\0")
+			# generate a false compile buffer to do the computation in
+			CompBuf f_buff
+			f_buff.init()
+			# generate a false sub scope to do the computation in
+			Scope f_scope = s`.gen_sub("len\0")
+			f_scope.cb = ~f_buff
+
+			~parse.Node sub = n`.sub.get(0)
+			Var tmp = self._compile_value(~f_scope, sub)
+
+			# Generate the length
+			~Struct t = self._find_literal_type(s, "uint\0")
+			out = tmp._len(~f_buff, t)
+
+			# cleanup
+			tmp.end()
+			/; if (out.loc !== VLOC_LITL)
+				# Len is based on a dynamic array, function call, or other runtime value
+				# rather than something that can be statically parsed (at this time) so
+				# append the comp buf on to the current context before continuing
+				int tmps = f_scope.tmps.count
+				f_scope.free_tmp(tmps, true)
+				~CompBuf cb = s`.cb
+				cb`.append(~f_buff)
+			;/
+			f_scope.end()
+			f_buff.end()
 		;; else
 			_printf("COMPILER ERROR: \"\0")
 			_printf(n`.data)
@@ -1892,6 +1920,20 @@ struct Function {
 		return out
 	;/
 
+	/; _print_artifact (~utils.Vector tmp)
+
+		~~uint8 str
+		/; loop (int i = 0; i < tmp`.count)
+			str = tmp`.get(i)
+			_printf(str`)
+
+			i++
+			/; if (i < tmp`.count)
+				_printf(".\0")
+			;/
+		;/
+	;/
+
 	# Should handle computing a value, delegate to other funcs when needed
 	/; _compile_value (~Scope s, ~parse.Node n) [Var]
 		/; if (n`._type == parse.NTYPE_VALUE)
@@ -1907,6 +1949,7 @@ struct Function {
 			Var out = self._compile_chain_r_base(s, n, ~tmp)
 			/; if (tmp.count !== 0)
 				tmp.end()
+				out.end()
 			;; else
 				return out
 			;/

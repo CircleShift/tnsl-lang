@@ -1,45 +1,55 @@
 
 struct CompBuf {
-  utils.Vector
-    sec_head,
-    sec_data,
-    sec_code
+	utils.Vector
+		sec_head,
+		sec_data,
+		sec_code
 }
 
 /; method CompBuf
-  /; init
-    self.sec_head.init(1)
-    self.sec_data.init(1)
-    self.sec_code.init(1)
-  ;/
+	/; init
+		self.sec_head.init(1)
+		self.sec_data.init(1)
+		self.sec_code.init(1)
+	;/
 
-  /; add_h(~uint8 text)
-    self.sec_head.push_cstr(text)
-  ;/
+	/; add_h(~uint8 text)
+		self.sec_head.push_cstr(text)
+	;/
 
-  /; add_d(~uint8 text)
-    self.sec_data.push_cstr(text)
-  ;/
-  
-  /; add_c(~uint8 text)
-    self.sec_code.push_cstr(text)
-  ;/
+	/; add_d(~uint8 text)
+		self.sec_data.push_cstr(text)
+	;/
 
-  /; write_to(~utils.File fout)
-    fout`.write_cstr("BITS 64\n\0")
-    fout`.write_cstr(self.sec_head.as_cstr())
+	/; add_c(~uint8 text)
+		self.sec_code.push_cstr(text)
+	;/
 
-    fout`.write_cstr("\nsection .data\n\n\0")
-    fout`.write_cstr(self.sec_data.as_cstr())
+	/; write_to(~utils.File fout)
+		fout`.write_cstr("BITS 64\n\0")
+		fout`.write_cstr(self.sec_head.as_cstr())
 
-    fout`.write_cstr("\nsection .text\n\n\0")
-    fout`.write_cstr(self.sec_code.as_cstr())
-  ;/
+		fout`.write_cstr("\nsection .data\n\n\0")
+		fout`.write_cstr(self.sec_data.as_cstr())
 
-  /; end
-    self.sec_head.end()
-    self.sec_data.end()
-    self.sec_code.end()
-  ;/
+		fout`.write_cstr("\nsection .text\n\n\0")
+		fout`.write_cstr(self.sec_code.as_cstr())
+	;/
+
+	/; end
+		self.sec_head.end()
+		self.sec_data.end()
+		self.sec_code.end()
+	;/
+
+	/; append (~CompBuf to_append)
+		~uint8 tmp
+		tmp = to_append`.sec_head.as_cstr()
+		self.add_h(tmp)
+		tmp = to_append`.sec_data.as_cstr()
+		self.add_d(tmp)
+		tmp = to_append`.sec_code.as_cstr()
+		self.add_c(tmp)
+	;/
 ;/
 

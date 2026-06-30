@@ -519,14 +519,19 @@ struct Scope {
 		;/
 
 		int stk_mv = 0
-		
+		int tmp_count = self.tmps.count
+
 		~Var tmp
 		/; loop (int i = 1; i !> tmps) [i++]
-			tmp = self.tmps.get(self.tmps.count - i)
+			tmp = self.tmps.get(tmp_count - i)
+
 			/; if (tmp`.loc < 0)
 				stk_mv = stk_mv + tmp`.actual_size()
 			;/
 			tmp`.end()
+		;/
+
+		/; loop (int i = 0; i < tmps) [i++]
 			self.tmps.pop()
 		;/
 

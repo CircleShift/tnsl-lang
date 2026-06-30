@@ -1,12 +1,20 @@
 
-/; get_first (~uint8 str) [uint8]
-	return str{0}
+
+struct Test {
+	int i, j,
+	~Test next
+}
+
+/; method Test
+	/; init
+		a.b.c
+		a`.b.c
+		self.next.init(1)
+		self.next().a
+	;/
 ;/
 
-/; main (int argc, ~~uint8 argv) [int]
-	int a, b
-	get_first(a + b, 1)
-
-	return get_first("1234")
+/; main
+	Test t
+	t.init()
 ;/
-

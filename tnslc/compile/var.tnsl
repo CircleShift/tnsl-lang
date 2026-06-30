@@ -483,7 +483,7 @@ struct Var {
 	######################
 
 	/; _static_compile_arr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
-		return utils.strcpy("TODO\0")
+		return utils.strcpy("TODO ; Static compile array\0")
 	;/
 
 	/; _static_compile_ptr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
@@ -553,17 +553,24 @@ struct Var {
 			;/
 			
 			# Literal not string - literal address
-			# TODO
+			utils.Vector vout
+			vout.from_cstr("    dq \0")
+			vout.push_cstr(n`.data)
+			vout.push_cstr("\n\0")
+			return vout.as_cstr()
+
 		;; else if (n`._type == parse.NTYPE_VLIST)
 			return self._static_compile_arr(n, out, depth)
 		;/
 
 		# Do a literal evaluation and then 
-		return utils.strcpy("TODO\0")
+		_printf("ERROR: Static compile pointer\n\0")
+		self._print(0)
+		return utils.strcpy("TODO ; Static compile ptr\0")
 	;/
 
 	/; _static_compile_struct(~parse.Node n, ~utils.Vector out) [~uint8]
-		return utils.strcpy("TODO\0")
+		return utils.strcpy("TODO ; Static compile struct\0")
 	;/
 
 	/; _static_comp_prim_r_dot(~parse.Node n) [Var]
@@ -1002,8 +1009,8 @@ struct Var {
 
 		buf`.add_c("] ; initial struct addr move\n\0")
 
-		# For as many more times as there are references
-		/; loop (int i = 1; i < self.ptrc.count) [i++]
+		# For as many more times as there are references ( minus one )
+		/; loop (int i = 2; i < self.ptrc.count) [i++]
 			buf`.add_c("    mov \0")
 			buf`.add_c(r)
 			buf`.add_c(", [\0")
@@ -1047,7 +1054,7 @@ struct Var {
 	;/
 
 	# Helper to properly get the lhs of a set
-	/; _set_prim_l (~CompBuf buf) [~uint8]
+	/; _set_prim_l_base (~CompBuf buf, uint sz) [~uint8]
 		/; if (self.loc == 0)
 			_printf("SET WAS CALLED ON A LITERAL!  THIS IS A COMPILER ERROR!\0")
 			return utils.strcpy("ERR SHOULD NOT HAPPEN - TRIED TO SETPRIML ON A LITERAL\0")
@@ -1077,7 +1084,6 @@ struct Var {
 					out = vout.as_cstr()
 				;/
 			;; else
-				uint sz = self.type_size()
 				out = reg_string(self.loc, sz)
 			;/
 		;; else
@@ -1143,14 +1149,13 @@ struct Var {
 
 		/; if (out{0} == '[')
 			utils.Vector vout
-			uint ts = self.type_size()
-			/; if (ts == 1)
+			/; if (sz == 1)
 				vout.from_cstr("byte \0")
-			;; else if (ts == 2)
+			;; else if (sz == 2)
 				vout.from_cstr("word \0")
-			;; else if (ts == 4)
+			;; else if (sz == 4)
 				vout.from_cstr("dword \0")
-			;; else if (ts == 8)
+			;; else if (sz == 8)
 				vout.from_cstr("qword \0")
 			;/
 			vout.push_cstr(out)
@@ -1162,6 +1167,11 @@ struct Var {
 		return out
 	;/
 
+	/; _set_prim_l (~CompBuf buf) [~uint8]
+		uint sz = self.type_size()
+		return self._set_prim_l_base(buf, sz)
+	;/
+
 	# Helper to properly get the rhs of a set
 	/; _set_prim_r (~CompBuf buf, ~Var lhs) [~uint8]
 		/; if (self.loc == 0)
@@ -1169,13 +1179,14 @@ struct Var {
 			return o
 		;/
 
-		~uint8 out = self._set_prim_l(buf)
+		~uint8 out
 
 		# Sign extend if required
 		bool ext = false
 		uint R = self.type_size()
 		uint L = lhs`.type_size()
 		/; if (R < L)
+			out = self._set_prim_l(buf)
 			ext = true
 			~uint8 vout = reg_string(5, L)
 
@@ -1199,6 +1210,8 @@ struct Var {
 			buf`.add_c("\n\0")
 			_delete(out)
 			out = vout
+		;; else
+			out = self._set_prim_l_base(buf, L)
 		;/
 
 		/; if (ext == false)
@@ -1629,7 +1642,7 @@ struct Var {
 			buf`.add_c("    idiv \0")
 		;; else
 			# Zero out
-			buf`.add_c("    xor ")
+			buf`.add_c("    xor \0")
 			/; if (sz == 1)
 				buf`.add_c("ah, ah\n\0")
 			;; else if (sz == 2)
@@ -1730,7 +1743,6 @@ struct Var {
 			return
 		;/
 		
-		self._print(0)
 		/; if (self.first_non_ref() < 0)
 			int idx = self.first_non_ref_idx()
 			Var vv
@@ -1847,6 +1859,7 @@ struct Var {
 	;/
 
 	/; member (~CompBuf buf, ~uint8 name) [Var]
+
 		/; if (self.is_struct() == false)
 			_printf("ERROR: Attempted to get a member named \"\0")
 			_printf(name)
@@ -1884,6 +1897,28 @@ struct Var {
 		;/
 		
 		# out._print(0)
+		return out
+	;/
+
+	# Len (generates differently based on whether we are an array pointer or normal variable)
+	/; _len (~CompBuf buf, ~Struct out_type) [Var]
+		Var out
+		out._init(out_type)
+		
+		int32 ptr = self.first_non_ref()
+
+		/; if (ptr == 1)
+			# We are an array pointer, just deref it into an integer (size is at the beginning)
+			_printf("TODO: array len\n\0")
+		;; else if (ptr > 1)
+			out.offset = ptr
+		;; else if (ptr !== 0)
+			out.offset = 8
+		;; else
+			# Just a normal variable, return the size of the type
+			out.offset = self._type`.size
+		;/
+
 		return out
 	;/
 

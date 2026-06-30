@@ -1252,6 +1252,9 @@ int errors_shown = 0
 			mod`.add_child(~id)
 			first` = produce_next_token(fin, first`)
 		;; else
+			_printf("Returning mod at \0")
+			_printf(first`.data)
+			_printf("\n\0")
 			return mod
 		;/
 
@@ -1539,12 +1542,13 @@ int errors_shown = 0
 /; _mhf_inner_value(~utils.File fin, ~Node cur, ~Token first, ~int ln) [~Node]
 	cur = _mhf_lower(cur)
 
-	#/; if (cur`._type !== NTYPE_ID && cur`.eq(".\0") == false && cur`.sub.count == 0 && first`._type == TTYPE_LITRL)
+	# /; if (cur`._type == NTYPE_TYPE && cur`.sub.count == 0 && first`._type == TTYPE_LITRL)
 	#	Node lt
 	#	lt.init(NTYPE_LITERAL, first`.data)
 	#	first` = produce_next_token(fin, first`)
 	#	cur = cur`.add_child(~lt)
-	#;/
+	#	cur = _mhf_lower(cur)
+	# ;/
 
 	cur = _mhf_post_value(fin, cur, first, true)
 	/; if (cur == NULL)
@@ -1619,6 +1623,19 @@ int errors_shown = 0
 ;/
 
 /; _mhf_outer_list(~utils.File fin, ~Node cur, ~Token first, ~int ln) [~Node]
+	/; if (cur`.sub.count > 0)
+		# Check for and remove empty value if exists
+		int idx = cur`.sub.count - 1
+		~Node last = cur`.sub.get(idx)
+		/; if (last`._type == NTYPE_VALUE)
+			/; if (last`.sub.count == 0)
+				# Remove it
+				last`.end()
+				cur`.sub.pop()
+			;/
+		;/
+	;/
+
 	/; loop (first`._type !== TTYPE_ERR && first`.eq(")\0") == false)
 		_ast_value(fin, cur, first, true)
 
@@ -1794,7 +1811,6 @@ int errors_shown = 0
 		~Node cur = _mhf_post(fin, ~out, first, lnok)
 		/; if (cur == NULL)
 			_mhf_finish_decl(fin, ~out, first, lnok)
-
 		;; else
 			cur = _mhf_transform(~out, cur)
 			_mhf_finish_value(fin, ~out, first, cur, lnok)
