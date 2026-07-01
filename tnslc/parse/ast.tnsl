@@ -1323,14 +1323,15 @@ int errors_shown = 0
 				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
 				n.init(NTYPE_ID, utils.strcpy(sub`.data))
 				/; if (cur`.sub.count == 0)
-					op.add_child(~n)
+					cur`.add_child(~n)
 				;; else
+					_printf("ERROR? Unsure why cur has data???\n\0")
 					sub = cur`.sub.get(cur`.sub.count - 1)
 					sub`.add_child(~n)
 					op.add_child(sub)
 					cur`.sub.pop()
 				;/
-				cur`.add_child(~op)
+				cur = cur`.add_child(~op)
 			;; else
 				sub = _type`.sub.get(idx)
 				Node n
