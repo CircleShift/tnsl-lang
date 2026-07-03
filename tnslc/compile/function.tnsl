@@ -1461,6 +1461,7 @@ struct Function {
 			s`.free_after(~lhs, true)
 		;/
 
+		_printf("COMPILE_BOOL_OP\n\0")
 		/; if (lhs.is_struct() == true)
 			_printf("Can not use struct as boolean value\n\0")
 			lhs.end()
@@ -1512,6 +1513,7 @@ struct Function {
 		# Compute right hand side
 		Var rhs = self._compile_value(s, rhn)
 
+		_printf("COMPILE_BOOL_OP\n\0")
 		/; if (rhs.is_struct() == true)
 			_printf("Can not use struct as boolean value\n\0")
 			lhs.end()
@@ -1601,6 +1603,7 @@ struct Function {
 		# Compute right hand side
 		Var rhs = self._compile_value(s, rhn)
 
+		_printf("COMPILE_CMP_OP\n\0")
 		# Check not structs
 		/; if (lhs.is_struct() == true || rhs.is_struct() == true)
 			_printf("Can not compare structs in this version of tnsl\n\0")

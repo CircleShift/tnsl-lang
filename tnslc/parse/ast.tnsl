@@ -1314,40 +1314,56 @@ int errors_shown = 0
 		;/
 	;/
 
-	/; loop (idx < _type`.sub.count && sub`._type == NTYPE_ID)
-		/; if (idx < _type`.sub.count - 1)
-			sub = _type`.sub.get(idx + 1)
-			/; if (sub`._type == NTYPE_ID)
-				sub = _type`.sub.get(idx)
-				Node op, n
-				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
-				n.init(NTYPE_ID, utils.strcpy(sub`.data))
-				/; if (cur`.sub.count == 0)
-					cur`.add_child(~n)
-				;; else
-					_printf("ERROR? Unsure why cur has data???\n\0")
-					sub = cur`.sub.get(cur`.sub.count - 1)
-					sub`.add_child(~n)
-					op.add_child(sub)
-					cur`.sub.pop()
-				;/
-				cur = cur`.add_child(~op)
-			;; else
-				sub = _type`.sub.get(idx)
-				Node n
-				n.init(NTYPE_ID, utils.strcpy(sub`.data))
-				/; if (cur`.sub.count !== 0)
-					cur = cur`.sub.get(cur`.sub.count - 1)
-				;/
-				cur = cur`.add_child(~n)
+	/; loop (idx < _type`.sub.count)
+		/; if (sub`._type == NTYPE_ID)
+			int cmp = 0
+			/; if (cur`.eq(".\0") == true)
+				cmp++
 			;/
-		;; else
+
+			/; if (cur`.sub.count > cmp)
+				# Create bin op
+				~Node mid
+				mid = cur`.sub.get(cur`.sub.count - 1)
+				
+				Node op
+				op.init(NTYPE_BIN_OP, utils.strcpy(".\0"))
+				op.add_child(mid)
+				cur`.sub.pop()
+				
+				cur = cur`.add_child(~op)
+			;/
+
 			Node n
 			n.init(NTYPE_ID, utils.strcpy(sub`.data))
-			/; if (cur`.sub.count !== 0)
-				cur = cur`.sub.get(cur`.sub.count - 1)
+			cur`.add_child(~n)
+
+		;; else if (sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
+			~Node mid
+			mid = cur`.sub.get(cur`.sub.count - 1)
+			
+			Node lst
+			lst.init(NTYPE_VLIST, utils.strcpy("(\0"))
+			
+			/; loop (int i = 0; i < sub`.sub.count) [i++]
+				~Node lsub = sub`.sub.get(i)
+				at = _mhf_transform(lsub, at)
+				/; if (at == lsub)
+					at = lst.add_child(lsub)
+				;; else
+					lst.add_child(lsub)
+				;/
 			;/
-			cur = cur`.add_child(~n)
+			
+			/; loop (sub`.sub.count > 0)
+				sub`.sub.pop()
+			;/
+
+			/; if (at == sub)
+				at = mid`.add_child(~lst)
+			;; else
+				mid`.add_child(~lst)
+			;/
 		;/
 
 		idx++
@@ -1357,34 +1373,6 @@ int errors_shown = 0
 		;/
 	;/
 	
-	~int pt1 = at
-	/; if (idx < _type`.sub.count && sub`._type == NTYPE_TLIST && sub`.eq("(\0") == true)
-		Node lst
-		lst.init(NTYPE_VLIST, utils.strcpy("(\0"))
-		
-		/; loop (int i = 0; i < sub`.sub.count) [i++]
-			~Node lsub = sub`.sub.get(i)
-			at = _mhf_transform(lsub, at)
-			~int pt2 = lsub
-			/; if (at == lsub)
-				at = lst.add_child(lsub)
-			;; else
-				lst.add_child(lsub)
-			;/
-		;/
-		
-		/; loop (sub`.sub.count > 0)
-			sub`.sub.pop()
-		;/
-
-		~int pt2 = sub
-		/; if (pt1 == pt2)
-			at = cur`.add_child(~lst)
-		;; else
-			cur`.add_child(~lst)
-		;/
-	;/
-
 	_type`.end()
 	_type` = out
 	_type`.update_children()
@@ -1441,20 +1429,22 @@ int errors_shown = 0
 /; _mhf_lower (~Node cur) [~Node]
 	/; loop (bool run = true; run == true)
 		/; if (cur`.sub.count > 0)
-			cur = cur`.sub.get(cur`.sub.count - 1)
+			int i = cur`.sub.count
+			i = i - 1
+			cur = cur`.sub.get(i)
 		;; else
 			return cur
 		;/
 
-		/; if (cur`.eq(".\0") || cur`._type == NTYPE_ID)
-			return cur
+		/; if (cur`._type == NTYPE_ID)
+			return cur`.parent
 		;/
 	;/
 	# should never happen
 	return NULL
 ;/
 
-/; _mhf_post_value(~utils.File fin, ~Node cur, ~Token first, bool lnok) [~Node]
+/; _mhf_post_value (~utils.File fin, ~Node cur, ~Token first, bool lnok) [~Node]
 	int ln = first`.line
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR)
 		/; if (ln !== first`.line && lnok == false)
@@ -1467,7 +1457,6 @@ int errors_shown = 0
 				id.init(NTYPE_ID, first`.data)
 				ln = first`.line
 				
-				cur = cur`.parent
 				~Node sub = cur`.sub.get(cur`.sub.count - 1)
 				
 				op.add_child(sub)
@@ -1484,27 +1473,27 @@ int errors_shown = 0
 		;; else if (_op_postfix(first) == true)
 			Node op
 			op.init(NTYPE_POST_OP, first`.data)
-			/; if (cur`.eq(".\0") == true)
+			/; if (cur`._type == NTYPE_ID)
+				cur`.add_child(~op)
+			;; else if (cur`.sub.count > 0)
 				cur = cur`.sub.get(cur`.sub.count - 1)
 				cur`.add_child(~op)
 				cur = cur`.parent
-			;; else if (cur`._type == NTYPE_ID)
-				cur`.add_child(~op)
 			;; else
-				_ast_print_err(fin, first, "Unsure where we are at in the tree ('`'). [CMPERR]")
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('`'). [CMPERR]\0")
 				op.end()
 				return NULL
 			;/
 			first` = produce_next_token(fin, first`)
 		;; else if (first`.eq("(\0") == true)
-			/; if (cur`.eq(".\0") == true)
+			/; if (cur`._type == NTYPE_ID)
+				ln = _ast_list_value(fin, cur, first)
+			;; else if (cur`.sub.count > 0)
 				cur = cur`.sub.get(cur`.sub.count - 1)
 				ln = _ast_list_value(fin, cur, first)
 				cur = cur`.parent
-			;; else if (cur`._type == NTYPE_ID)
-				ln = _ast_list_value(fin, cur, first)
 			;; else
-				_ast_print_err(fin, first, "Unsure where we are at in the tree ('('). [CMPERR]")
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('('). [CMPERR]\0")
 				return NULL
 			;/
 		;; else if (first`.eq("{\0") == true)
@@ -1515,14 +1504,14 @@ int errors_shown = 0
 				_ast_print_err(fin, first, "Expected value for index operation after '{'\0")
 			;/
 
-			/; if (cur`.eq(".\0") == true)
+			/; if (cur`._type == NTYPE_ID)
+				cur`.add_child(~ind)
+			;; else if (cur`.sub.count > 0)
 				cur = cur`.sub.get(cur`.sub.count - 1)
 				cur`.add_child(~ind)
 				cur = cur`.parent
-			;; else if (cur`._type == NTYPE_ID)
-				cur`.add_child(~ind)
 			;; else
-				_ast_print_err(fin, first, "Unsure where we are at in the tree ('{'). [CMPERR]")
+				_ast_print_err(fin, first, "Unsure where we are at in the tree ('{'). [CMPERR]\0")
 				ind.end()
 				return NULL
 			;/
@@ -1661,10 +1650,10 @@ int errors_shown = 0
 	~int p1 = cur
 	~int p2 = mod
 	int ln = first`.line
-	bool firstRun = true
-	
+
 	# While we are in subtree
 	/; loop (bool run = true; run == true && p1 !== p2 && first`._type !== TTYPE_ERR)
+
 		~Node tmp = cur
 		# First loop for while we are in value
 		/; if (tmp`._type == NTYPE_VALUE)
