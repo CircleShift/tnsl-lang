@@ -117,6 +117,6 @@
 	_gen_prim(m, 8, "uint\0")
 	_gen_prim(m, 8, "int\0")
 	_gen_prim(m, 8, "float\0")
-	_gen_prim(m, 8, "void\0")
+	_gen_prim(m, 1, "void\0")
 ;/
 

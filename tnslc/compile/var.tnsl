@@ -1485,6 +1485,8 @@ struct Var {
 			Var vl
 			vl.loc = 0
 			/; if (idx + 1 < self.ptrc.count)
+				_printf("Offset 8 @\n\0")
+				self._print(0)
 				vl.offset = 8
 			;; else
 				vl.offset = self._type`.size
@@ -1871,7 +1873,6 @@ struct Var {
 	;/
 
 	/; member (~CompBuf buf, ~uint8 name) [Var]
-		_printf("MEMBER\n\0")
 		/; if (self.is_struct() == false)
 			_printf("ERROR: Attempted to get a member named \"\0")
 			_printf(name)
@@ -1924,7 +1925,6 @@ struct Var {
 			out.offset = out.offset + self.offset
 		;/
 		
-		out._print(0)
 		return out
 	;/
 
