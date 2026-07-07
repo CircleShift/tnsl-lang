@@ -1671,7 +1671,7 @@ struct Function {
 				s`.free_after(~lhs, true)
 			;/
 
-			# TODO: move lhs maybe if it is in rdi
+			# TODO: move lhs maybe if it is in rdi or rsi
 			/; if (lhs.loc > 0 && lhs.loc < 11)
 				/; if (s`.is_tmp(~lhs) == false)
 					bool was_ref = false

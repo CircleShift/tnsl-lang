@@ -1,20 +1,13 @@
 
-
-struct Test {
-	int i, j,
-	~Test next
+struct Init {
+	~int a, b
 }
 
-/; method Test
-	/; init
-		a.b.c
-		a`.b.c
-		self.next.init(1)
-		self.next().a
+/; method Init
+
+	/; set (int a)
+		self.b` = a
 	;/
+	
 ;/
 
-/; main
-	Test t
-	t.init()
-;/

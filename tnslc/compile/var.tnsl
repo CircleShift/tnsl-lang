@@ -974,6 +974,12 @@ struct Var {
 		# Initial deref or move
 		/; if (self.ptrc.count > 1)
 			buf`.add_c("    mov \0")
+		;; else if (self.ptrc.count == 1)
+			/; if (self.loc < 0)
+				buf`.add_c("    mov \0")
+			;; else
+				buf`.add_c("    lea \0")
+			;/
 		;; else
 			buf`.add_c("    lea \0")
 		;/
@@ -1008,7 +1014,7 @@ struct Var {
 			_delete(its)
 		;/
 
-		buf`.add_c("] ; initial struct addr move\n\0")
+		buf`.add_c("] ; initial struct addr move (SET_STR_R)\n\0")
 
 		# For as many more times as there are references ( minus one )
 		/; loop (int i = 2; i < self.ptrc.count) [i++]
@@ -1016,7 +1022,7 @@ struct Var {
 			buf`.add_c(r)
 			buf`.add_c(", [\0")
 			buf`.add_c(r)
-			buf`.add_c("] ; reference chain\n\0")
+			buf`.add_c("] ; reference chain (SET_STR_R)\n\0")
 		;/
 
 		_delete(r)
@@ -1074,7 +1080,7 @@ struct Var {
 					/; if (off < 0)
 						off = 0 - off
 						vout.push_cstr(" - \0")
-					;; else if (off > 0)
+					;; else
 						vout.push_cstr(" + \0")
 					;/
 
@@ -1117,7 +1123,7 @@ struct Var {
 				# Need to move into rdi
 				buf`.add_c("    mov rdi, [\0")
 				buf`.add_c(out)
-				buf`.add_c("]\n\0")
+				buf`.add_c("] ; (SET_PRM_L)\n\0")
 				_delete(out)
 				out = utils.strcpy("rdi\0")
 			;/
@@ -1135,17 +1141,22 @@ struct Var {
 		;/
 		
 		# Loop and make sure we are dereferencing properly
-		/; loop (int i = 1; i < self.ptrc.count) [i++]
-			/; if (self.is_ptrc(i, 0) == true)
-				buf`.add_c("    mov rdi, [rdi] ; auto deref\n\0")
-			;; else
-				i = self.ptrc.count
-			;/
-		;/
-
 		/; if (self.double_ref() == true)
+			buf`.add_c("    mov rdi, \0")
+			buf`.add_c(out)
+			buf`.add_c(" ; auto deref (SET_PRM_L)\n\0")
 			_delete(out)
 			out = utils.strcpy("[rdi]\0")
+
+			/; loop (int i = 2; i < self.ptrc.count) [i++]
+				/; if (self.is_ptrc(i, 0) == true)
+					buf`.add_c("    mov rdi, [rdi] ; auto deref (SET_PRM_L)\n\0")
+					_printf("AUTO DEREF\n\0")
+					self._print(0)
+				;; else
+					i = self.ptrc.count
+				;/
+			;/
 		;/
 
 		/; if (out{0} == '[')
@@ -1208,7 +1219,7 @@ struct Var {
 			;/
 
 			buf`.add_c(out)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (SET_PRM_R)\n\0")
 			_delete(out)
 			out = vout
 		;; else
@@ -1222,7 +1233,7 @@ struct Var {
 				buf`.add_c(vout)
 				buf`.add_c(", \0")
 				buf`.add_c(out)
-				buf`.add_c("\n\0")
+				buf`.add_c(" ; (SET_PRM_R)\n\0")
 				_delete(out)
 				out = vout
 			;/
@@ -1238,7 +1249,6 @@ struct Var {
 		# - If builtin then move based on size (byte, word, dword, qword)
 		# - If pointer then move qword
 		# - If struct then move via rep movsb
-		_printf("SET\n\0")
 		/; if (self.is_struct() == true)
 			# Struct set
 			self._set_struct(buf, other)
@@ -1253,7 +1263,7 @@ struct Var {
 		buf`.add_c(sl)
 		buf`.add_c(", \0")
 		buf`.add_c(sr)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (SET)\n\0")
 
 		_delete(sl)
 		_delete(sr)
@@ -1325,7 +1335,7 @@ struct Var {
 				buf`.add_c(rstr)
 				buf`.add_c(", \0")
 				buf`.add_c(source)
-				buf`.add_c("\n\0")
+				buf`.add_c(" ; (TAKE_PTR)\n\0")
 				_delete(source)
 				_delete(rstr)
 			;/
@@ -1426,14 +1436,14 @@ struct Var {
 			return out
 		;/
 		buf`.add_c(to_str)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (GEN_IDX)\n\0")
 		_delete(to_str)
 
 		# Add address to computed offset
 		to_str = out._set_prim_l(buf)
 		buf`.add_c("    add \0")
 		buf`.add_c(to_str)
-		buf`.add_c(", rsi\n\0")
+		buf`.add_c(", rsi ; (GEN_IDX)\n\0")
 
 		# deref
 		int32 ptr_ref = 0
@@ -1457,7 +1467,7 @@ struct Var {
 		buf`.add_c(to_str)
 		buf`.add_c(", \0")
 		buf`.add_c(from_str)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (STD_OP)\n\0")
 
 		_delete(from_str)
 		_delete(to_str)
@@ -1576,21 +1586,21 @@ struct Var {
 			buf`.add_c(ax)
 			buf`.add_c(", \0")
 			buf`.add_c(to_str)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (MUL)\n\0")
 
 			# Do actual product
 			buf`.add_c("    imul \0")
 			buf`.add_c(ax)
 			buf`.add_c(", \0")
 			buf`.add_c(from_str)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (MUL)\n\0")
 
 			# Move back
 			buf`.add_c("    mov \0")
 			buf`.add_c(to_str)
 			buf`.add_c(", \0")
 			buf`.add_c(ax)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (MUL)\n\0")
 
 			_delete(ax)
 		;; else
@@ -1598,7 +1608,7 @@ struct Var {
 			buf`.add_c(to_str)
 			buf`.add_c(", \0")
 			buf`.add_c(from_str)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (MUL)\n\0")
 		;/
 
 		_delete(from_str)
@@ -1617,7 +1627,7 @@ struct Var {
 			# Move literal into register
 			buf`.add_c("    mov rcx, \0")
 			buf`.add_c(from_str)
-			buf`.add_c("\n\0")
+			buf`.add_c(" ; (DIV)\n\0")
 			_delete(from_str)
 			from_str = reg_string(3, sz)
 		;/
@@ -1627,7 +1637,7 @@ struct Var {
 		buf`.add_c(rstr)
 		buf`.add_c(", \0")
 		buf`.add_c(to_str)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (DIV)\n\0")
 
 		/; if (self.is_signed() == true)
 			# Sign extend
@@ -1673,7 +1683,7 @@ struct Var {
 		buf`.add_c(to_str)
 		buf`.add_c(", \0")
 		buf`.add_c(rstr)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (DIV)\n\0")
 
 		_delete(from_str)
 		_delete(to_str)
@@ -1716,7 +1726,7 @@ struct Var {
 			;/
 		;/
 		buf`.add_c(to_str)
-		buf`.add_c("\n\0")
+		buf`.add_c(" ; (UNARY)\n\0")
 		_delete(to_str)
 	;/
 
@@ -1893,12 +1903,28 @@ struct Var {
 			self._set_struct_r(buf, 5)
 			out.loc = 5
 			out.ptr_push(0)
+			
+			# Add offset
+			/; if (out.offset !== 0)
+				int o = out.offset
+				/; if (o < 0)
+					buf`.add_c("    sub rsi, \0")
+					o = 0 - o
+				;; else
+					buf`.add_c("    add rsi, \0")
+				;/
+
+				~uint8 its = utils.int_to_str(o)
+				buf`.add_c(its)
+				buf`.add_c(" ; Add offset when getting member (MEMBER)\n\0")
+				out.offset = 0
+			;/
 		;; else
 			out.loc = self.loc
 			out.offset = out.offset + self.offset
 		;/
 		
-		# out._print(0)
+		out._print(0)
 		return out
 	;/
 
