@@ -706,12 +706,13 @@ struct Function {
 		_print_num("%d)\n\0", expected)
 		_printf("ERROR: To return multiple values enclose them in {}\n\0")
 		_printf("ERROR: To add more return values, add them (comma separated) between [] at the end of the function definition\n\0")
+		_printf("ERROR: OFFENDING FUNCTION:\n\0")
+		self._print(0)
 
 		return false
 	;/
 
 	/; _compile_return_vals (~Scope s, ~parse.Node n)
-		_printf("Compiling return vals!\n\0")
 		/; if (self.outputs.count == 0)
 			return
 		;/
@@ -860,13 +861,10 @@ struct Function {
 			# Generate result tmp if required
 			out = f`.outputs.get(0)
 			/; if (out`.loc < 0)
-				_printf("Making tmp!\n\0")
 				result = s`.mk_tmp_stack(out)
 			;; else
-				_printf("Grabbing copy!\n\0")
 				result = out`.copy()
 			;/
-			result._print(0)
 		;; else
 			~Struct t = self._find_literal_type(s, "void\0")
 			result._init(t)
@@ -1475,7 +1473,6 @@ struct Function {
 			s`.free_after(~lhs, true)
 		;/
 
-		_printf("COMPILE_BOOL_OP\n\0")
 		/; if (lhs.is_struct() == true)
 			_printf("Can not use struct as boolean value\n\0")
 			lhs.end()
@@ -1527,7 +1524,6 @@ struct Function {
 		# Compute right hand side
 		Var rhs = self._compile_value(s, rhn)
 
-		_printf("COMPILE_BOOL_OP\n\0")
 		/; if (rhs.is_struct() == true)
 			_printf("Can not use struct as boolean value\n\0")
 			lhs.end()
@@ -1617,7 +1613,6 @@ struct Function {
 		# Compute right hand side
 		Var rhs = self._compile_value(s, rhn)
 
-		_printf("COMPILE_CMP_OP\n\0")
 		# Check not structs
 		/; if (lhs.is_struct() == true || rhs.is_struct() == true)
 			_printf("Can not compare structs in this version of tnsl\n\0")

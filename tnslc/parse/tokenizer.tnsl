@@ -428,7 +428,7 @@ uint   MAX_MULTI  = 3
 /; print_token_list (~utils.Vector vec)
 	~Token tok
 	/; loop (uint i = 0; i < vec`.count) [i++]
-		tok = vec.get(i)
+		tok = vec`.get(i)
 		print_token(tok`)
 	;/
 ;/

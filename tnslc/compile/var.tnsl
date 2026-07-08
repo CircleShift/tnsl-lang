@@ -372,6 +372,8 @@ struct Var {
 				_printf("ERROR: Tried to find method \"\0")
 				_printf(name)
 				_printf("\" on a variable but we had a pointer in the chain\n\0")
+				_printf("ERROR: OFFENDING VARIABLE:\n\0")
+				self._print(0)
 				return false
 			;/
 		;/
@@ -944,7 +946,6 @@ struct Var {
 
 	# Typechecking structs
 	/; _tc_struct (~Var other) [bool]
-		_printf("TC_STRUCT\n\0")
 		/; if (other`.is_struct() == false)
 			return false
 		;/
@@ -1325,7 +1326,6 @@ struct Var {
 			~int32 p = vcpy.ptrc.get(idx)
 			p` = set
 		;; else
-			_printf("TAKE_PTR\n\0")
 			/; if (self.is_struct() == true)
 				self._set_struct_r(buf, reg)
 			;; else

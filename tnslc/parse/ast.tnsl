@@ -919,8 +919,6 @@ int errors_shown = 0
 	uint8 end = _get_closing_delim(first`.data`)
 	first` = produce_next_token(fin, first`)
 
-	int ln = first`.line
-
 	/; loop (bool run = true; run == true && first`._type !== TTYPE_ERR && first`.data` !== end)
 		/; if (_advance_check(fin, first, "asm\0") == true)
 			_ast_asm(fin, ~list, first)
@@ -951,8 +949,6 @@ int errors_shown = 0
 
 	mod`.add_child(~list)
 
-	ln = first`.line
-	
 	/; if (first`._type !== TTYPE_DELIM || first`.data` !== end)
 		_ast_print_err(fin, first, "Expected closing at end of statement list\0")
 	;; else
@@ -961,7 +957,6 @@ int errors_shown = 0
 		first` = tmp
 	;/
 
-	return ln
 ;/
 
 
