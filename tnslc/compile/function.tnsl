@@ -78,7 +78,7 @@ struct Function {
 		out_id.data = "# OUTPUT #\0"
 
 		int reg = 1
-		int stack = 0
+		int stack = 8
 		/; loop (int i = 0; i < tl`.sub.count) [i++]
 			n = tl`.sub.get(i)
 			/; if (n`._type == parse.NTYPE_TYPE)
@@ -853,17 +853,20 @@ struct Function {
 		;/
 	;/
 
-	/; _compile_call(~Scope s, ~parse.Node params, ~Function f, ~Var _self, bool mth) [Var]
+	/; _compile_call (~Scope s, ~parse.Node params, ~Function f, ~Var _self, bool mth) [Var]
 		Var result
 		~Var out
 		/; if (f`.outputs.count > 0)
 			# Generate result tmp if required
 			out = f`.outputs.get(0)
 			/; if (out`.loc < 0)
+				_printf("Making tmp!\n\0")
 				result = s`.mk_tmp_stack(out)
 			;; else
+				_printf("Grabbing copy!\n\0")
 				result = out`.copy()
 			;/
+			result._print(0)
 		;; else
 			~Struct t = self._find_literal_type(s, "void\0")
 			result._init(t)
@@ -911,6 +914,7 @@ struct Function {
 		~Var inp
 		Var last_stack
 		last_stack.loc = 0
+		last_stack.offset = s`._next_stack_slot()
 		/; loop (int i = 1; i !> f`.inputs.count) [i++]
 			int pidx = f`.inputs.count - i
 			inp = f`.inputs.get(pidx)
@@ -1027,7 +1031,8 @@ struct Function {
 					out_pos.ptr_push(pp)
 				;/
 
-				out_pos.loc = last_stack.loc
+				int sloc = 0
+				out_pos.loc = sloc - 1
 				out_pos.offset = last_stack.offset
 
 				/; if (f`.call_padding > 0)
@@ -1045,6 +1050,7 @@ struct Function {
 					result.ptr_push(pp)
 				;/
 
+				~CompBuf buf = s`.cb
 				result.set(s`.cb, ~out_pos)
 				out_pos.end()
 				
@@ -1066,7 +1072,15 @@ struct Function {
 		s`.restore_caller_tmp(~handle)
 
 		/; if (result.loc < 0)
-			s`.free_after(~result, true)
+			/; if (last_stack.loc !== 0)
+				s`.free_after(~result, true)
+			;; else if (f`.call_padding > 0)
+				~uint8 pad_num = utils.int_to_str(f`.call_padding)
+				buf`.add_c("    add rsp, \0")
+				buf`.add_c(pad_num)
+				buf`.add_c("\n\0")
+				_delete(pad_num)
+			;/
 		;/
 
 		return result
