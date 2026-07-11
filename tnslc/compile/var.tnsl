@@ -484,11 +484,11 @@ struct Var {
 	# Static compilation #
 	######################
 
-	/; _static_compile_arr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
+	/; _static_compile_arr (~parse.Node n, ~utils.Vector out, int depth) [~uint8]
 		return utils.strcpy("TODO ; Static compile array\0")
 	;/
 
-	/; _static_compile_ptr(~parse.Node n, ~utils.Vector out, int depth) [~uint8]
+	/; _static_compile_ptr (~parse.Node n, ~utils.Vector out, int depth) [~uint8]
 		
 		/; if (n`._type == parse.NTYPE_VALUE)
 			n = n`.sub.get(0)
@@ -575,7 +575,7 @@ struct Var {
 		return utils.strcpy("TODO ; Static compile struct\0")
 	;/
 
-	/; _static_comp_prim_r_dot(~parse.Node n) [Var]
+	/; _static_comp_prim_r_dot (~parse.Node n) [Var]
 		# Has to do:
 		# Variable dot chain mod
 		# Variable dot chain struct
@@ -585,7 +585,7 @@ struct Var {
 		return out
 	;/
 
-	/; _static_comp_prim_r_bin(~parse.Node n) [Var]
+	/; _static_comp_prim_r_bin (~parse.Node n) [Var]
 		/; if (n`.data{0} == '.')
 			return self._static_comp_prim_r_dot(n)
 		;/
@@ -626,14 +626,14 @@ struct Var {
 		return a
 	;/
 
-	/; _static_comp_prim_r_pre(~parse.Node n) [Var]
+	/; _static_comp_prim_r_pre (~parse.Node n) [Var]
 		_printf("TODO: _static_comp_prim_r_pre\n\0")
 		Var out
 		out._init(self._type)
 		return out
 	;/
 
-	/; _static_comp_prim_r_post(~parse.Node n) [Var]
+	/; _static_comp_prim_r_post (~parse.Node n) [Var]
 		# Has to do:
 		# deref of variables
 		# array index
@@ -643,7 +643,7 @@ struct Var {
 		return out
 	;/
 
-	/; _static_comp_prim_r_id(~parse.Node n) [Var]
+	/; _static_comp_prim_r_id (~parse.Node n) [Var]
 		# Has to do:
 		# Get variable and static comp
 		~uint8 name = n`.data
@@ -720,7 +720,7 @@ struct Var {
 		return out
 	;/
 
-	/; _static_comp_prim_r(~parse.Node n) [Var]
+	/; _static_comp_prim_r (~parse.Node n) [Var]
 		/; if (n`._type == parse.NTYPE_VALUE)
 			n = n`.sub.get(0)
 			return self._static_comp_prim_r(n)
@@ -765,7 +765,7 @@ struct Var {
 		return out
 	;/
 
-	/; _static_compile_prim(~parse.Node n) [~uint8]
+	/; _static_compile_prim (~parse.Node n) [~uint8]
 		Var vout = self._static_comp_prim_r(n)
 		
 		utils.Vector out

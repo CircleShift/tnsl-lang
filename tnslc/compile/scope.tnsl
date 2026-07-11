@@ -271,7 +271,7 @@ struct Scope {
 		;/
 
 		/; if (self.parent !== NULL)
-			return self.parent`.find_var(name)
+			return self.parent`._find_var(name)
 		;/
 
 		return NULL
@@ -293,6 +293,7 @@ struct Scope {
 		_printf("\" but it doesn't look like it's been initialized yet!\n\0")
 		_print_num("    Loc: %d\n\0", out`.loc)
 		_print_num("    Offset: %d\n\0", out`.offset)
+		out`._print(0)
 		return NULL
 	;/
 
@@ -305,7 +306,7 @@ struct Scope {
 
 		int tmp = 0
 		/; if (v`.loc == 1)
-			int tmp = self._next_reg_slot()
+			tmp = self._next_reg_slot()
 			v`.loc = tmp
 			/; if (v`.loc + 1 == 0)
 				tmp = self._next_stack_slot()
@@ -359,7 +360,7 @@ struct Scope {
 
 		int tmp = 0
 		/; if (v.regable() == true)
-			int tmp = self._next_tmp_slot()
+			tmp = self._next_tmp_slot()
 			v.loc = tmp
 			/; if (v.loc + 1 == 0)
 				tmp = self._next_stack_slot()

@@ -1076,7 +1076,8 @@ struct Function {
 		/; if (utils.strcmp(post`.data, "(\0") == true)
 			_printf("TODO: tnslc does not yet support calling variables\n\0")
 		;; else if (utils.strcmp(post`.data, "`\0") == true)
-			Var tmp = v`.de_ref()
+			Var tmp
+			tmp = v`.de_ref()
 			v`.end()
 			self._set_var_ptr(v, ~tmp)
 		;; else if (utils.strcmp(post`.data, "{\0") == true)
@@ -1094,7 +1095,8 @@ struct Function {
 						v`.ptr_push(pp)
 					;/
 
-					Var tmp = s`.mk_tmp(v)
+					Var tmp
+					tmp = s`.mk_tmp(v)
 					tmp.set(s`.cb, v)
 					v`.end()
 					/; if (is_ref == true)
@@ -1107,18 +1109,19 @@ struct Function {
 
 			# Compute index
 			Var idx = self._compile_value(s, post)
-			/; if (idx.loc == 6)
+			/; if (idx.loc == 1)
 				~CompBuf buf = s`.cb
-				buf`.add_c("    mov rax, rdi ; idx\n\0")
-				idx.loc = 1
+				buf`.add_c("    mov rdi, rax ; idx\n\0")
+				idx.loc = 6
 			;; else if (idx.loc == 5)
 				~CompBuf buf = s`.cb
-				buf`.add_c("    mov rax, rsi ; idx\n\0")
-				idx.loc = 1
+				buf`.add_c("    mov rdi, rsi ; idx\n\0")
+				idx.loc = 6
 			;/
 			
 			# Take index and set result
-			Var tmp = v`.index(s`.cb, ~idx, 6)
+			Var tmp
+			tmp = v`.index(s`.cb, ~idx, 1)
 
 			# Clear tmp
 			/; if (s`.is_tmp(v) == true)
@@ -1133,7 +1136,8 @@ struct Function {
 			Var copy = v`.copy()
 			copy.strip_refs()
 			# Make tmp var
-			Var tmp = s`.mk_tmp(~copy)
+			Var tmp
+			tmp = s`.mk_tmp(~copy)
 			copy.end()
 			# Set the new tmp to the value of the old
 			tmp.set(s`.cb, v)
@@ -1146,7 +1150,8 @@ struct Function {
 			Var copy = v`.copy()
 			copy.strip_refs()
 			# Make tmp var
-			Var tmp = s`.mk_tmp(~copy)
+			Var tmp
+			tmp = s`.mk_tmp(~copy)
 			copy.end()
 			# Set the new tmp to the value of the old
 			tmp.set(s`.cb, v)
@@ -1486,7 +1491,8 @@ struct Function {
 						lhs.ptr_push(ptr)
 					;/
 
-					Var tmp = s`.mk_tmp(~lhs)
+					Var tmp
+					tmp = s`.mk_tmp(~lhs)
 					
 					tmp.set(s`.cb, ~lhs)
 					lhs.end()
@@ -1516,7 +1522,8 @@ struct Function {
 			# Mov lhs to a register
 			bool is_ref = lhs.is_ref()
 			/; if (lhs.loc < 1 || is_ref == true)
-				Var tmp = lhs.copy()
+				Var tmp
+				tmp = lhs.copy()
 				tmp.strip_refs()
 				tmp.loc = 3
 				tmp.offset = 0
@@ -1576,7 +1583,8 @@ struct Function {
 					lhs.ptr_push(ptr)
 				;/
 
-				Var tmp = s`.mk_tmp(~lhs)
+				Var tmp
+				tmp = s`.mk_tmp(~lhs)
 				
 				tmp.set(s`.cb, ~lhs)
 				lhs.end()
@@ -1604,7 +1612,8 @@ struct Function {
 		# Mov lhs to a register
 		bool is_ref = lhs.is_ref()
 		/; if (lhs.loc < 1 || is_ref == true)
-			Var tmp = lhs.copy()
+			Var tmp
+			tmp = lhs.copy()
 			tmp.strip_refs()
 			tmp.loc = 3
 			tmp.offset = 0
@@ -1671,7 +1680,8 @@ struct Function {
 						lhs.ptr_push(ptr)
 					;/
 
-					Var tmp = s`.mk_tmp(~lhs)
+					Var tmp
+					tmp = s`.mk_tmp(~lhs)
 					
 					tmp.set(s`.cb, ~lhs)
 					lhs.end()
@@ -1701,7 +1711,8 @@ struct Function {
 		/; if (s`.is_tmp(~lhs) == false)
 			Var copy = lhs.copy()
 			copy.strip_refs()
-			Var tmp = s`.mk_tmp(~copy)
+			Var tmp
+			tmp = s`.mk_tmp(~copy)
 			copy.end()
 			
 			tmp.set(s`.cb, ~lhs)
@@ -1712,7 +1723,8 @@ struct Function {
 		/; if (lhs.is_ref() == true)
 			Var copy = lhs.copy()
 			copy.strip_refs()
-			Var tmp = s`.mk_tmp(~copy)
+			Var tmp
+			tmp = s`.mk_tmp(~copy)
 			copy.end()
 			
 			tmp.set(s`.cb, ~lhs)
@@ -1759,7 +1771,8 @@ struct Function {
 			out.not(s`.cb)
 		;; else if (utils.strcmp(n`.data, "~\0") == true)
 			~parse.Node sub = n`.sub.get(0)
-			Var tmp = self._compile_value(s, sub)
+			Var tmp
+			tmp = self._compile_value(s, sub)
 			out = tmp.take_ptr(s`.cb, 5)
 			tmp.end()
 		;; else if (utils.strcmp(n`.data, "--\0") == true)
@@ -1779,7 +1792,8 @@ struct Function {
 			f_scope.cb = ~f_buff
 
 			~parse.Node sub = n`.sub.get(0)
-			Var tmp = self._compile_value(~f_scope, sub)
+			Var tmp
+			tmp = self._compile_value(~f_scope, sub)
 
 			# Generate the length
 			~Struct t = self._find_literal_type(s, "uint\0")
