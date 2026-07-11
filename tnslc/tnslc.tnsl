@@ -5,7 +5,7 @@
 ~uint8 DEFAULT_FOUT = "out.asm\0"
 
 ~uint8 USAGE = "
-TNSLC v0.7.0 (C) 2026 CircleShift (MPL 2.0)
+TNSLC v0.7.5 (C) 2026 CircleShift (MPL 2.0)
 
 usage:
 	tnslc [options] (file in)
