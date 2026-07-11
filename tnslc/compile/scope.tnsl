@@ -429,7 +429,7 @@ struct Scope {
 		;/
 	;/
 
-	/; save_caller_tmp [Var]
+	/; save_caller_tmp [int]
 		Var tmp
 		utils.Vector tmps
 		tmps.init(len tmp)
@@ -438,7 +438,7 @@ struct Scope {
 
 		/; if (tmps.count == 0)
 			tmps.end()
-			return tmp
+			return 0
 		;/
 
 		~Var to_save
@@ -461,53 +461,47 @@ struct Scope {
 				tmp.end()
 			;/
 		;/
+		int out = tmps.count
 		tmps.end()
 
-		return tmp
+		return out
 	;/
 
-	/; restore_caller_tmp (~Var handle)
-		Var tmp
-		utils.Vector tmps
-		tmps.init(len tmp)
-
-		self._get_reg_tmp(~tmps)
-
-		/; if (tmps.count == 0)
+	/; restore_caller_tmp (int count)
+		/; if (count == 0)
 			return
 		;/
 
-		int end_idx = 0
-		~Var tmp
-		/; loop (int i = 0; i < self.tmps.count) [i++]
-			tmp = self.tmps.get(i)
-			/; if (tmp`.offset == handle`.offset)
-				/; if (tmp`.loc == handle`.loc)
-					end_idx = i + 1
-					i = self.tmps.count
-				;/
-			;/
-		;/
+		Var t
+		utils.Vector tmps
+		tmps.init(len t)
 
+		self._get_reg_tmp(~tmps)
+
+		~Var to_load
 		~Var to_set
-		/; loop (int i = 0; i < tmps.count) [i++]
-			int idx = i + end_idx - tmps.count
-			to_set = tmps.get(i)
-			tmp = self.tmps.get(idx)
+		/; loop (int i = 1; i !> count) [i++]
+			int idx_tmp = count - i
+			int idx_saved = self.tmps.count
+			idx_saved = idx_saved - i
+
+			to_set = tmps.get(idx_tmp)
+			to_load = self.tmps.get(idx_saved)
 			
 			/; if (to_set`.is_ref() == true)
 				# Handle ref
-				Var ref_val = tmp`.take_ptr(self.cb, 1)
+				Var ref_val = to_load`.take_ptr(self.cb, 1)
 				Var ref_set = to_set`.take_ptr(self.cb, 2)
 				ref_set.set(self.cb, ~ref_val)
 				ref_val.end()
 				ref_set.end()
 			;; else
-				to_set`.set(self.cb, tmp)
+				to_set`.set(self.cb, to_load)
 			;/
 		;/
 
-		handle`.end()
+		self.free_tmp(count, true)
+		tmps.end()
 	;/
 
 	# Free n tmp variables (starts from most recently created)
@@ -518,28 +512,28 @@ struct Scope {
 			tmps = self.tmps.count
 		;/
 
-		int stk_mv = 0
-		int tmp_count = self.tmps.count
+		bool saw_stack = false
 
 		~Var tmp
 		/; loop (int i = 1; i !> tmps) [i++]
-			tmp = self.tmps.get(tmp_count - i)
-
+			int tmp_count = self.tmps.count
+			tmp = self.tmps.get(tmp_count - 1)
+			
 			/; if (tmp`.loc < 0)
-				stk_mv = stk_mv + tmp`.actual_size()
+				saw_stack = true
 			;/
-			tmp`.end()
-		;/
 
-		/; loop (int i = 0; i < tmps) [i++]
+			tmp`.end()
 			self.tmps.pop()
 		;/
 
-		/; if (stk_mv > 0)
-			~uint8 stk_mv_str = utils.int_to_str(stk_mv)
-			self.cb`.add_c("    add rsp, \0")
+		/; if (saw_stack == true)
+			int stk = self._next_stack_slot()
+			stk = 0 - stk
+			~uint8 stk_mv_str = utils.int_to_str(stk)
+			self.cb`.add_c("    lea rsp, [rbp - \0")
 			self.cb`.add_c(stk_mv_str)
-			self.cb`.add_c(" ; Free stack space (freeing tmp variables)\n\0")
+			self.cb`.add_c("] ; Free stack space (freeing tmp variables)\n\0")
 			_delete(stk_mv_str)
 		;/
 	;/
@@ -566,9 +560,39 @@ struct Scope {
 		~Var v
 		/; loop (int i = 1; i !> self.tmps.count) [i++]
 			v = self.tmps.get(self.tmps.count - i)
-			/; if (v`.offset == tmp`.offset)
-				tmps = i
-				i = self.tmps.count + 1
+			/; if (v`.loc == tmp`.loc)
+				/; if (v`.offset == tmp`.offset)
+					tmps = i
+					i = self.tmps.count + 1
+				;/
+			;/
+		;/
+
+		/; if (tmps < 0)
+			~uint8 scope_name = self.base_label()
+			int off = tmp`.offset
+			_printf("COMPILER ERROR: Unable to find temp to free to in scope \"\0")
+			_printf(scope_name)
+			_printf("\"\n\0")
+			_print_num("                Was looking for tmp with offset %d but could not find one.\n\0", off)
+		;; else if (tmps > 0)
+			self.free_tmp(tmps, false)
+		;/
+	;/
+
+	# Free all tmp variables created after the one provided
+	/; free_after (~Var tmp, bool code)
+		# TODO:DETERMINE HOW MANY TMPS
+		int tmps = 0
+		tmps = tmps - 1
+		~Var v
+		/; loop (int i = 1; i !> self.tmps.count) [i++]
+			v = self.tmps.get(self.tmps.count - i)
+			/; if (v`.loc == tmp`.loc)
+				/; if (v`.offset == tmp`.offset)
+					tmps = i - 1
+					i = self.tmps.count + 1
+				;/
 			;/
 		;/
 
@@ -584,30 +608,31 @@ struct Scope {
 		;/
 	;/
 
-	# Free all tmp variables created after the one provided
-	/; free_after (~Var tmp, bool code)
-		# TODO:DETERMINE HOW MANY TMPS
-		int tmps = 0
-		tmps = tmps - 1
-		~Var v
-		/; loop (int i = 1; i !> self.tmps.count) [i++]
-			v = self.tmps.get(self.tmps.count - i)
-			/; if (v`.offset == tmp`.offset)
-				tmps = i - 1
-				i = self.tmps.count + 1
-			;/
+	/; get_tmp_handle [int]
+		return self.tmps.count
+	;/
+
+	/; free_after_handle (int handle)
+		/; if (handle !< self.tmps.count)
+			return
 		;/
 
-		/; if (tmps < 0)
-			~uint8 scope_name = self.base_label()
-			int off = tmp`.offset
-			_printf("COMPILER ERROR: Unable to find temp to free to in scope \"\0")
-			_printf(scope_name)
-			_printf("\"\n\0")
-			_print_num("                Was looking for tmp with offset %d but could not find one.\n\0", off)
-		;; else if (tmps > 0)
-			self.free_tmp(tmps, code)
+		int tmps = self.tmps.count
+		tmps = tmps - handle
+		self.free_tmp(tmps, true)
+	;/
+
+	/; free_to_handle (int handle)
+		/; if (handle > self.tmps.count)
+			return
+		;; else if (self.tmps.count == 0)
+			return
 		;/
+
+		int tmps = self.tmps.count
+		tmps = tmps - handle
+		tmps++
+		self.free_tmp(tmps, true)
 	;/
 
 	#

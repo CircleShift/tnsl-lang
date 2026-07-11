@@ -65,9 +65,9 @@
 	# var_tests(~buffer)
 
 	# Write assembly to output file
-	fout.create()
+	fout`.create()
 	buffer.write_to(fout)
-	fout.close()
+	fout`.close()
 	
 	# Free all structs
 	mod.end()

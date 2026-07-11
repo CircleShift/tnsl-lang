@@ -1,4 +1,4 @@
-:import "utils/utils.tnsl"
+import "utils/utils.tnsl"
 
 /; print_vec(~utils.Vector v)
 	_printf("vec: [ \0")

@@ -233,8 +233,8 @@ struct Function {
 		~Var in
 		/; loop (int i = 0; i < self.inputs.count) [i++]
 			in = self.inputs.get(i)
-			/; if (in.is_ref())
-				~int32 ptc = in.top_ptrc()
+			/; if (in`.is_ref())
+				~int32 ptc = in`.top_ptrc()
 				int32 set = 0
 				set = set - 1
 				ptc` = set
@@ -871,7 +871,10 @@ struct Function {
 		;/
 
 		# Save caller saved tmp variables
-		Var handle = s`.save_caller_tmp()
+		int saved = s`.save_caller_tmp()
+		# Generate handle to this point in the temp stack so we
+		# can properly restore saved registers (and clean up after ourselves)
+		int handle = s`.get_tmp_handle()
 
 		# Check that parameter count matches
 		int param_count = params`.sub.count
@@ -933,6 +936,9 @@ struct Function {
 			;/
 		;/
 
+		# Store where we are in the stack after the stack variables
+		int param_handle = s`.get_tmp_handle()
+
 		# Create all register based tmps
 		Var last_reg
 		last_reg.loc = 0
@@ -951,6 +957,7 @@ struct Function {
 				;/
 
 				tmps.replace(i, ~to_set)
+				self._set_var_ptr(~last_reg, ~to_set)
 				last_reg = to_set
 			;/
 		;/
@@ -980,7 +987,7 @@ struct Function {
 			param.end()
 		;/
 		
-		# Move all register parameters into registers and free the stack space
+		# Move all register parameters into registers
 		~Var ptmp
 		/; loop (int i = 0; i < f`.inputs.count) [i++]
 			inp = f`.inputs.get(i)
@@ -996,9 +1003,8 @@ struct Function {
 			;/
 		;/
 		
-		/; if (last_stack.loc !== 0)
-			s`.free_after(~last_stack, true)
-		;/
+		# Free stack space
+		s`.free_after_handle(param_handle)
 
 		# Pad out the stack for return if required
 		~CompBuf buf = s`.cb
@@ -1021,42 +1027,22 @@ struct Function {
 		/; if (f`.outputs.count > 0)
 			/; if (out`.loc < 0)
 				Var out_pos = out`.copy()
-
-				/; if (out_pos.is_ref() == true)
-					int32 pp = 0
-					pp = pp - 1
-					out_pos.ptr_pop()
-					out_pos.ptr_push(pp)
-				;/
-
-				int sloc = 0
-				out_pos.loc = sloc - 1
-				out_pos.offset = last_stack.offset
-
-				/; if (f`.call_padding > 0)
-					int offset = out_pos.offset
-					offset = offset - f`.call_padding
-					out_pos.offset = offset
-				;/
-				
-				bool is_ref = false
-				/; if (result.is_ref() == true)
-					is_ref = true
-					int32 pp = 0
-					pp = pp - 1
-					result.ptr_pop()
-					result.ptr_push(pp)
-				;/
+				out_pos.loc = 7
+				out_pos.offset = 0
 
 				~CompBuf buf = s`.cb
 				result.set(s`.cb, ~out_pos)
 				out_pos.end()
-				
-				/; if (is_ref == true)
-					result.ptr_pop()
-					result.ptr_push(0)
-				;/
 			;/
+		;/
+
+		# Un-pad the stack
+		/; if (f`.call_padding > 0)
+			~uint8 pad_num = utils.int_to_str(f`.call_padding)
+			buf`.add_c("    add rsp, \0")
+			buf`.add_c(pad_num)
+			buf`.add_c("\n\0")
+			_delete(pad_num)
 		;/
 
 		# Free all in tmp vector
@@ -1067,19 +1053,8 @@ struct Function {
 		tmps.end()
 
 		# Restore tmps in regs
-		s`.restore_caller_tmp(~handle)
-
-		/; if (result.loc < 0)
-			/; if (last_stack.loc !== 0)
-				s`.free_after(~result, true)
-			;; else if (f`.call_padding > 0)
-				~uint8 pad_num = utils.int_to_str(f`.call_padding)
-				buf`.add_c("    add rsp, \0")
-				buf`.add_c(pad_num)
-				buf`.add_c("\n\0")
-				_delete(pad_num)
-			;/
-		;/
+		s`.free_after_handle(handle)
+		s`.restore_caller_tmp(saved)
 
 		return result
 	;/
@@ -1132,9 +1107,13 @@ struct Function {
 
 			# Compute index
 			Var idx = self._compile_value(s, post)
-			/; if (idx.loc == 6 || idx.loc == 5)
+			/; if (idx.loc == 6)
 				~CompBuf buf = s`.cb
-				buf`.add_c("    mov rax, rdi\n\0")
+				buf`.add_c("    mov rax, rdi ; idx\n\0")
+				idx.loc = 1
+			;; else if (idx.loc == 5)
+				~CompBuf buf = s`.cb
+				buf`.add_c("    mov rax, rsi ; idx\n\0")
 				idx.loc = 1
 			;/
 			

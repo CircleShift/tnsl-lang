@@ -233,7 +233,7 @@ struct Module {
 				;; else
 					_printf("Failed to find module for method\n\0")
 				;/
-				_method_id_end(~id)
+				self._method_id_end(~id)
 			;; else if (sub`._type == parse.NTYPE_MODULE)
 				~Module m = self._find_sub(sub`.data)
 				/; if (m !== NULL)
@@ -354,7 +354,7 @@ struct Module {
 			/; loop (int i = 0; i < self.subs.count) [i++]
 				m = self.subs.get(i)
 				/; if (utils.strcmp(str`, m`.name) == true)
-					~void v = m._find(stype, key, lvl + 1)
+					~void v = m`._find(stype, key, lvl + 1)
 					/; if (v !== NULL)
 						return v
 					;/
