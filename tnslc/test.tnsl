@@ -28,10 +28,11 @@ usage:
 	utils.File fin
 	fin.init(argv{1})
 	
-	utils.Vector vec = parse.gen_token_list(~fin)
-	parse.print_token_list(~vec)
-	parse.end_token_list(~vec)
-
+	parse.Node ast = parse.generate_ast(~fin)
+	ast.update_children()
+	parse.print_ast(~ast)
+	ast.end()
+	
 	fin.end()
 
 	return 0

@@ -1104,7 +1104,7 @@ int errors_shown = 0
 
 	_ast_block_pass(fin, first)
 
-	/; if (_advance_check(fin, first`, ";/\0") == false)
+	/; if (_advance_check(fin, first, ";/\0") == false)
 		_ast_print_err(fin, ~blf, "Could not find closing ;/ for top block\0")
 	;/
 	blf.end()
