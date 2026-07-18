@@ -1750,6 +1750,14 @@ struct Function {
 			lhs.or(s`.cb, ~rhs)
 		;; else if (utils.strcmp(n`.data, "^\0") == true)
 			lhs.xor(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, ">>\0") == true)
+			lhs.shr(s`.cb, ~rhs)
+		;; else if (utils.strcmp(n`.data, "<<\0") == true)
+			lhs.shl(s`.cb, ~rhs)
+		;; else
+			_printf("COMPILER ERR: NOT IMPL '\0")
+			_printf(n`.data)
+			_printf("'\n\0")
 		;/
 
 		s`.free_after(~lhs, true)

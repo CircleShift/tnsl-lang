@@ -1064,7 +1064,7 @@ struct Var {
 	# Helper to properly get the lhs of a set
 	/; _set_prim_l_base (~CompBuf buf, uint sz) [~uint8]
 		/; if (self.loc == 0)
-			_printf("SET WAS CALLED ON A LITERAL!  THIS IS A COMPILER ERROR!\0")
+			_printf("SET WAS CALLED ON A LITERAL!  THIS IS A COMPILER ERROR!\n\0")
 			return utils.strcpy("ERR SHOULD NOT HAPPEN - TRIED TO SETPRIML ON A LITERAL\0")
 		;/
 
@@ -1461,6 +1461,21 @@ struct Var {
 		~uint8 from_str = other`._set_prim_r(buf, ~self)
 		~uint8 to_str = self._set_prim_l(buf)
 
+		# Many "standard operations" like add, sub, and, or, xor
+		# can operate on a max immediate of 32 bits, so we move it to
+		# rcx first
+		uint sz = self.type_size()
+		/; if (other`.loc == 0 && sz == 8)
+			~uint8 int_str = utils.int_to_str(other`.offset)
+			buf`.add_c("    mov rcx, \0")
+			buf`.add_c(int_str)
+			buf`.add_c(" ; (STD_OP)\n\0")
+			_delete(int_str)
+
+			_delete(from_str)
+			from_str = reg_string(3, 8)
+		;/
+
 		buf`.add_c("    \0")
 		buf`.add_c(op_str)
 		buf`.add_c(" \0")
@@ -1566,6 +1581,82 @@ struct Var {
 		;/
 
 		self.standard_op(buf, other, "xor\0")
+	;/
+
+	/; shl (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset << other`.offset
+			return
+		;/
+
+		# Move to CL
+		~uint8 from_str
+		~uint8 cx
+
+		/; if (other`.loc == 0)
+			from_str = utils.int_to_str(other`.offset)
+			cx = reg_string(3, 1)
+		;; else
+			uint sz = other`.type_size()
+			from_str = other`._set_prim_l(buf)
+			cx = reg_string(3, sz)
+		;/
+
+		buf`.add_c("    mov \0")
+		buf`.add_c(cx)
+		buf`.add_c(", \0")
+		buf`.add_c(from_str)
+		buf`.add_c(" ; (SHL)\n\0")
+
+		_delete(cx)
+		_delete(from_str)
+
+		# Do shift
+		~uint8 to_str = self._set_prim_l(buf)
+
+		buf`.add_c("    shl \0")
+		buf`.add_c(to_str)
+		buf`.add_c(", cl ; (SHL)\n\0")
+
+		_delete(to_str)
+	;/
+
+	/; shr (~CompBuf buf, ~Var other)
+		/; if (self.loc == VLOC_LITL && other`.loc == VLOC_LITL)
+			self.offset = self.offset >> other`.offset
+			return
+		;/
+
+		# Move to CL
+		~uint8 from_str
+		~uint8 cx
+
+		/; if (other`.loc == 0)
+			from_str = utils.int_to_str(other`.offset)
+			cx = reg_string(3, 1)
+		;; else
+			uint sz = other`.type_size()
+			from_str = other`._set_prim_l(buf)
+			cx = reg_string(3, sz)
+		;/
+
+		buf`.add_c("    mov \0")
+		buf`.add_c(cx)
+		buf`.add_c(", \0")
+		buf`.add_c(from_str)
+		buf`.add_c(" ; (SHL)\n\0")
+
+		_delete(cx)
+		_delete(from_str)
+
+		# Do shift
+		~uint8 to_str = self._set_prim_l(buf)
+
+		buf`.add_c("    shr \0")
+		buf`.add_c(to_str)
+		buf`.add_c(", cl ; (SHL)\n\0")
+
+		_delete(to_str)
 	;/
 
 	# Product op
