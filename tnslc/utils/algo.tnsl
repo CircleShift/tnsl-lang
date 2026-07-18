@@ -1,5 +1,5 @@
 
-/; strcmp(~uint8 a, b) [bool]
+/; strcmp (~uint8 a, b) [bool]
 	/; loop (a` == b` && a` !== 0 && b` !== 0) [a++; b++] ;/
 
 	/; if (b` == 0 && a` == 0)
@@ -9,7 +9,7 @@
 ;/
 
 # Length of a cstr
-/; strlen(~uint8 str) [int]
+/; strlen (~uint8 str) [int]
 	int out = 0
 	/; loop (str` !== 0) [str++; out++] ;/
 	return out
@@ -64,9 +64,9 @@
 	/; if (ch !< '0' && ch !> '9')
 		return ch - '0'
 	;; else if (ch !< 'a' && ch !> 'f')
-		return ch - 'a'
+		return ch - 'a' + 10
 	;; else if (ch !< 'A' && ch !> 'F')
-		return ch - 'A'
+		return ch - 'A' + 10
 	;/
 	return 0
 ;/
